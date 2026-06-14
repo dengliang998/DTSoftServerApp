@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="DTSoft.AppService/DTSoft.AppService.csproj" />
+  <Project Path="DTSoft.Core/DTSoft.Core.csproj" />
+  <Project Path="DTSoft.Models/DTSoft.Models.csproj" />
+  <Project Path="DTSoftServerApp/DTSoftServerApp.csproj" />
+</Solution>

@@ -1,0 +1,10 @@
+DTSoftServerApp/obj
+DTSoft.AppService/obj
+DTSoft.Core/obj
+DTSoft.Models/obj
+.DS_Store
+.idea
+DTSoftServerApp/Logs
+DTSoftServerApp/wwwroot
+DTSoftServerApp/Migrations
+DTSoftServerApp/appsettings.Development.json
