@@ -82,7 +82,7 @@ public class SysDbContext(DbContextOptions<SysDbContext> options) : DbContext(op
         modelBuilder.Entity<SysUserMember>()
             .HasOne(p => p.SysOu)
             .WithMany(b => b.SysUserMember)
-            .HasForeignKey(p => p.DepartmentId);
+            .HasForeignKey(p => p.OuId);
 
         //SYS_UserMember--SYS_USER
         modelBuilder.Entity<SysUserMember>()

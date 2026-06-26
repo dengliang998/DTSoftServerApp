@@ -1,9 +1,9 @@
-namespace DTSoft.Models.Parameter.Department;
+namespace DTSoft.Models.Parameter.Ou;
 
 /// <summary>
 /// 部门基础参数
 /// </summary>
-public class DepartmentDto
+public class OuDto
 {
     /// <summary>
     /// 部门ID
@@ -13,12 +13,12 @@ public class DepartmentDto
     /// <summary>
     /// 部门名称
     /// </summary>
-    public string? DepartmentName { get; set; }
+    public string? OuName { get; set; }
     
     /// <summary>
     /// 部门编码
     /// </summary>
-    public string? DepartmentCode { get; set; }
+    public string? OuCode { get; set; }
     
     /// <summary>
     /// 上级部门ID

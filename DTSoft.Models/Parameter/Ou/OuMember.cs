@@ -1,14 +1,14 @@
-namespace DTSoft.Models.Parameter.Department;
+namespace DTSoft.Models.Parameter.Ou;
 
 /// <summary>
 /// 部门成员参数
 /// </summary>
-public class DepartmentMember
+public class OuMember
 {
     /// <summary>
     /// 部门ID
     /// </summary>
-    public long DepartmentId { get; set; }
+    public long OuId { get; set; }
     
     /// <summary>
     /// 用户账号列表

@@ -8,3 +8,7 @@ DTSoftServerApp/Logs
 DTSoftServerApp/wwwroot
 DTSoftServerApp/Migrations
 DTSoftServerApp/appsettings.Development.json
+DTSoft.AppService/bin
+DTSoft.Core/bin
+DTSoft.Models/bin
+DTSoftServerApp/bin

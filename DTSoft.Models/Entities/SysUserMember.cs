@@ -19,7 +19,7 @@ public class SysUserMember
     /// 部门ID
     /// </summary>
     [ForeignKey("SysOu")]
-    public long DepartmentId { get; init; }
+    public long OuId { get; init; }
     
     /// <summary>
     /// 用户账号

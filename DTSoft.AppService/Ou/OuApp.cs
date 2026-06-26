@@ -3,16 +3,16 @@ using DTSoft.Core.DbContexts;
 using DTSoft.Core.Interfaces;
 using DTSoft.Models.Entities;
 using DTSoft.Models.Parameter.Base;
-using DTSoft.Models.Parameter.Department;
+using DTSoft.Models.Parameter.Ou;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json.Nodes;
 
-namespace DTSoft.AppService.Department;
+namespace DTSoft.AppService.Ou;
 
 /// <summary>
 /// 部门管理服务
 /// </summary>
-public class DepartmentApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheHelper userCacheHelper, IDtSoftCache dtSoftCache)
+public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheHelper userCacheHelper, IDtSoftCache dtSoftCache)
 {
     private const string DepartmentTreeCacheKey = "Department:Tree";
 
@@ -38,8 +38,8 @@ public class DepartmentApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, Us
         // 关键词搜索
         if (!string.IsNullOrEmpty(obj.Keyword))
         {
-            query = query.Where(b => b.DepartmentName!.Contains(obj.Keyword) || 
-                                     b.DepartmentCode!.Contains(obj.Keyword));
+            query = query.Where(b => b.OuName!.Contains(obj.Keyword) || 
+                                     b.OuCode!.Contains(obj.Keyword));
         }
         
         var total = await query.CountAsync();
@@ -140,8 +140,8 @@ public class DepartmentApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, Us
                 ["success"] = true,
                 ["StateCode"] = 0,
                 ["ItemId"] = department.ItemId,
-                ["DepartmentName"] = department.DepartmentName,
-                ["DepartmentCode"] = department.DepartmentCode,
+                ["OuName"] = department.OuName,
+                ["OuCode"] = department.OuCode,
                 ["ParentId"] = department.ParentId,
                 ["SortOrder"] = department.SortOrder,
                 ["Disable"] = department.Disable,
@@ -162,7 +162,7 @@ public class DepartmentApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, Us
     /// <summary>
     /// 创建部门
     /// </summary>
-    public async Task<JsonObject> CreateDepartment(DepartmentDto departmentDto)
+    public async Task<JsonObject> CreateDepartment(OuDto ouDto)
     {
         JsonObject rv = new()
         {
@@ -170,7 +170,7 @@ public class DepartmentApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, Us
             ["success"] = true
         };
 
-        if (string.IsNullOrEmpty(departmentDto.DepartmentName))
+        if (string.IsNullOrEmpty(ouDto.OuName))
         {
             rv["success"] = false;
             rv["Msg"] = "部门名称不能为空";
@@ -178,14 +178,14 @@ public class DepartmentApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, Us
         }
 
         // 检查部门编码是否重复
-        if (!string.IsNullOrEmpty(departmentDto.DepartmentCode))
+        if (!string.IsNullOrEmpty(ouDto.OuCode))
         {
             var exists = await dbContext.SysOu!
-                .AnyAsync(b => b.DepartmentCode == departmentDto.DepartmentCode.Trim());
+                .AnyAsync(b => b.OuCode == ouDto.OuCode.Trim());
             if (exists)
             {
                 rv["success"] = false;
-                rv["Msg"] = $"部门编码：{departmentDto.DepartmentCode}已存在";
+                rv["Msg"] = $"部门编码：{ouDto.OuCode}已存在";
                 return rv;
             }
         }
@@ -193,12 +193,12 @@ public class DepartmentApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, Us
         dbContext.SysOu!.Add(new SysOu 
         { 
             ItemId = YitterHelper.NewId(), 
-            DepartmentName = departmentDto.DepartmentName,
-            DepartmentCode = departmentDto.DepartmentCode,
-            ParentId = departmentDto.ParentId,
-            SortOrder = departmentDto.SortOrder,
-            Disable = departmentDto.Disable,
-            Remark = departmentDto.Remark
+            OuName = ouDto.OuName,
+            OuCode = ouDto.OuCode,
+            ParentId = ouDto.ParentId,
+            SortOrder = ouDto.SortOrder,
+            Disable = ouDto.Disable,
+            Remark = ouDto.Remark
         });
         
         await dbContext.SaveChangesAsync();
@@ -211,7 +211,7 @@ public class DepartmentApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, Us
     /// <summary>
     /// 修改部门信息
     /// </summary>
-    public async Task<JsonObject> ModifyDepartmentInfo(DepartmentDto departmentDto, string loginUserAcc)
+    public async Task<JsonObject> ModifyDepartmentInfo(OuDto ouDto, string loginUserAcc)
     {
         JsonObject rv = new()
         {
@@ -226,7 +226,7 @@ public class DepartmentApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, Us
             return rv;
         }
 
-        if (string.IsNullOrEmpty(departmentDto.DepartmentName))
+        if (string.IsNullOrEmpty(ouDto.OuName))
         {
             rv["success"] = false;
             rv["Msg"] = "部门名称不能为空";
@@ -234,7 +234,7 @@ public class DepartmentApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, Us
         }
 
         var department = await dbContext.SysOu!
-            .FirstOrDefaultAsync(p => p.ItemId == departmentDto.ItemId);
+            .FirstOrDefaultAsync(p => p.ItemId == ouDto.ItemId);
             
         if (department == null)
         {
@@ -244,10 +244,10 @@ public class DepartmentApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, Us
         }
 
         // 检查部门编码是否重复（排除自己）
-        if (!string.IsNullOrEmpty(departmentDto.DepartmentCode))
+        if (!string.IsNullOrEmpty(ouDto.OuCode))
         {
             var exists = await dbContext.SysOu!
-                .AnyAsync(b => b.DepartmentCode == departmentDto.DepartmentCode.Trim() && b.ItemId != departmentDto.ItemId);
+                .AnyAsync(b => b.OuCode == ouDto.OuCode.Trim() && b.ItemId != ouDto.ItemId);
             if (exists)
             {
                 rv["success"] = false;
@@ -256,12 +256,12 @@ public class DepartmentApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, Us
             }
         }
 
-        department.DepartmentName = departmentDto.DepartmentName;
-        department.DepartmentCode = departmentDto.DepartmentCode;
-        department.ParentId = departmentDto.ParentId;
-        department.SortOrder = departmentDto.SortOrder;
-        department.Disable = departmentDto.Disable;
-        department.Remark = departmentDto.Remark;
+        department.OuName = ouDto.OuName;
+        department.OuCode = ouDto.OuCode;
+        department.ParentId = ouDto.ParentId;
+        department.SortOrder = ouDto.SortOrder;
+        department.Disable = ouDto.Disable;
+        department.Remark = ouDto.Remark;
 
         await dbContext.SaveChangesAsync();
         dtSoftCache.RefreshCache(DepartmentTreeCacheKey);
@@ -300,7 +300,7 @@ public class DepartmentApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, Us
 
         // 检查是否有部门成员
         var hasMembers = await dbContext.SysUserMember!
-            .AnyAsync(p => p.DepartmentId == departmentId);
+            .AnyAsync(p => p.OuId == departmentId);
         if (hasMembers)
         {
             rv["success"] = false;
@@ -335,7 +335,7 @@ public class DepartmentApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, Us
 
         // 查询部门成员
         var departmentMembers = await dbContext.SysUserMember!
-            .Where(b => b.DepartmentId == departmentId)
+            .Where(b => b.OuId == departmentId)
             .ToListAsync();
 
         // 提取所有需要的用户账号
@@ -367,7 +367,7 @@ public class DepartmentApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, Us
     /// <summary>
     /// 添加部门成员
     /// </summary>
-    public async Task<JsonObject> AddDepartmentMember(DepartmentMember departmentMember, string loginUserAcc)
+    public async Task<JsonObject> AddDepartmentMember(OuMember departmentMember, string loginUserAcc)
     {
         JsonObject rv = new()
         {
@@ -384,7 +384,7 @@ public class DepartmentApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, Us
 
         // 删除现有成员
         await dbContext.SysUserMember!
-            .Where(b => b.DepartmentId == departmentMember.DepartmentId)
+            .Where(b => b.OuId == departmentMember.OuId)
             .ExecuteDeleteAsync();
 
         // 添加新成员
@@ -394,7 +394,7 @@ public class DepartmentApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, Us
                 .Select(userAcc => new SysUserMember
                 {
                     ItemId = YitterHelper.NewId(),
-                    DepartmentId = departmentMember.DepartmentId,
+                    OuId = departmentMember.OuId,
                     UserAcc = userAcc
                 })
                 .ToList();
@@ -435,8 +435,8 @@ public class DepartmentApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, Us
         var node = new JsonObject
         {
             ["ItemId"] = department.ItemId,
-            ["DepartmentName"] = department.DepartmentName,
-            ["DepartmentCode"] = department.DepartmentCode,
+            ["OuName"] = department.OuName,
+            ["OuCode"] = department.OuCode,
             ["ParentId"] = department.ParentId,
             ["SortOrder"] = department.SortOrder,
             ["Disable"] = department.Disable,

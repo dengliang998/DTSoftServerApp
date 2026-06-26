@@ -25,7 +25,7 @@ public class UserDto : UserBase
     /// <summary>
     /// 部门ID
     /// </summary>
-    public long? DepartmentId { get; set; }
+    public long? OuId { get; set; }
     /// <summary>
     /// 职位
     /// </summary>

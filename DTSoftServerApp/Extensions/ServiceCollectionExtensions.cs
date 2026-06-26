@@ -1,6 +1,6 @@
 using DTSoft.AppService.Attachment;
 using DTSoft.AppService.ApiKey;
-using DTSoft.AppService.Department;
+using DTSoft.AppService.Ou;
 using DTSoft.AppService.DynamicApp;
 using DTSoft.AppService.Log;
 using DTSoft.AppService.Menu;
@@ -53,7 +53,7 @@ namespace DTSoftServerApp.Extensions
             services.AddScoped<SysConfigApp>();
             services.AddScoped<DynamicConfigApp>();
             services.AddScoped<DynamicTableService>();
-            services.AddScoped<DepartmentApp>();
+            services.AddScoped<OuApp>();
             services.AddScoped<ApiKeyApp>();
 
             // 其他服务

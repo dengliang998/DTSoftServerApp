@@ -99,7 +99,7 @@ public class UserApp(
             ["Sex"] = user.Sex,
             ["Avatar"] = user.Avatar,
             ["Disable"] = user.Disable,
-            ["DepartmentId"] = userMember?.DepartmentId,
+            ["DepartmentId"] = userMember?.OuId,
             ["Position"] = user.Position,
             ["Email"] = user.Email,
             ["SupervisorAcc"] = supervisorAcc,
@@ -133,7 +133,7 @@ public class UserApp(
             join su in dbContext.SysUser.AsNoTracking()
                 on s.SupervisorAcc equals su.Account into supUserJoin
             from su in supUserJoin.DefaultIfEmpty()
-            where m.DepartmentId == departmentId && u.Account != "admin"
+            where m.OuId == departmentId && u.Account != "admin"
             select new
             {
                 u.Account,
@@ -141,7 +141,7 @@ public class UserApp(
                 u.Sex,
                 u.Avatar,
                 u.Disable,
-                DepartmentId = m.DepartmentId,
+                DepartmentId = m.OuId,
                 u.Position,
                 u.Email,
                 SupervisorAcc = s.SupervisorAcc,
@@ -227,12 +227,12 @@ public class UserApp(
         await dbContext.SaveChangesAsync();
         
         // 添加部门关联
-        if (userDto.DepartmentId.HasValue && userDto.DepartmentId.Value > 0)
+        if (userDto.OuId.HasValue && userDto.OuId.Value > 0)
         {
             dbContext.SysUserMember!.Add(new SysUserMember
             {
                 ItemId = YitterHelper.NewId(),
-                DepartmentId = userDto.DepartmentId.Value,
+                OuId = userDto.OuId.Value,
                 UserAcc = userDto.Account
             });
             await dbContext.SaveChangesAsync();
@@ -314,7 +314,7 @@ public class UserApp(
         }
         
         // 更新部门关联
-        if (user.DepartmentId.HasValue)
+        if (user.OuId.HasValue)
         {
             // 删除现有部门关联（批量删除，避免加载实体）
             await dbContext.SysUserMember!
@@ -322,12 +322,12 @@ public class UserApp(
                 .ExecuteDeleteAsync();
             
             // 添加新部门关联
-            if (user.DepartmentId.Value > 0)
+            if (user.OuId.Value > 0)
             {
                 dbContext.SysUserMember!.Add(new SysUserMember
                 {
                     ItemId = YitterHelper.NewId(),
-                    DepartmentId = user.DepartmentId.Value,
+                    OuId = user.OuId.Value,
                     UserAcc = user.Account
                 });
             }

@@ -18,12 +18,12 @@ public class SysOu
     /// <summary>
     /// 部门名称
     /// </summary>
-    public string? DepartmentName { get; set; }
+    public string? OuName { get; set; }
     
     /// <summary>
     /// 部门编码
     /// </summary>
-    public string? DepartmentCode { get; set; }
+    public string? OuCode { get; set; }
     
     /// <summary>
     /// 上级部门ID
