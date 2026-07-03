@@ -14,12 +14,12 @@ namespace DTSoft.AppService.Ou;
 /// </summary>
 public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheHelper userCacheHelper, IDtSoftCache dtSoftCache)
 {
-    private const string DepartmentTreeCacheKey = "Department:Tree";
+    private const string OuTreeCacheKey = "Ou:Tree";
 
     /// <summary>
     /// 获取部门列表（树形结构）
     /// </summary>
-    public async Task<JsonObject> GetDepartmentListAsync(Para obj)
+    public async Task<JsonObject> GetOuListAsync(Para obj)
     {
         IQueryable<SysOu>? query = dbContext.SysOu;
         
@@ -50,7 +50,7 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
                                .ToListAsync();
 
         // 构建树形结构
-        var treeData = BuildDepartmentTree(result);
+        var treeData = BuildOuTree(result);
 
         return new JsonObject
         {
@@ -64,7 +64,7 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
     /// <summary>
     /// 获取所有部门（树形结构，不分页）
     /// </summary>
-    public async Task<JsonObject> GetAllDepartmentsAsync()
+    public async Task<JsonObject> GetAllOusAsync()
     {
         if (dbContext.SysOu == null)
         {
@@ -77,7 +77,7 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
             };
         }
 
-        var cachedJson = await dtSoftCache.GetAsync<string>(DepartmentTreeCacheKey);
+        var cachedJson = await dtSoftCache.GetAsync<string>(OuTreeCacheKey);
         if (!string.IsNullOrWhiteSpace(cachedJson))
         {
             try
@@ -99,13 +99,13 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
             }
         }
 
-        var departments = await dbContext.SysOu
+        var Ous = await dbContext.SysOu
             .OrderBy(o => o.SortOrder)
             .ThenBy(o => o.ItemId)
             .ToListAsync();
 
-        var treeData = BuildDepartmentTree(departments);
-        await dtSoftCache.SetAsync(DepartmentTreeCacheKey, treeData.ToJsonString(), TimeSpan.FromMinutes(5));
+        var treeData = BuildOuTree(Ous);
+        await dtSoftCache.SetAsync(OuTreeCacheKey, treeData.ToJsonString(), TimeSpan.FromMinutes(5));
 
         return new JsonObject
         {
@@ -118,7 +118,7 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
     /// <summary>
     /// 获取单个部门信息
     /// </summary>
-    public async Task<JsonObject> GetDepartmentAsync(long departmentId)
+    public async Task<JsonObject> GetOuAsync(long OuId)
     {
         if (dbContext.SysOu == null)
         {
@@ -130,22 +130,22 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
             };
         }
         
-        var department = await dbContext.SysOu
-            .FirstOrDefaultAsync(b => b.ItemId == departmentId);
+        var Ou = await dbContext.SysOu
+            .FirstOrDefaultAsync(b => b.ItemId == OuId);
         
-        if (department != null)
+        if (Ou != null)
         {
             return new JsonObject
             {
                 ["success"] = true,
                 ["StateCode"] = 0,
-                ["ItemId"] = department.ItemId,
-                ["OuName"] = department.OuName,
-                ["OuCode"] = department.OuCode,
-                ["ParentId"] = department.ParentId,
-                ["SortOrder"] = department.SortOrder,
-                ["Disable"] = department.Disable,
-                ["Remark"] = department.Remark
+                ["ItemId"] = Ou.ItemId,
+                ["OuName"] = Ou.OuName,
+                ["OuCode"] = Ou.OuCode,
+                ["ParentId"] = Ou.ParentId,
+                ["SortOrder"] = Ou.SortOrder,
+                ["Disable"] = Ou.Disable,
+                ["Remark"] = Ou.Remark
             };
         }
         else
@@ -162,7 +162,7 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
     /// <summary>
     /// 创建部门
     /// </summary>
-    public async Task<JsonObject> CreateDepartment(OuDto ouDto)
+    public async Task<JsonObject> CreateOu(OuDto ouDto)
     {
         JsonObject rv = new()
         {
@@ -202,7 +202,7 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
         });
         
         await dbContext.SaveChangesAsync();
-        dtSoftCache.RefreshCache(DepartmentTreeCacheKey);
+        dtSoftCache.RefreshCache(OuTreeCacheKey);
         rv["Msg"] = "部门创建成功";
         
         return rv;
@@ -211,7 +211,7 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
     /// <summary>
     /// 修改部门信息
     /// </summary>
-    public async Task<JsonObject> ModifyDepartmentInfo(OuDto ouDto, string loginUserAcc)
+    public async Task<JsonObject> ModifyOuInfo(OuDto ouDto, string loginUserAcc)
     {
         JsonObject rv = new()
         {
@@ -233,10 +233,10 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
             return rv;
         }
 
-        var department = await dbContext.SysOu!
+        var Ou = await dbContext.SysOu!
             .FirstOrDefaultAsync(p => p.ItemId == ouDto.ItemId);
             
-        if (department == null)
+        if (Ou == null)
         {
             rv["success"] = false;
             rv["Msg"] = "部门不存在";
@@ -256,15 +256,15 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
             }
         }
 
-        department.OuName = ouDto.OuName;
-        department.OuCode = ouDto.OuCode;
-        department.ParentId = ouDto.ParentId;
-        department.SortOrder = ouDto.SortOrder;
-        department.Disable = ouDto.Disable;
-        department.Remark = ouDto.Remark;
+        Ou.OuName = ouDto.OuName;
+        Ou.OuCode = ouDto.OuCode;
+        Ou.ParentId = ouDto.ParentId;
+        Ou.SortOrder = ouDto.SortOrder;
+        Ou.Disable = ouDto.Disable;
+        Ou.Remark = ouDto.Remark;
 
         await dbContext.SaveChangesAsync();
-        dtSoftCache.RefreshCache(DepartmentTreeCacheKey);
+        dtSoftCache.RefreshCache(OuTreeCacheKey);
         rv["Msg"] = "修改成功";
         
         return rv;
@@ -273,7 +273,7 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
     /// <summary>
     /// 删除部门
     /// </summary>
-    public async Task<JsonObject> DelDepartment(long departmentId, string loginUserAcc)
+    public async Task<JsonObject> DelOu(long OuId, string loginUserAcc)
     {
         JsonObject rv = new()
         {
@@ -290,7 +290,7 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
 
         // 检查是否有子部门
         var hasChildren = await dbContext.SysOu!
-            .AnyAsync(p => p.ParentId == departmentId);
+            .AnyAsync(p => p.ParentId == OuId);
         if (hasChildren)
         {
             rv["success"] = false;
@@ -300,7 +300,7 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
 
         // 检查是否有部门成员
         var hasMembers = await dbContext.SysUserMember!
-            .AnyAsync(p => p.OuId == departmentId);
+            .AnyAsync(p => p.OuId == OuId);
         if (hasMembers)
         {
             rv["success"] = false;
@@ -309,14 +309,14 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
         }
 
         // 删除部门
-        var department = await dbContext.SysOu!
-            .FirstOrDefaultAsync(p => p.ItemId == departmentId);
-        if (department != null)
+        var Ou = await dbContext.SysOu!
+            .FirstOrDefaultAsync(p => p.ItemId == OuId);
+        if (Ou != null)
         {
-            dbContext.SysOu!.Remove(department);
+            dbContext.SysOu!.Remove(Ou);
             await dbContext.SaveChangesAsync();
         }
-        dtSoftCache.RefreshCache(DepartmentTreeCacheKey);
+        dtSoftCache.RefreshCache(OuTreeCacheKey);
         
         rv["Msg"] = "删除成功";
         
@@ -326,7 +326,7 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
     /// <summary>
     /// 获取部门成员列表
     /// </summary>
-    public async Task<JsonObject> GetDepartmentMemberListAsync(long departmentId)
+    public async Task<JsonObject> GetOuMemberListAsync(long OuId)
     {
         JsonObject rv = new();
         JsonArray children = new();
@@ -334,16 +334,16 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
         rv["success"] = true;
 
         // 查询部门成员
-        var departmentMembers = await dbContext.SysUserMember!
-            .Where(b => b.OuId == departmentId)
+        var OuMembers = await dbContext.SysUserMember!
+            .Where(b => b.OuId == OuId)
             .ToListAsync();
 
         // 提取所有需要的用户账号
-        var userAccounts = departmentMembers.Select(m => m.UserAcc).Distinct().ToList();
+        var userAccounts = OuMembers.Select(m => m.UserAcc).Distinct().ToList();
         var users = await userCacheHelper.GetUsersByAccountsAsync(userAccounts);
         var userLookup = users.ToDictionary(u => u.Account!, u => u.DisplayName!);
 
-        foreach (var member in departmentMembers)
+        foreach (var member in OuMembers)
         {
             JsonObject item = new();
             children.Add(item);
@@ -367,7 +367,7 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
     /// <summary>
     /// 添加部门成员
     /// </summary>
-    public async Task<JsonObject> AddDepartmentMember(OuMember departmentMember, string loginUserAcc)
+    public async Task<JsonObject> AddOuMember(OuMember OuMember, string loginUserAcc)
     {
         JsonObject rv = new()
         {
@@ -384,17 +384,17 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
 
         // 删除现有成员
         await dbContext.SysUserMember!
-            .Where(b => b.OuId == departmentMember.OuId)
+            .Where(b => b.OuId == OuMember.OuId)
             .ExecuteDeleteAsync();
 
         // 添加新成员
-        if (departmentMember.UserAccounts?.Count > 0)
+        if (OuMember.UserAccounts?.Count > 0)
         {
-            var members = departmentMember.UserAccounts
+            var members = OuMember.UserAccounts
                 .Select(userAcc => new SysUserMember
                 {
                     ItemId = YitterHelper.NewId(),
-                    OuId = departmentMember.OuId,
+                    OuId = OuMember.OuId,
                     UserAcc = userAcc
                 })
                 .ToList();
@@ -411,17 +411,17 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
     /// <summary>
     /// 构建部门树形结构
     /// </summary>
-    private JsonArray BuildDepartmentTree(List<SysOu> departments)
+    private JsonArray BuildOuTree(List<SysOu> Ous)
     {
         var treeArray = new JsonArray();
-        var departmentLookup = departments.ToDictionary(d => d.ItemId);
+        var OuLookup = Ous.ToDictionary(d => d.ItemId);
 
         // 找出所有根节点（ParentId 为 null 或 0）
-        var rootDepartments = departments.Where(d => d.ParentId == null || d.ParentId == 0).ToList();
+        var rootOus = Ous.Where(d => d.ParentId == null || d.ParentId == 0).ToList();
 
-        foreach (var root in rootDepartments)
+        foreach (var root in rootOus)
         {
-            treeArray.Add(BuildDepartmentNode(root, departmentLookup));
+            treeArray.Add(BuildOuNode(root, OuLookup));
         }
 
         return treeArray;
@@ -430,22 +430,22 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
     /// <summary>
     /// 构建单个部门节点（递归）
     /// </summary>
-    private JsonObject BuildDepartmentNode(SysOu department, Dictionary<long, SysOu> lookup)
+    private JsonObject BuildOuNode(SysOu Ou, Dictionary<long, SysOu> lookup)
     {
         var node = new JsonObject
         {
-            ["ItemId"] = department.ItemId,
-            ["OuName"] = department.OuName,
-            ["OuCode"] = department.OuCode,
-            ["ParentId"] = department.ParentId,
-            ["SortOrder"] = department.SortOrder,
-            ["Disable"] = department.Disable,
-            ["Remark"] = department.Remark
+            ["ItemId"] = Ou.ItemId,
+            ["OuName"] = Ou.OuName,
+            ["OuCode"] = Ou.OuCode,
+            ["ParentId"] = Ou.ParentId,
+            ["SortOrder"] = Ou.SortOrder,
+            ["Disable"] = Ou.Disable,
+            ["Remark"] = Ou.Remark
         };
 
         // 查找子部门
         var children = lookup.Values
-            .Where(d => d.ParentId == department.ItemId)
+            .Where(d => d.ParentId == Ou.ItemId)
             .OrderBy(d => d.SortOrder)
             .ThenBy(d => d.ItemId)
             .ToList();
@@ -455,7 +455,7 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
             var childrenArray = new JsonArray();
             foreach (var child in children)
             {
-                childrenArray.Add(BuildDepartmentNode(child, lookup));
+                childrenArray.Add(BuildOuNode(child, lookup));
             }
             node["Children"] = childrenArray;
         }

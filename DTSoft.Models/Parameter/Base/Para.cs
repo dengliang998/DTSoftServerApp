@@ -20,5 +20,5 @@ public class Para
     /// <summary>
     /// 部门ID（用于过滤用户）
     /// </summary>
-    public long? DepartmentId { get; set; }
+    public long? OuId { get; set; }
 }

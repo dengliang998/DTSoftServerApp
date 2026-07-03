@@ -110,7 +110,7 @@ public class UserApp(
     public async Task<JsonObject> GetUserListAsync(Para obj)
     {
         // 必须传递部门ID，否则不显示用户
-        if (!obj.DepartmentId.HasValue || obj.DepartmentId.Value <= 0)
+        if (!obj.OuId.HasValue || obj.OuId.Value <= 0)
         {
             return new JsonObject
             {
@@ -121,7 +121,7 @@ public class UserApp(
             };
         }
 
-        var departmentId = obj.DepartmentId.Value;
+        var OuId = obj.OuId.Value;
 
         var query =
             from u in dbContext.SysUser.AsNoTracking()
@@ -133,7 +133,7 @@ public class UserApp(
             join su in dbContext.SysUser.AsNoTracking()
                 on s.SupervisorAcc equals su.Account into supUserJoin
             from su in supUserJoin.DefaultIfEmpty()
-            where m.OuId == departmentId && u.Account != "admin"
+            where m.OuId == OuId && u.Account != "admin"
             select new
             {
                 u.Account,
@@ -141,7 +141,7 @@ public class UserApp(
                 u.Sex,
                 u.Avatar,
                 u.Disable,
-                DepartmentId = m.OuId,
+                OuId = m.OuId,
                 u.Position,
                 u.Email,
                 s.SupervisorAcc,
@@ -175,7 +175,7 @@ public class UserApp(
                 ["Sex"] = rows.Sex,
                 ["Avatar"] = rows.Avatar,
                 ["Disable"] = rows.Disable,
-                ["DepartmentId"] = rows.DepartmentId,
+                ["OuId"] = rows.OuId,
                 ["Position"] = rows.Position,
                 ["Email"] = rows.Email,
                 ["SupervisorAcc"] = rows.SupervisorAcc,

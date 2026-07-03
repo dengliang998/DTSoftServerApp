@@ -28,9 +28,9 @@ public class OuController : Controller
     /// <param name="obj"></param>
     /// <returns></returns>
     [HttpPost]
-    public async Task<IActionResult> GetDepartmentList([FromForm] Para obj)
+    public async Task<IActionResult> GetOuList([FromForm] Para obj)
     {
-        return Ok(await _ou.GetDepartmentListAsync(obj));
+        return Ok(await _ou.GetOuListAsync(obj));
     }
 
     /// <summary>
@@ -38,9 +38,9 @@ public class OuController : Controller
     /// </summary>
     /// <returns></returns>
     [HttpGet]
-    public async Task<IActionResult> GetAllDepartments()
+    public async Task<IActionResult> GetAllOus()
     {
-        return Ok(await _ou.GetAllDepartmentsAsync());
+        return Ok(await _ou.GetAllOusAsync());
     }
 
     /// <summary>
@@ -49,9 +49,9 @@ public class OuController : Controller
     /// <param name="OuId"></param>
     /// <returns></returns>
     [HttpGet]
-    public async Task<IActionResult> GetDepartment(long OuId)
+    public async Task<IActionResult> GetOu(long OuId)
     {
-        return Ok(await _ou.GetDepartmentAsync(OuId));
+        return Ok(await _ou.GetOuAsync(OuId));
     }
 
     /// <summary>
@@ -60,9 +60,9 @@ public class OuController : Controller
     /// <param name="obj"></param>
     /// <returns></returns>
     [HttpPost]
-    public async Task<IActionResult> CreateDepartment([FromForm] OuDto obj)
+    public async Task<IActionResult> CreateOu([FromForm] OuDto obj)
     {
-        return Ok(await _ou.CreateDepartment(obj));
+        return Ok(await _ou.CreateOu(obj));
     }
 
     /// <summary>
@@ -71,9 +71,9 @@ public class OuController : Controller
     /// <param name="obj"></param>
     /// <returns></returns>
     [HttpPost]
-    public async Task<IActionResult> ModifyDepartmentInfo([FromForm] OuDto obj)
+    public async Task<IActionResult> ModifyOuInfo([FromForm] OuDto obj)
     {
-        return Ok(await _ou.ModifyDepartmentInfo(obj, DtSoftHelper.GetLoginUserAccount(User)));
+        return Ok(await _ou.ModifyOuInfo(obj, DtSoftHelper.GetLoginUserAccount(User)));
     }
 
     /// <summary>
@@ -82,9 +82,9 @@ public class OuController : Controller
     /// <param name="OuId"></param>
     /// <returns></returns>
     [HttpPost]
-    public async Task<IActionResult> DelDepartment([FromForm] long OuId)
+    public async Task<IActionResult> DelOu([FromForm] long OuId)
     {
-        return Ok(await _ou.DelDepartment(OuId, DtSoftHelper.GetLoginUserAccount(User)));
+        return Ok(await _ou.DelOu(OuId, DtSoftHelper.GetLoginUserAccount(User)));
     }
 
     /// <summary>
@@ -93,9 +93,9 @@ public class OuController : Controller
     /// <param name="OuId"></param>
     /// <returns></returns>
     [HttpPost]
-    public async Task<IActionResult> GetDepartmentMemberList([FromForm] long OuId)
+    public async Task<IActionResult> GetOuMemberList([FromForm] long OuId)
     {
-        return Ok(await _ou.GetDepartmentMemberListAsync(OuId));
+        return Ok(await _ou.GetOuMemberListAsync(OuId));
     }
 
     /// <summary>
@@ -104,8 +104,8 @@ public class OuController : Controller
     /// <param name="obj"></param>
     /// <returns></returns>
     [HttpPost]
-    public async Task<IActionResult> AddDepartmentMember([FromBody] OuMember obj)
+    public async Task<IActionResult> AddOuMember([FromBody] OuMember obj)
     {
-        return Ok(await _ou.AddDepartmentMember(obj, DtSoftHelper.GetLoginUserAccount(User)));
+        return Ok(await _ou.AddOuMember(obj, DtSoftHelper.GetLoginUserAccount(User)));
     }
 }
