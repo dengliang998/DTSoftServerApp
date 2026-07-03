@@ -19,7 +19,9 @@ public class SysConfigApp(SysDbContext dbContext, ConfigHelper configHelper, Att
     /// </summary>
     public async Task<JsonObject> SetSysConfig(Models.Parameter.SysConfig.Config systemInfo)
     {
-        Models.Entities.SysConfig? sysConfig = dbContext.SysConfig!.FirstOrDefault();
+        Models.Entities.SysConfig? sysConfig = dbContext.SysConfig!
+            .OrderBy(p => p.ItemId)
+            .FirstOrDefault();
         
         if (sysConfig is null)
         {
@@ -92,7 +94,10 @@ public class SysConfigApp(SysDbContext dbContext, ConfigHelper configHelper, Att
 
     private string BuildSysConfigDataJson()
     {
-        Models.Entities.SysConfig? systemInfo = dbContext.SysConfig!.AsNoTracking().FirstOrDefault();
+        Models.Entities.SysConfig? systemInfo = dbContext.SysConfig!
+            .AsNoTracking()
+            .OrderBy(p => p.ItemId)
+            .FirstOrDefault();
 
         // 读取文件并转为Base64
         string? loginImgBase64 = null;
