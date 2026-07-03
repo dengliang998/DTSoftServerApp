@@ -99,7 +99,7 @@ public class UserApp(
             ["Sex"] = user.Sex,
             ["Avatar"] = user.Avatar,
             ["Disable"] = user.Disable,
-            ["DepartmentId"] = userMember?.OuId,
+            ["OuId"] = userMember?.OuId,
             ["Position"] = user.Position,
             ["Email"] = user.Email,
             ["SupervisorAcc"] = supervisorAcc,
@@ -144,7 +144,7 @@ public class UserApp(
                 DepartmentId = m.OuId,
                 u.Position,
                 u.Email,
-                SupervisorAcc = s.SupervisorAcc,
+                s.SupervisorAcc,
                 SupervisorDisplayName = su.DisplayName
             };
 
