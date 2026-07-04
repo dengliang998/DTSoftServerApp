@@ -17,7 +17,8 @@ namespace DTSoftServerApp.Controllers.Auth
         JwtService jwtService,
         SysDbContext dbContext,
         UserCacheHelper userCacheHelper,
-        CaptchaService captchaService) : ControllerBase
+        CaptchaService captchaService,
+        AuthEncryptionService authEncryptionService) : ControllerBase
     {
         /// <summary>
         /// 获取登录验证码
@@ -35,6 +36,21 @@ namespace DTSoftServerApp.Controllers.Auth
         }
 
         /// <summary>
+        /// 获取登录加密公钥
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet("login-encryption-key")]
+        public IActionResult GetLoginEncryptionKey()
+        {
+            return Ok(new
+            {
+                Code = 200,
+                Message = "获取登录加密公钥成功",
+                Data = authEncryptionService.GetPublicKey()
+            });
+        }
+
+        /// <summary>
         ///登录接口
         /// </summary>
         /// <param name="request"></param>
@@ -42,12 +58,22 @@ namespace DTSoftServerApp.Controllers.Auth
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
+            var (credentialsValid, username, password, credentialsMessage) = TryDecryptCredentials(request);
+            if (!credentialsValid)
+            {
+                return BadRequest(new
+                {
+                    Code = 400,
+                    Message = credentialsMessage
+                });
+            }
+
             // 记录登录日志
             var log = new SysActionLog
             {
                 ItemId = YitterHelper.NewId(),  // 生成唯一 ID
                 LogDate = DateTime.Now.ToCstTime(),
-                UserAcc = request.Username,
+                UserAcc = username,
                 ActionName = "Login",
                 ClientIP = HttpContext.Connection.RemoteIpAddress?.ToString(),
                 Param = "",
@@ -67,10 +93,10 @@ namespace DTSoftServerApp.Controllers.Auth
                 });
             }
 
-            var user = await ValidateUser(request.Username, request.Password);
+            var user = await ValidateUser(username, password);
             if (user != null)
             {
-                var (token, expires) = jwtService.GenerateToken(request.Username, user.Account!); // 用户ID来自数据库
+                var (token, expires) = jwtService.GenerateToken(username, user.Account!); // 用户ID来自数据库
 
                 log.Result = "登录成功";
                 dbContext.SysActionLog!.Add(log);
@@ -97,6 +123,26 @@ namespace DTSoftServerApp.Controllers.Auth
                     Code = 401,
                     Message = "用户名或密码错误"
                 });
+            }
+        }
+
+        private (bool Success, string Username, string Password, string Message) TryDecryptCredentials(LoginRequest request)
+        {
+            try
+            {
+                var username = authEncryptionService.DecryptRequired(request.EncryptionKeyId, request.Username, nameof(request.Username)).Trim();
+                var password = authEncryptionService.DecryptRequired(request.EncryptionKeyId, request.Password, nameof(request.Password));
+
+                if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+                {
+                    return (false, string.Empty, string.Empty, "用户名和密码不能为空");
+                }
+
+                return (true, username, password, string.Empty);
+            }
+            catch (AuthEncryptionException)
+            {
+                return (false, string.Empty, string.Empty, "登录参数解密失败，请刷新页面后重试");
             }
         }
 
@@ -138,14 +184,19 @@ namespace DTSoftServerApp.Controllers.Auth
     public class LoginRequest
     {
         /// <summary>
-        /// 用户名
+        /// 用户名密文，使用 /api/Auth/login-encryption-key 返回的公钥加密
         /// </summary>
         public string Username { get; set; } = string.Empty;
 
         /// <summary>
-        /// 密码
+        /// 密码密文，使用 /api/Auth/login-encryption-key 返回的公钥加密
         /// </summary>
         public string Password { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 登录加密公钥 ID，通过 /api/Auth/login-encryption-key 获取
+        /// </summary>
+        public string EncryptionKeyId { get; set; } = string.Empty;
 
         /// <summary>
         /// 验证码 ID，通过 /api/Auth/captcha 获取

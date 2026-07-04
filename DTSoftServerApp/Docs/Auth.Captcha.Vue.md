@@ -47,29 +47,12 @@
 Content-Type: application/json
 ```
 
-请求体：
+请求体验证码相关字段：
 
 ```json
 {
-  "Username": "admin",
-  "Password": "123456",
   "CaptchaId": "0c3f2c4a8c5f46b2a0d6e9c4b5a1f234",
   "CaptchaCode": "A7K2"
-}
-```
-
-成功响应不变：
-
-```json
-{
-  "Code": 200,
-  "Message": "登录成功",
-  "Data": {
-    "Token": "eyJhbGciOi...",
-    "Expires": "2026-07-04T18:00:00+08:00",
-    "ExpiresInHours": 8,
-    "ExpiresInSeconds": 28800
-  }
 }
 ```
 
@@ -96,71 +79,7 @@ Content-Type: application/json
 }
 ```
 
-```json
-{
-  "Code": 401,
-  "Message": "用户名或密码错误"
-}
-```
-
-## 4. Vue 适配示例
-
-```vue
-<template>
-  <form @submit.prevent="handleLogin">
-    <input v-model="form.Username" autocomplete="username" />
-    <input v-model="form.Password" type="password" autocomplete="current-password" />
-
-    <div class="captcha-row">
-      <input v-model="form.CaptchaCode" maxlength="4" autocomplete="off" />
-      <img :src="captchaImage" alt="验证码" @click="loadCaptcha" />
-    </div>
-
-    <button type="submit">登录</button>
-  </form>
-</template>
-
-<script setup>
-import { onMounted, reactive, ref } from 'vue'
-import request from '@/utils/request'
-
-const captchaImage = ref('')
-
-const form = reactive({
-  Username: '',
-  Password: '',
-  CaptchaId: '',
-  CaptchaCode: ''
-})
-
-async function loadCaptcha() {
-  const res = await request.get('/api/Auth/captcha')
-  form.CaptchaId = res.Data.CaptchaId
-  form.CaptchaCode = ''
-  captchaImage.value = res.Data.ImageDataUrl
-}
-
-async function handleLogin() {
-  try {
-    const res = await request.post('/api/Auth/login', {
-      Username: form.Username,
-      Password: form.Password,
-      CaptchaId: form.CaptchaId,
-      CaptchaCode: form.CaptchaCode
-    })
-
-    localStorage.setItem('token', res.Data.Token)
-  } catch (error) {
-    await loadCaptcha()
-    throw error
-  }
-}
-
-onMounted(loadCaptcha)
-</script>
-```
-
-## 5. 前端处理建议
+## 4. 前端处理建议
 
 - 页面首次进入登录页时调用 `loadCaptcha()`。
 - 点击验证码图片时重新调用 `loadCaptcha()`。

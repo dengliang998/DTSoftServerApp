@@ -12,7 +12,7 @@ namespace DTSoftServerApp.Middleware
     {
         private const int MaxLoggedBodyBytes = 64 * 1024;
         private static readonly Regex SensitiveJsonStringFieldRegex = new(
-            "(\"(?:(?:PassWord)|(?:Password)|(?:SecretKey)|(?:AccessToken)|(?:RefreshToken)|(?:Token))\"\\s*:\\s*\")([^\"]*)(\")",
+            "(\"(?:(?:Username)|(?:UserName)|(?:PassWord)|(?:Password)|(?:SecretKey)|(?:AccessToken)|(?:RefreshToken)|(?:Token))\"\\s*:\\s*\")([^\"]*)(\")",
             RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
         private static readonly Regex JwtLikeRegex = new(
             "(eyJ[a-zA-Z0-9_\\-]{10,}\\.[a-zA-Z0-9_\\-]{10,}\\.[a-zA-Z0-9_\\-]{10,})",

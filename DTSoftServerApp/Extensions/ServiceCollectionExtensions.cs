@@ -59,6 +59,7 @@ namespace DTSoftServerApp.Extensions
             // 其他服务
             services.AddScoped<JwtService>();
             services.AddScoped<CaptchaService>();
+            services.AddSingleton<AuthEncryptionService>();
 
             return services;
         }

@@ -126,16 +126,21 @@ http://localhost:8000/apidoc
 登录接口：
 
 ```http
+GET /api/Auth/login-encryption-key
+GET /api/Auth/captcha
 POST /api/Auth/login
 Content-Type: application/json
 
 {
-  "username": "admin",
-  "password": "admin123"
+  "Username": "<RSA-OAEP-SHA256 加密后的用户名 Base64>",
+  "Password": "<RSA-OAEP-SHA256 加密后的密码 Base64>",
+  "EncryptionKeyId": "<公钥 KeyId>",
+  "CaptchaId": "<验证码 ID>",
+  "CaptchaCode": "<验证码>"
 }
 ```
 
-成功后响应中会返回 `Data.Token`。调用需要认证的接口时添加请求头：
+登录前端需要先获取登录加密公钥，按 [DTSoftServerApp/Docs/Auth.LoginEncryption.Vue.md](DTSoftServerApp/Docs/Auth.LoginEncryption.Vue.md) 适配。验证码继续按 [DTSoftServerApp/Docs/Auth.Captcha.Vue.md](DTSoftServerApp/Docs/Auth.Captcha.Vue.md) 的现有逻辑提交。成功后响应中会返回 `Data.Token`。调用需要认证的接口时添加请求头：
 
 ```http
 Authorization: Bearer <token>
