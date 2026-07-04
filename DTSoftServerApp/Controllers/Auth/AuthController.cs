@@ -12,8 +12,27 @@ namespace DTSoftServerApp.Controllers.Auth
     [ApiController]
     [Tags("授权认证")]
     [Route("api/[controller]")]
-    public class AuthController(JwtService jwtService, SysDbContext dbContext, UserCacheHelper userCacheHelper) : ControllerBase
+    public class AuthController(
+        JwtService jwtService,
+        SysDbContext dbContext,
+        UserCacheHelper userCacheHelper,
+        CaptchaService captchaService) : ControllerBase
     {
+        /// <summary>
+        /// 获取登录验证码
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet("captcha")]
+        public async Task<IActionResult> GetCaptcha()
+        {
+            return Ok(new
+            {
+                Code = 200,
+                Message = "获取验证码成功",
+                Data = await captchaService.CreateAsync()
+            });
+        }
+
         /// <summary>
         ///登录接口
         /// </summary>
@@ -33,6 +52,19 @@ namespace DTSoftServerApp.Controllers.Auth
                 Param = "",
                 RequestType = "API-Login"
             };
+
+            var (captchaValid, captchaMessage) = await captchaService.ValidateAsync(request.CaptchaId, request.CaptchaCode);
+            if (!captchaValid)
+            {
+                log.Result = captchaMessage;
+                dbContext.SysActionLog!.Add(log);
+                await dbContext.SaveChangesAsync();
+
+                return BadRequest(new {
+                    Code = 400,
+                    Message = captchaMessage
+                });
+            }
 
             var user = await ValidateUser(request.Username, request.Password);
             if (user != null)
@@ -85,16 +117,26 @@ namespace DTSoftServerApp.Controllers.Auth
     /// <summary>
     /// 登录参数
     /// </summary>
-    public class LoginRequest(string username, string password)
+    public class LoginRequest
     {
         /// <summary>
         /// 用户名
         /// </summary>
-        public string Username { get; set; } = username;
+        public string Username { get; set; } = string.Empty;
 
         /// <summary>
         /// 密码
         /// </summary>
-        public string Password { get; set; } = password;
+        public string Password { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 验证码 ID，通过 /api/Auth/captcha 获取
+        /// </summary>
+        public string CaptchaId { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 用户输入的验证码
+        /// </summary>
+        public string CaptchaCode { get; set; } = string.Empty;
     }
 }
