@@ -256,7 +256,7 @@ public class SysConfigApp(SysDbContext dbContext, ConfigHelper configHelper, Att
         SysUser user = new()
         {
             Account = "admin",
-            PassWord = Encrypt.Encrypt_MD5("admin123"),
+            PassWord = Encrypt.HashPassword("admin123"),
             DisplayName = "系统管理员",
             Disable = false
         };

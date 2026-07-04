@@ -209,8 +209,8 @@ public class UserApp(
             };
         }
 
-        //密码加密处理，默认激活账号
-        userDto.PassWord = Encrypt.Encrypt_MD5(userDto.PassWord);
+        //密码哈希处理，默认激活账号
+        userDto.PassWord = Encrypt.HashPassword(userDto.PassWord!);
         userDto.Disable = false;
 
         dbContext.SysUser.Add(new SysUser
@@ -513,7 +513,7 @@ public class UserApp(
             };
         }
 
-        user.PassWord = Encrypt.Encrypt_MD5(obj.PassWord);
+        user.PassWord = Encrypt.HashPassword(obj.PassWord);
         await dbContext.SaveChangesAsync();
         await userCacheHelper.RefreshUserCacheAsync(obj.Account);
 
@@ -541,7 +541,7 @@ public class UserApp(
         // 从数据库获取用户数据
         var user = await dbContext.SysUser.FirstOrDefaultAsync(p => p.Account == obj.Account);
         
-        if (user == null || user.PassWord != Encrypt.Encrypt_MD5(obj.OldPassWord))
+        if (user == null || Encrypt.VerifyPassword(user.PassWord, obj.OldPassWord!) == Encrypt.PasswordVerificationResult.Failed)
         {
             return new JsonObject
             {
@@ -551,7 +551,7 @@ public class UserApp(
             };
         }
 
-        user.PassWord = Encrypt.Encrypt_MD5(obj.NewPassWord);
+        user.PassWord = Encrypt.HashPassword(obj.NewPassWord!);
         await dbContext.SaveChangesAsync();
         await userCacheHelper.RefreshUserCacheAsync(obj.Account);
 

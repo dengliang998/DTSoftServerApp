@@ -3,6 +3,7 @@ using DTSoft.Core.DbContexts;
 using DTSoft.Core.Interfaces;
 using DTSoft.Models.Entities;
 using DTSoftServerApp.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace DTSoftServerApp.Controllers.Auth
 {
@@ -104,13 +105,30 @@ namespace DTSoftServerApp.Controllers.Auth
             // 从缓存获取用户数据
             var user = await userCacheHelper.GetUserByAccountAsync(username);
 
-            // 检查用户是否存在且密码正确
-            if (user != null && user.PassWord == Encrypt.Encrypt_MD5(password) && !user.Disable)
+            if (user == null || user.Disable)
             {
-                return user;
+                return null;
             }
 
-            return null;
+            var verificationResult = Encrypt.VerifyPassword(user.PassWord, password);
+            if (verificationResult == Encrypt.PasswordVerificationResult.Failed)
+            {
+                return null;
+            }
+
+            if (verificationResult == Encrypt.PasswordVerificationResult.SuccessRehashNeeded)
+            {
+                var dbUser = await dbContext.SysUser.FirstOrDefaultAsync(p => p.Account == user.Account);
+                if (dbUser != null)
+                {
+                    dbUser.PassWord = Encrypt.HashPassword(password);
+                    await dbContext.SaveChangesAsync();
+                    await userCacheHelper.RefreshUserCacheAsync(user.Account);
+                    user.PassWord = dbUser.PassWord;
+                }
+            }
+
+            return user;
         }
     }
 
