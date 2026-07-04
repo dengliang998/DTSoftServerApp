@@ -11,6 +11,7 @@ namespace DTSoftServerApp.Middleware
     public class WebApiMiddleware(RequestDelegate next, ILogger<WebApiMiddleware> logger, ILogQueueService logQueueService)
     {
         private const int MaxLoggedBodyBytes = 64 * 1024;
+        private const int MaxLoggedFormValueLength = 4 * 1024;
         private static readonly Regex SensitiveJsonStringFieldRegex = new(
             "(\"(?:(?:Username)|(?:UserName)|(?:PassWord)|(?:Password)|(?:SecretKey)|(?:AccessToken)|(?:RefreshToken)|(?:Token))\"\\s*:\\s*\")([^\"]*)(\")",
             RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
@@ -52,7 +53,7 @@ namespace DTSoftServerApp.Middleware
                 // 移除Bearer前缀
                 if (token.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
                 {
-                    token = token.Replace("Bearer ", "");
+                    token = token["Bearer ".Length..].Trim();
                 }
 
                 // 使用新的JWT解析方法获取用户账号
@@ -168,13 +169,9 @@ namespace DTSoftServerApp.Middleware
             if (ShouldSkipBodyLoggingByPath(requestPath))
                 return "[skipped: endpoint]";
 
-            // 跳过文件上传/二进制等：避免把大流读入内存
-            if (request.HasFormContentType)
-                return "[skipped: form/multipart]";
-
             var contentType = request.ContentType ?? string.Empty;
-            if (contentType.Contains("multipart/form-data", StringComparison.OrdinalIgnoreCase))
-                return "[skipped: multipart/form-data]";
+            if (request.HasFormContentType)
+                return await ReadFormForLoggingAsync(request, contentType);
 
             var contentLength = request.ContentLength;
             if (contentLength.HasValue && contentLength.Value > MaxLoggedBodyBytes)
@@ -212,6 +209,90 @@ namespace DTSoftServerApp.Middleware
             {
                 request.Body.Position = 0;
             }
+        }
+
+        private static async Task<string> ReadFormForLoggingAsync(HttpRequest request, string contentType)
+        {
+            if (!request.Body.CanSeek)
+                request.EnableBuffering();
+
+            try
+            {
+                request.Body.Position = 0;
+
+                var form = await request.ReadFormAsync();
+                var log = new JsonObject
+                {
+                    ["contentType"] = contentType,
+                    ["fields"] = CreateFormFieldsJson(form)
+                };
+
+                if (form.Files.Count > 0)
+                {
+                    log["files"] = CreateFormFilesJson(form);
+                }
+
+                return log.ToJsonString();
+            }
+            catch (InvalidDataException ex)
+            {
+                return $"[skipped: invalid form data ({ex.Message})]";
+            }
+            catch (IOException ex)
+            {
+                return $"[skipped: failed to read form data ({ex.Message})]";
+            }
+            finally
+            {
+                request.Body.Position = 0;
+            }
+        }
+
+        private static JsonObject CreateFormFieldsJson(IFormCollection form)
+        {
+            var fields = new JsonObject();
+            foreach (var field in form)
+            {
+                if (field.Value.Count == 1)
+                {
+                    fields[field.Key] = TruncateFormValue(field.Value[0]);
+                    continue;
+                }
+
+                var values = new JsonArray();
+                foreach (var value in field.Value)
+                {
+                    values.Add(TruncateFormValue(value));
+                }
+                fields[field.Key] = values;
+            }
+
+            return fields;
+        }
+
+        private static JsonArray CreateFormFilesJson(IFormCollection form)
+        {
+            var files = new JsonArray();
+            foreach (var file in form.Files)
+            {
+                files.Add(new JsonObject
+                {
+                    ["name"] = file.Name,
+                    ["fileName"] = file.FileName,
+                    ["contentType"] = file.ContentType,
+                    ["length"] = file.Length
+                });
+            }
+
+            return files;
+        }
+
+        private static string? TruncateFormValue(string? value)
+        {
+            if (value == null || value.Length <= MaxLoggedFormValueLength)
+                return value;
+
+            return value[..MaxLoggedFormValueLength] + " ...(truncated)";
         }
 
         private static bool ShouldSkipBodyLoggingByPath(string requestPath)

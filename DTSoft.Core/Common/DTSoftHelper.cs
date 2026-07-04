@@ -106,7 +106,13 @@ public sealed class DtSoftHelper(SysDbContext dbContext, UserCacheHelper userCac
             // 解析JWT令牌获取用户信息
             var handler = new JwtSecurityTokenHandler();
             var jsonToken = handler.ReadJwtToken(token);
-            var accountId = jsonToken.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.NameIdentifier)?.Value;
+            var accountId = jsonToken.Claims.FirstOrDefault(claim =>
+                claim.Type == ClaimTypes.NameIdentifier ||
+                claim.Type == JwtRegisteredClaimNames.NameId ||
+                claim.Type == JwtRegisteredClaimNames.Sub ||
+                claim.Type == JwtRegisteredClaimNames.UniqueName ||
+                claim.Type == ClaimTypes.Name ||
+                claim.Type == "name")?.Value;
             return accountId ?? "";
         }
         catch (Exception)

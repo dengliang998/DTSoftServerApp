@@ -59,6 +59,7 @@ public class LogApp(SysDbContext dbContext, UserCacheHelper userCacheHelper)
             item["ClientIP"] = log.ClientIP;
             item["Param"] = log.Param;
             item["RequestType"] = log.RequestType;
+            item["Result"]=log.Result;
                 
             children.Add(item);
         }
