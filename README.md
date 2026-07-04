@@ -41,31 +41,33 @@ DTSoft Server App 是一个基于 ASP.NET Core 的后台服务项目，提供组
 
 安装 .NET 10 SDK，并准备一个可访问的数据库。默认配置使用 PostgreSQL，数据库名为 `DTSoftDB`。
 
-如需使用 Redis，将 `CacheModel` 配置为 `RedisCache` 并填写 Redis 连接信息；本地开发可以先使用默认的 `MemoryCache`。
+如需使用 Redis，将 `Cache:Provider` 配置为 `Redis` 并填写 `Cache:Redis` 连接信息；本地开发可以先使用默认的 `Memory`。
 
 ### 2. 配置应用
 
-主要配置文件位于 [DTSoftServerApp/appsettings.json](DTSoftServerApp/DTSoftServerApp/appsettings.json)。
+主要配置文件位于 [DTSoftServerApp/appsettings.json](DTSoftServerApp/appsettings.json)。
 
 常用配置项：
 
 | 配置项 | 说明 |
 | --- | --- |
-| `InitializeOnStartup` | 启动时自动检查并初始化数据库 |
+| `Application:Initialization:RunOnStartup` | 启动时自动检查并初始化数据库 |
 | `urls` | 应用监听地址，当前配置为 `http://*:8000` |
-| `ScalarEnabled` | 是否启用 `/apidoc` 接口文档 |
-| `Jwt:Key` / `Jwt:Issuer` / `Jwt:Audience` | JWT 签名和校验配置 |
-| `DBType` | 数据库类型：`MySql`、`SqlServer`、`Oracle`、`PostgreSql` |
-| `ConnectionStrings:DBConnection` | 数据库连接字符串 |
-| `CacheModel` | 缓存实现：`MemoryCache` 或 `RedisCache` |
-| `RootPath` / `AttachmentPath` / `UserData` | 文件和附件存储路径 |
+| `ApiDocumentation:Enabled` | 是否启用 `/apidoc` 接口文档 |
+| `Authentication:Jwt:SigningKey` / `Authentication:Jwt:Issuer` / `Authentication:Jwt:Audience` | JWT 签名和校验配置 |
+| `Security:PasswordHashing:Iterations` | 密码哈希 PBKDF2 迭代次数 |
+| `Database:Provider` | 数据库类型：`MySql`、`SqlServer`、`Oracle`、`PostgreSql` |
+| `ConnectionStrings:Default` | 数据库连接字符串 |
+| `Cache:Provider` | 缓存实现：`Memory` 或 `Redis` |
+| `Cache:Redis:Host` / `Cache:Redis:Port` / `Cache:Redis:Password` | Redis 连接配置 |
+| `Storage:RootPath` / `Storage:Attachments:Directory` / `Storage:Users:Directory` | 文件和附件存储路径 |
 
 建议在本地或部署环境通过环境变量覆盖敏感配置，不要把真实数据库密码、Redis 密码和生产 JWT 密钥提交到仓库。例如：
 
 ```bash
-export DBType=PostgreSql
-export ConnectionStrings__DBConnection='Host=localhost;Port=5432;Database=DTSoftDB;Username=postgres;Password=your_password;Pooling=true;Maximum Pool Size=512;Minimum Pool Size=5;SSL Mode=Disable'
-export Jwt__Key='replace_with_a_long_random_secret'
+export Database__Provider=PostgreSql
+export ConnectionStrings__Default='Host=localhost;Port=5432;Database=DTSoftDB;Username=postgres;Password=your_password;Pooling=true;Maximum Pool Size=512;Minimum Pool Size=5;SSL Mode=Disable'
+export Authentication__Jwt__SigningKey='replace_with_a_long_random_secret'
 ```
 
 ### 3. 还原、构建、运行
@@ -96,7 +98,7 @@ dotnet run --project DTSoftServerApp/DTSoftServerApp.csproj --no-launch-profile 
 
 ### 4. 访问接口文档
 
-当 `ScalarEnabled` 为 `true`，或运行环境为 `Development` 时，启动后访问：
+当 `ApiDocumentation:Enabled` 为 `true`，或运行环境为 `Development` 时，启动后访问：
 
 ```text
 http://localhost:5190/apidoc
@@ -112,7 +114,7 @@ http://localhost:8000/apidoc
 
 ## 数据库初始化
 
-当 `InitializeOnStartup` 为 `true` 时，应用启动会调用系统初始化逻辑：
+当 `Application:Initialization:RunOnStartup` 为 `true` 时，应用启动会调用系统初始化逻辑：
 
 - 使用 EF Core `EnsureCreated()` 创建数据库表结构
 - 初始化管理员账号：`admin`

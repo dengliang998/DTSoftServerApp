@@ -11,14 +11,30 @@ public class ConfigHelper(IConfiguration configuration)
     public string? GetSectionValue(string key) => configuration[key];
 
     /// <summary>
+    /// 文件存储根路径
+    /// </summary>
+    public string RootPath => configuration[AppConfigurationKeys.Storage.RootPath]
+        ?? configuration[AppConfigurationKeys.Storage.LegacyRootPath]
+        ?? "Attachment";
+
+    /// <summary>
     /// 附件保存路径
     /// </summary>
-    public string AttachmentPath => Path.Combine(configuration["RootPath"]!, configuration["AttachmentPath"]!);
+    public string AttachmentPath => Path.Combine(
+        RootPath,
+        configuration[AppConfigurationKeys.Storage.Attachments.Directory]
+            ?? configuration[AppConfigurationKeys.Storage.Attachments.LegacyDirectory]
+            ?? "File");
 
     /// <summary>
     /// 用户数据路径
     /// </summary>
-    public string UserDataPath => Path.Combine(configuration["RootPath"]!, configuration["UserData"]!, "Avatar");
+    public string UserDataPath => Path.Combine(
+        RootPath,
+        configuration[AppConfigurationKeys.Storage.Users.Directory]
+            ?? configuration[AppConfigurationKeys.Storage.Users.LegacyDirectory]
+            ?? "User",
+        configuration[AppConfigurationKeys.Storage.Users.AvatarDirectory] ?? "Avatar");
 
     /// <summary>
     /// 用户数据路径-上传

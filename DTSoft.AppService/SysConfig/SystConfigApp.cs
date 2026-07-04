@@ -33,7 +33,7 @@ public class SysConfigApp(SysDbContext dbContext, ConfigHelper configHelper, Att
             // 如果有上传文件，处理文件
             if (systemInfo.LoginImg != null)
             {
-                string filePath = configHelper.GetSectionValue("RootPath")!;
+                string filePath = configHelper.RootPath;
                 var attachment = att.CreateFile(new BaseFileParameter() { Files = systemInfo.LoginImg, Path = filePath });
                 info.LoginImg = attachment.FileFullName;
             }
@@ -47,7 +47,7 @@ public class SysConfigApp(SysDbContext dbContext, ConfigHelper configHelper, Att
             // 如果有上传文件，处理文件
             if (systemInfo.LoginImg != null)
             {
-                string filePath = configHelper.GetSectionValue("RootPath")!;
+                string filePath = configHelper.RootPath;
                 var attachment = att.CreateFile(new BaseFileParameter() { Files = systemInfo.LoginImg, Path = filePath });
                 sysConfig.LoginImg = attachment.FileFullName;
             }
@@ -103,8 +103,7 @@ public class SysConfigApp(SysDbContext dbContext, ConfigHelper configHelper, Att
         string? loginImgBase64 = null;
         if (systemInfo != null && !string.IsNullOrEmpty(systemInfo.LoginImg))
         {
-            var rootPath = configHelper.GetSectionValue("RootPath") ?? "Attachment";
-            var filePath = Path.Combine(rootPath, systemInfo.LoginImg);
+            var filePath = Path.Combine(configHelper.RootPath, systemInfo.LoginImg);
             if (File.Exists(filePath))
             {
                 var bytes = File.ReadAllBytes(filePath);

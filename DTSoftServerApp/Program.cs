@@ -30,7 +30,9 @@ try
     
     // 初始化 Yitter IdGenerator
     YitterHelper.Initialize(1);
-    Encrypt.ConfigurePasswordHashing(builder.Configuration.GetValue<int?>("PasswordHashing:Iterations"));
+    Encrypt.ConfigurePasswordHashing(
+        builder.Configuration.GetValue<int?>(AppConfigurationKeys.Security.PasswordHashing.Iterations)
+        ?? builder.Configuration.GetValue<int?>(AppConfigurationKeys.Security.PasswordHashing.LegacyIterations));
 
     // 基础服务
     builder.Services.AddControllers()
@@ -72,7 +74,9 @@ try
     // =========================================
 
     // 系统初始化检查
-    var initializeOnStartup = builder.Configuration.GetValue<bool>("InitializeOnStartup");
+    var initializeOnStartup = builder.Configuration.GetValue<bool?>(
+        AppConfigurationKeys.Application.InitializeOnStartup)
+        ?? builder.Configuration.GetValue<bool>(AppConfigurationKeys.Application.LegacyInitializeOnStartup);
     if (initializeOnStartup)
     {
         using var scope = app.Services.CreateScope();
@@ -89,7 +93,9 @@ try
     }
 
     // API 文档配置
-    var scalarEnabled = builder.Configuration.GetValue<bool>("ScalarEnabled");
+    var scalarEnabled = builder.Configuration.GetValue<bool?>(
+        AppConfigurationKeys.ApiDocumentation.Enabled)
+        ?? builder.Configuration.GetValue<bool>(AppConfigurationKeys.ApiDocumentation.LegacyEnabled);
     if (app.Environment.IsDevelopment() || scalarEnabled)
     {
         app.MapOpenApi();

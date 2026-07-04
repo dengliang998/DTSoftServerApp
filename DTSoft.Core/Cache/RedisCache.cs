@@ -8,9 +8,16 @@ namespace DTSoft.Core.Cache;
 
 public class RedisCache(ILogger<RedisCache> logger, ConfigHelper configHelper) : IDtSoftCache
 {
-    private readonly string _host = configHelper.GetSectionValue("RedisHost")!;
-    private readonly int _port = Convert.ToInt32(configHelper.GetSectionValue("RedisPort"));
-    private readonly string _password = configHelper.GetSectionValue("RedisPassword")!;
+    private readonly string _host = configHelper.GetSectionValue(AppConfigurationKeys.Cache.Redis.Host)
+        ?? configHelper.GetSectionValue(AppConfigurationKeys.Cache.Redis.LegacyHost)
+        ?? "localhost";
+    private readonly int _port = Convert.ToInt32(
+        configHelper.GetSectionValue(AppConfigurationKeys.Cache.Redis.Port)
+            ?? configHelper.GetSectionValue(AppConfigurationKeys.Cache.Redis.LegacyPort)
+            ?? "6379");
+    private readonly string _password = configHelper.GetSectionValue(AppConfigurationKeys.Cache.Redis.Password)
+        ?? configHelper.GetSectionValue(AppConfigurationKeys.Cache.Redis.LegacyPassword)
+        ?? string.Empty;
 
     Task<T> IDtSoftCache.GetOrCreateAsync<T>(string key,TimeSpan ts, Func<T> func)
     {

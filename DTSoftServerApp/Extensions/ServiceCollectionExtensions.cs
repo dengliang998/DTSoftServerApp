@@ -111,9 +111,14 @@ namespace DTSoftServerApp.Extensions
                     ValidateAudience = true,
                     ValidateLifetime = true,
                     ValidateIssuerSigningKey = true,
-                    ValidIssuer = configuration["Jwt:Issuer"],
-                    ValidAudience = configuration["Jwt:Audience"],
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Jwt:Key"]!))
+                    ValidIssuer = configuration[AppConfigurationKeys.Authentication.Jwt.Issuer]
+                        ?? configuration[AppConfigurationKeys.Authentication.Jwt.LegacyIssuer],
+                    ValidAudience = configuration[AppConfigurationKeys.Authentication.Jwt.Audience]
+                        ?? configuration[AppConfigurationKeys.Authentication.Jwt.LegacyAudience],
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
+                        configuration[AppConfigurationKeys.Authentication.Jwt.SigningKey]
+                        ?? configuration[AppConfigurationKeys.Authentication.Jwt.LegacySigningKey]
+                        ?? throw new InvalidOperationException("JWT 签名密钥未配置，请配置 Authentication:Jwt:SigningKey。")))
                 };
 
                 options.Events = new JwtBearerEvents
@@ -158,9 +163,12 @@ namespace DTSoftServerApp.Extensions
 
             #region 缓存配置
 
-            var cacheModel = configuration["CacheModel"] ?? "MemoryCache";
+            var cacheModel = configuration[AppConfigurationKeys.Cache.Provider]
+                ?? configuration[AppConfigurationKeys.Cache.LegacyProvider]
+                ?? "Memory";
             switch (cacheModel)
             {
+                case "Redis":
                 case "RedisCache":
                     services.AddScoped<IDtSoftCache, RedisCache>();
                     break;
