@@ -1,15 +1,19 @@
+using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 
 namespace DTSoftServerApp.Services;
 
-public sealed class AuthEncryptionService
+public sealed class AuthEncryptionService : IDisposable
 {
     private const int KeySize = 2048;
     private const string Algorithm = "RSA-OAEP-256";
+    private const int MaxPooledRsaCount = 32;
     private readonly byte[] _privateKey;
     private readonly byte[] _publicKey;
     private readonly string _keyId;
+    private readonly ConcurrentBag<RSA> _rsaPool = [];
+    private int _pooledRsaCount;
 
     public AuthEncryptionService()
     {
@@ -30,32 +34,93 @@ public sealed class AuthEncryptionService
         };
     }
 
-    public string DecryptRequired(string keyId, string encryptedText, string fieldName)
+    public (string Username, string Password) DecryptCredentialsRequired(
+        string keyId,
+        string encryptedUsername,
+        string encryptedPassword)
     {
-        if (string.IsNullOrWhiteSpace(keyId) || string.IsNullOrWhiteSpace(encryptedText))
+        if (string.IsNullOrWhiteSpace(keyId) ||
+            string.IsNullOrWhiteSpace(encryptedUsername) ||
+            string.IsNullOrWhiteSpace(encryptedPassword))
         {
-            throw new AuthEncryptionException($"{fieldName} 加密参数不能为空");
+            throw new AuthEncryptionException("登录加密参数不能为空");
         }
 
+        ValidateCurrentKey(keyId);
+        var usernameBytes = DecodeCipherText(encryptedUsername, "Username");
+        var passwordBytes = DecodeCipherText(encryptedPassword, "Password");
+
+        var rsa = RentRsa();
+        try
+        {
+            return (
+                DecryptText(rsa, usernameBytes, "Username"),
+                DecryptText(rsa, passwordBytes, "Password"));
+        }
+        finally
+        {
+            ReturnRsa(rsa);
+        }
+    }
+
+    public void Dispose()
+    {
+        while (_rsaPool.TryTake(out var rsa))
+        {
+            rsa.Dispose();
+        }
+    }
+
+    private RSA RentRsa()
+    {
+        if (_rsaPool.TryTake(out var rsa))
+        {
+            Interlocked.Decrement(ref _pooledRsaCount);
+            return rsa;
+        }
+
+        rsa = RSA.Create();
+        rsa.ImportPkcs8PrivateKey(_privateKey, out _);
+        return rsa;
+    }
+
+    private void ReturnRsa(RSA rsa)
+    {
+        var newCount = Interlocked.Increment(ref _pooledRsaCount);
+        if (newCount <= MaxPooledRsaCount)
+        {
+            _rsaPool.Add(rsa);
+            return;
+        }
+
+        Interlocked.Decrement(ref _pooledRsaCount);
+        rsa.Dispose();
+    }
+
+    private void ValidateCurrentKey(string keyId)
+    {
         if (!IsCurrentKey(keyId))
         {
             throw new AuthEncryptionException("登录加密公钥已失效，请刷新页面后重试");
         }
+    }
 
-        byte[] cipherBytes;
+    private static byte[] DecodeCipherText(string encryptedText, string fieldName)
+    {
         try
         {
-            cipherBytes = Convert.FromBase64String(encryptedText);
+            return Convert.FromBase64String(encryptedText);
         }
         catch (FormatException ex)
         {
             throw new AuthEncryptionException($"{fieldName} 加密内容格式错误", ex);
         }
+    }
 
+    private static string DecryptText(RSA rsa, byte[] cipherBytes, string fieldName)
+    {
         try
         {
-            using var rsa = RSA.Create();
-            rsa.ImportPkcs8PrivateKey(_privateKey, out _);
             var plainBytes = rsa.Decrypt(cipherBytes, RSAEncryptionPadding.OaepSHA256);
             return Encoding.UTF8.GetString(plainBytes);
         }

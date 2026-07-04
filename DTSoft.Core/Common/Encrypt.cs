@@ -8,10 +8,12 @@ public abstract class Encrypt
 {
     private const int SaltSize = 16;
     private const int HashSize = 32;
-    private const int Iterations = 600_000;
+    private const int DefaultIterations = 120_000;
+    private const int MinIterations = 10_000;
     private const string PasswordHashAlgorithm = "PBKDF2";
     private const string PasswordHashPrf = "SHA256";
     private static readonly Regex Md5Regex = new("^[A-Fa-f0-9]{32}$", RegexOptions.Compiled);
+    private static int _iterations = DefaultIterations;
 
     public enum PasswordVerificationResult
     {
@@ -20,18 +22,31 @@ public abstract class Encrypt
         SuccessRehashNeeded
     }
 
+    public static int Iterations => Volatile.Read(ref _iterations);
+
+    public static void ConfigurePasswordHashing(int? iterations)
+    {
+        if (!iterations.HasValue)
+        {
+            return;
+        }
+
+        Volatile.Write(ref _iterations, Math.Max(MinIterations, iterations.Value));
+    }
+
     /// <summary>
     /// 使用 PBKDF2-HMAC-SHA256 生成带盐密码哈希。
     /// </summary>
     public static string HashPassword(string password)
     {
+        var iterations = Iterations;
         byte[] salt = RandomNumberGenerator.GetBytes(SaltSize);
-        byte[] hash = Rfc2898DeriveBytes.Pbkdf2(password, salt, Iterations, HashAlgorithmName.SHA256, HashSize);
+        byte[] hash = Rfc2898DeriveBytes.Pbkdf2(password, salt, iterations, HashAlgorithmName.SHA256, HashSize);
 
         return string.Join('$',
             PasswordHashAlgorithm,
             PasswordHashPrf,
-            Iterations,
+            iterations,
             Convert.ToBase64String(salt),
             Convert.ToBase64String(hash));
     }
@@ -79,7 +94,7 @@ public abstract class Encrypt
                 return PasswordVerificationResult.Failed;
             }
 
-            return iterations < Iterations
+            return iterations != Iterations
                 ? PasswordVerificationResult.SuccessRehashNeeded
                 : PasswordVerificationResult.Success;
         }

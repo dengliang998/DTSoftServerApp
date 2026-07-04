@@ -18,7 +18,8 @@ namespace DTSoftServerApp.Controllers.Auth
         SysDbContext dbContext,
         UserCacheHelper userCacheHelper,
         CaptchaService captchaService,
-        AuthEncryptionService authEncryptionService) : ControllerBase
+        AuthEncryptionService authEncryptionService,
+        ILogQueueService logQueueService) : ControllerBase
     {
         /// <summary>
         /// 获取登录验证码
@@ -58,22 +59,11 @@ namespace DTSoftServerApp.Controllers.Auth
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
-            var (credentialsValid, username, password, credentialsMessage) = TryDecryptCredentials(request);
-            if (!credentialsValid)
-            {
-                return BadRequest(new
-                {
-                    Code = 400,
-                    Message = credentialsMessage
-                });
-            }
-
             // 记录登录日志
             var log = new SysActionLog
             {
                 ItemId = YitterHelper.NewId(),  // 生成唯一 ID
                 LogDate = DateTime.Now.ToCstTime(),
-                UserAcc = username,
                 ActionName = "Login",
                 ClientIP = HttpContext.Connection.RemoteIpAddress?.ToString(),
                 Param = "",
@@ -84,8 +74,7 @@ namespace DTSoftServerApp.Controllers.Auth
             if (!captchaValid)
             {
                 log.Result = captchaMessage;
-                dbContext.SysActionLog!.Add(log);
-                await dbContext.SaveChangesAsync();
+                logQueueService.Enqueue(log);
 
                 return BadRequest(new {
                     Code = 400,
@@ -93,14 +82,28 @@ namespace DTSoftServerApp.Controllers.Auth
                 });
             }
 
+            var (credentialsValid, username, password, credentialsMessage) = TryDecryptCredentials(request);
+            if (!credentialsValid)
+            {
+                log.Result = credentialsMessage;
+                logQueueService.Enqueue(log);
+
+                return BadRequest(new
+                {
+                    Code = 400,
+                    Message = credentialsMessage
+                });
+            }
+
+            log.UserAcc = username;
+
             var user = await ValidateUser(username, password);
             if (user != null)
             {
                 var (token, expires) = jwtService.GenerateToken(username, user.Account!); // 用户ID来自数据库
 
                 log.Result = "登录成功";
-                dbContext.SysActionLog!.Add(log);
-                await dbContext.SaveChangesAsync();
+                logQueueService.Enqueue(log);
 
                 return Ok(new {
                     Code = 200,
@@ -116,8 +119,7 @@ namespace DTSoftServerApp.Controllers.Auth
             else
             {
                 log.Result = "用户名或密码错误";
-                dbContext.SysActionLog!.Add(log);
-                await dbContext.SaveChangesAsync();
+                logQueueService.Enqueue(log);
 
                 return Unauthorized(new {
                     Code = 401,
@@ -130,8 +132,11 @@ namespace DTSoftServerApp.Controllers.Auth
         {
             try
             {
-                var username = authEncryptionService.DecryptRequired(request.EncryptionKeyId, request.Username, nameof(request.Username)).Trim();
-                var password = authEncryptionService.DecryptRequired(request.EncryptionKeyId, request.Password, nameof(request.Password));
+                var (decryptedUsername, password) = authEncryptionService.DecryptCredentialsRequired(
+                    request.EncryptionKeyId,
+                    request.Username,
+                    request.Password);
+                var username = decryptedUsername.Trim();
 
                 if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
                 {

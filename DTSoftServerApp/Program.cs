@@ -30,6 +30,7 @@ try
     
     // 初始化 Yitter IdGenerator
     YitterHelper.Initialize(1);
+    Encrypt.ConfigurePasswordHashing(builder.Configuration.GetValue<int?>("PasswordHashing:Iterations"));
 
     // 基础服务
     builder.Services.AddControllers()
