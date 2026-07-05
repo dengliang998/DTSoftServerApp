@@ -19,8 +19,66 @@ public class LogApp(SysDbContext dbContext, UserCacheHelper userCacheHelper)
             .AsNoTracking();
     
         // 筛选条件
-        if (!string.IsNullOrEmpty(obj.ActionName))
-            logs = logs.Where(b => b.ActionName!.Contains(obj.ActionName));
+        if (obj.LogDateStart.HasValue)
+            logs = logs.Where(b => b.LogDate >= obj.LogDateStart.Value);
+
+        if (obj.LogDateEnd.HasValue)
+        {
+            var logDateEnd = obj.LogDateEnd.Value;
+            if (logDateEnd.TimeOfDay == TimeSpan.Zero)
+            {
+                var exclusiveEndDate = logDateEnd.Date.AddDays(1);
+                logs = logs.Where(b => b.LogDate < exclusiveEndDate);
+            }
+            else
+            {
+                logs = logs.Where(b => b.LogDate <= logDateEnd);
+            }
+        }
+
+        var userAcc = NormalizeKeyword(obj.UserAcc);
+        if (userAcc != null)
+        {
+            var matchedUserAccounts = await GetMatchedUserAccountsAsync(userAcc);
+            logs = matchedUserAccounts.Count > 0
+                ? logs.Where(b => b.UserAcc != null && (b.UserAcc.Contains(userAcc) || matchedUserAccounts.Contains(b.UserAcc)))
+                : logs.Where(b => b.UserAcc != null && b.UserAcc.Contains(userAcc));
+        }
+
+        var clientIp = NormalizeKeyword(obj.ClientIP);
+        if (clientIp != null)
+            logs = logs.Where(b => b.ClientIP != null && b.ClientIP.Contains(clientIp));
+
+        var actionName = NormalizeKeyword(obj.ActionName);
+        if (actionName != null)
+            logs = logs.Where(b => b.ActionName != null && b.ActionName.Contains(actionName));
+
+        var param = NormalizeKeyword(obj.Param);
+        if (param != null)
+            logs = logs.Where(b => b.Param != null && b.Param.Contains(param));
+
+        var result = NormalizeKeyword(obj.Result);
+        if (result != null)
+            logs = logs.Where(b => b.Result != null && b.Result.Contains(result));
+
+        var keyword = NormalizeKeyword(obj.Keyword);
+        if (keyword != null)
+        {
+            var matchedUserAccounts = await GetMatchedUserAccountsAsync(keyword);
+            logs = matchedUserAccounts.Count > 0
+                ? logs.Where(b =>
+                    (b.UserAcc != null && (b.UserAcc.Contains(keyword) || matchedUserAccounts.Contains(b.UserAcc))) ||
+                    (b.ClientIP != null && b.ClientIP.Contains(keyword)) ||
+                    (b.ActionName != null && b.ActionName.Contains(keyword)) ||
+                    (b.Param != null && b.Param.Contains(keyword)) ||
+                    (b.Result != null && b.Result.Contains(keyword)))
+                : logs.Where(b =>
+                    (b.UserAcc != null && b.UserAcc.Contains(keyword)) ||
+                    (b.ClientIP != null && b.ClientIP.Contains(keyword)) ||
+                    (b.ActionName != null && b.ActionName.Contains(keyword)) ||
+                    (b.Param != null && b.Param.Contains(keyword)) ||
+                    (b.Result != null && b.Result.Contains(keyword)));
+        }
     
         // 应用排序（必须在分页之前）
         var orderedLogs = logs.OrderByDescending(x => x.ItemId);
@@ -59,7 +117,7 @@ public class LogApp(SysDbContext dbContext, UserCacheHelper userCacheHelper)
             item["ClientIP"] = log.ClientIP;
             item["Param"] = log.Param;
             item["RequestType"] = log.RequestType;
-            item["Result"]=log.Result;
+            item["Result"] = log.Result;
                 
             children.Add(item);
         }
@@ -71,5 +129,22 @@ public class LogApp(SysDbContext dbContext, UserCacheHelper userCacheHelper)
             ["Total"] = total,
             ["data"] = children
         };
+    }
+
+    private async Task<List<string>> GetMatchedUserAccountsAsync(string keyword)
+    {
+        return await dbContext.SysUser
+            .AsNoTracking()
+            .Where(u =>
+                (u.Account != null && u.Account.Contains(keyword)) ||
+                (u.DisplayName != null && u.DisplayName.Contains(keyword)))
+            .Select(u => u.Account!)
+            .ToListAsync();
+    }
+
+    private static string? NormalizeKeyword(string? value)
+    {
+        value = value?.Trim();
+        return string.IsNullOrEmpty(value) ? null : value;
     }
 }
