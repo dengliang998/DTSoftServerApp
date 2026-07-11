@@ -333,7 +333,7 @@ namespace DTSoft.AppService.DynamicApp
             }
         }
 
-        public async Task<int> ExecuteDynamicBatchInsertAsync(SysDynamicAppConfig config, List<Dictionary<string, object>> dataList)
+        public async Task<int> ExecuteDynamicBatchInsertAsync(SysDynamicAppConfig config, List<Dictionary<string, object>> dataList, string userAccount)
         {
             if (dataList == null || dataList.Count == 0)
                 return 0;
@@ -347,14 +347,12 @@ namespace DTSoft.AppService.DynamicApp
             var columnNames = new List<string>();
             
             // 添加Id列
-            columns.Add(_provider.QuoteColumnName("Id"));
-            columnNames.Add("Id");
+            columns.Add(_provider.QuoteColumnName(DynamicTableSystemColumns.Id));
+            columnNames.Add(DynamicTableSystemColumns.Id);
             
             foreach (var kvp in firstRow)
             {
-                if (kvp.Key.Equals("id", StringComparison.OrdinalIgnoreCase) ||
-                    kvp.Key.Equals("createTime", StringComparison.OrdinalIgnoreCase) ||
-                    kvp.Key.Equals("updateTime", StringComparison.OrdinalIgnoreCase))
+                if (IsSystemColumn(kvp.Key))
                 {
                     continue;
                 }
@@ -364,10 +362,14 @@ namespace DTSoft.AppService.DynamicApp
             }
 
             // 添加系统字段
-            columns.Add(_provider.QuoteColumnName("CreateTime"));
-            columnNames.Add("CreateTime");
-            columns.Add(_provider.QuoteColumnName("UpdateTime"));
-            columnNames.Add("UpdateTime");
+            columns.Add(_provider.QuoteColumnName(DynamicTableSystemColumns.CreatedTime));
+            columnNames.Add(DynamicTableSystemColumns.CreatedTime);
+            columns.Add(_provider.QuoteColumnName(DynamicTableSystemColumns.UpdatedTime));
+            columnNames.Add(DynamicTableSystemColumns.UpdatedTime);
+            columns.Add(_provider.QuoteColumnName(DynamicTableSystemColumns.CreatedBy));
+            columnNames.Add(DynamicTableSystemColumns.CreatedBy);
+            columns.Add(_provider.QuoteColumnName(DynamicTableSystemColumns.UpdatedBy));
+            columnNames.Add(DynamicTableSystemColumns.UpdatedBy);
 
             var connection = _context.Database.GetDbConnection();
             if (connection.State != ConnectionState.Open)
@@ -384,7 +386,7 @@ namespace DTSoft.AppService.DynamicApp
                 
                 // 根据数据库类型和字段数量动态计算批次大小
                 // SQL Server最多支持2100个参数，MySQL和Oracle限制更宽松
-                // 每条数据参数数量 = 字段数(Id + 业务字段 + CreateTime + UpdateTime)
+                // 每条数据参数数量 = 字段数(ItemId + 业务字段 + 系统字段)
                 int paramsPerRow = columns.Count;
                 int maxBatchSize;
                 
@@ -428,20 +430,26 @@ namespace DTSoft.AppService.DynamicApp
                         allParamValues.Add(YitterHelper.NewId());
                         
                         // 数据字段
-                        foreach (var columnName in columnNames.Skip(1).Take(columnNames.Count - 3))
+                        foreach (var columnName in columnNames.Skip(1).Take(columnNames.Count - 5))
                         {
                             var paramPlaceholder = $"@p{paramIndex++}";
                             valuePlaceholders.Add(paramPlaceholder);
                             allParamValues.Add(dataRow.ContainsKey(columnName) ? ConvertToBasicType(dataRow[columnName]) : null);
                         }
                         
-                        // CreateTime 和 UpdateTime
-                        var createTimeParam = $"@p{paramIndex++}";
-                        var updateTimeParam = $"@p{paramIndex++}";
-                        valuePlaceholders.Add(createTimeParam);
-                        valuePlaceholders.Add(updateTimeParam);
+                        // 系统字段
+                        var createdTimeParam = $"@p{paramIndex++}";
+                        var updatedTimeParam = $"@p{paramIndex++}";
+                        var createdByParam = $"@p{paramIndex++}";
+                        var updatedByParam = $"@p{paramIndex++}";
+                        valuePlaceholders.Add(createdTimeParam);
+                        valuePlaceholders.Add(updatedTimeParam);
+                        valuePlaceholders.Add(createdByParam);
+                        valuePlaceholders.Add(updatedByParam);
                         allParamValues.Add(now);
                         allParamValues.Add(now);
+                        allParamValues.Add(userAccount ?? string.Empty);
+                        allParamValues.Add(userAccount ?? string.Empty);
                         
                         valueGroups.Add($"({string.Join(", ", valuePlaceholders)})");
                     }
@@ -492,7 +500,7 @@ namespace DTSoft.AppService.DynamicApp
             }
         }
 
-        public async Task<Dictionary<string, object>> ExecuteDynamicInsertAsync(SysDynamicAppConfig config, Dictionary<string, object> dataDict)
+        public async Task<Dictionary<string, object>> ExecuteDynamicInsertAsync(SysDynamicAppConfig config, Dictionary<string, object> dataDict, string userAccount)
         {
             var tableName = BuildDynamicTableName(config.ModelName);
             var columns = new List<string>();
@@ -501,15 +509,13 @@ namespace DTSoft.AppService.DynamicApp
 
             // 生成雪花ID
             var snowflakeId = YitterHelper.NewId();
-            columns.Add(_provider.QuoteColumnName("Id"));
-            parameters.Add(_provider.GetParameterPlaceholder("Id"));
+            columns.Add(_provider.QuoteColumnName(DynamicTableSystemColumns.Id));
+            parameters.Add(_provider.GetParameterPlaceholder(DynamicTableSystemColumns.Id));
             paramValues.Add(snowflakeId);
 
             foreach (var kvp in dataDict)
             {
-                if (kvp.Key.Equals("id", StringComparison.OrdinalIgnoreCase) ||
-                    kvp.Key.Equals("createTime", StringComparison.OrdinalIgnoreCase) ||
-                    kvp.Key.Equals("updateTime", StringComparison.OrdinalIgnoreCase))
+                if (IsSystemColumn(kvp.Key))
                 {
                     continue;
                 }
@@ -519,13 +525,21 @@ namespace DTSoft.AppService.DynamicApp
                 paramValues.Add(ConvertToBasicType(kvp.Value));
             }
 
-            columns.Add(_provider.QuoteColumnName("CreateTime"));
-            parameters.Add(_provider.GetParameterPlaceholder("CreateTime"));
+            columns.Add(_provider.QuoteColumnName(DynamicTableSystemColumns.CreatedTime));
+            parameters.Add(_provider.GetParameterPlaceholder(DynamicTableSystemColumns.CreatedTime));
             paramValues.Add(TimeUtil.CstDateTime);
 
-            columns.Add(_provider.QuoteColumnName("UpdateTime"));
-            parameters.Add(_provider.GetParameterPlaceholder("UpdateTime"));
+            columns.Add(_provider.QuoteColumnName(DynamicTableSystemColumns.UpdatedTime));
+            parameters.Add(_provider.GetParameterPlaceholder(DynamicTableSystemColumns.UpdatedTime));
             paramValues.Add(TimeUtil.CstDateTime);
+
+            columns.Add(_provider.QuoteColumnName(DynamicTableSystemColumns.CreatedBy));
+            parameters.Add(_provider.GetParameterPlaceholder(DynamicTableSystemColumns.CreatedBy));
+            paramValues.Add(userAccount ?? string.Empty);
+
+            columns.Add(_provider.QuoteColumnName(DynamicTableSystemColumns.UpdatedBy));
+            parameters.Add(_provider.GetParameterPlaceholder(DynamicTableSystemColumns.UpdatedBy));
+            paramValues.Add(userAccount ?? string.Empty);
 
             var insertSql = _provider.BuildInsertSql(tableName, columns, parameters);
 
@@ -564,7 +578,7 @@ namespace DTSoft.AppService.DynamicApp
             }
         }
 
-        public async Task<bool> ExecuteDynamicUpdateAsync(SysDynamicAppConfig config, long id, Dictionary<string, object> dataDict)
+        public async Task<bool> ExecuteDynamicUpdateAsync(SysDynamicAppConfig config, long id, Dictionary<string, object> dataDict, string userAccount)
         {
             var tableName = BuildDynamicTableName(config.ModelName);
             var setParts = new List<string>();
@@ -572,8 +586,7 @@ namespace DTSoft.AppService.DynamicApp
 
             foreach (var kvp in dataDict)
             {
-                if (kvp.Key.Equals("id", StringComparison.OrdinalIgnoreCase) ||
-                    kvp.Key.Equals("createTime", StringComparison.OrdinalIgnoreCase))
+                if (IsSystemColumn(kvp.Key))
                 {
                     continue;
                 }
@@ -582,8 +595,10 @@ namespace DTSoft.AppService.DynamicApp
                 paramValues.Add(ConvertToBasicType(kvp.Value));
             }
 
-            setParts.Add($"{_provider.QuoteColumnName("UpdateTime")} = {_provider.GetParameterPlaceholder("UpdateTime")}");
+            setParts.Add($"{_provider.QuoteColumnName(DynamicTableSystemColumns.UpdatedTime)} = {_provider.GetParameterPlaceholder(DynamicTableSystemColumns.UpdatedTime)}");
             paramValues.Add(TimeUtil.CstDateTime);
+            setParts.Add($"{_provider.QuoteColumnName(DynamicTableSystemColumns.UpdatedBy)} = {_provider.GetParameterPlaceholder(DynamicTableSystemColumns.UpdatedBy)}");
+            paramValues.Add(userAccount ?? string.Empty);
 
             var sql = _provider.BuildUpdateSql(tableName, string.Join(", ", setParts));
 
@@ -608,7 +623,7 @@ namespace DTSoft.AppService.DynamicApp
                 }
 
                 var idParam = command.CreateParameter();
-                idParam.ParameterName = _provider.GetParameterName("Id");
+                idParam.ParameterName = _provider.GetParameterName(DynamicTableSystemColumns.Id);
                 idParam.Value = id;
                 command.Parameters.Add(idParam);
 
@@ -640,7 +655,7 @@ namespace DTSoft.AppService.DynamicApp
                 command.CommandText = sql;
 
                 var param = command.CreateParameter();
-                param.ParameterName = _provider.GetParameterName("Id");
+                param.ParameterName = _provider.GetParameterName(DynamicTableSystemColumns.Id);
                 param.Value = id;
                 command.Parameters.Add(param);
 
@@ -743,6 +758,15 @@ namespace DTSoft.AppService.DynamicApp
             
             // 对于其他类型，尝试转换为字符串
             return value.ToString();
+        }
+
+        private static bool IsSystemColumn(string columnName)
+        {
+            return columnName.Equals(DynamicTableSystemColumns.Id, StringComparison.OrdinalIgnoreCase) ||
+                   columnName.Equals(DynamicTableSystemColumns.CreatedTime, StringComparison.OrdinalIgnoreCase) ||
+                   columnName.Equals(DynamicTableSystemColumns.UpdatedTime, StringComparison.OrdinalIgnoreCase) ||
+                   columnName.Equals(DynamicTableSystemColumns.CreatedBy, StringComparison.OrdinalIgnoreCase) ||
+                   columnName.Equals(DynamicTableSystemColumns.UpdatedBy, StringComparison.OrdinalIgnoreCase);
         }
 
         private class ColumnInfo

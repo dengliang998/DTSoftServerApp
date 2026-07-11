@@ -1,4 +1,5 @@
 using DTSoft.AppService.DynamicApp;
+using DTSoft.Core.Common;
 using DTSoft.Core.Common.Excel;
 using DTSoft.Core.DbContexts;
 using DTSoft.Core.Interfaces;
@@ -196,7 +197,10 @@ namespace DTSoftServerApp.Controllers.DynamicApp
                 var dataDict = ConvertObjectToDictionary(data);
 
                 // 执行动态插入
-                var result = await _dynamicTableService.ExecuteDynamicInsertAsync(config, dataDict);
+                var result = await _dynamicTableService.ExecuteDynamicInsertAsync(
+                    config,
+                    dataDict,
+                    DtSoftHelper.GetLoginUserAccount(User));
 
                 return Ok(new
                 {
@@ -255,7 +259,11 @@ namespace DTSoftServerApp.Controllers.DynamicApp
                 var dataDict = ConvertObjectToDictionary(data);
 
                 // 执行动态更新
-                var result = await _dynamicTableService.ExecuteDynamicUpdateAsync(config, id, dataDict);
+                var result = await _dynamicTableService.ExecuteDynamicUpdateAsync(
+                    config,
+                    id,
+                    dataDict,
+                    DtSoftHelper.GetLoginUserAccount(User));
 
                 if (!result)
                 {
@@ -533,7 +541,10 @@ namespace DTSoftServerApp.Controllers.DynamicApp
                 try
                 {
                     // 使用批量插入方法，一次性插入所有数据
-                    successCount = await _dynamicTableService.ExecuteDynamicBatchInsertAsync(config, importedData);
+                    successCount = await _dynamicTableService.ExecuteDynamicBatchInsertAsync(
+                        config,
+                        importedData,
+                        DtSoftHelper.GetLoginUserAccount(User));
                 }
                 catch (Exception ex)
                 {

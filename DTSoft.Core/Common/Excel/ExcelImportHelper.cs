@@ -54,7 +54,12 @@ namespace DTSoft.Core.Common.Excel
 
             // 过滤掉字段配置中不需要导入的系统字段
             var importableFields = fields
-                .Where(f => f.FieldName != "Id" && f.FieldName != "CreateTime" && f.FieldName != "UpdateTime")
+                .Where(f =>
+                    f.FieldName != DynamicTableSystemColumns.Id &&
+                    f.FieldName != DynamicTableSystemColumns.CreatedTime &&
+                    f.FieldName != DynamicTableSystemColumns.UpdatedTime &&
+                    f.FieldName != DynamicTableSystemColumns.CreatedBy &&
+                    f.FieldName != DynamicTableSystemColumns.UpdatedBy)
                 .ToList();
 
             // 将读取的数据转换为字典列表，按列顺序映射，跳过第一行（标题行）

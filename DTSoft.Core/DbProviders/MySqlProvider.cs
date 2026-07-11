@@ -120,9 +120,11 @@ namespace DTSoft.Core.DbProviders
         {
             // 表名已经在 QuoteTableName 中验证过
             var sql = $"CREATE TABLE {QuoteTableName(tableName)} (";
-            sql += $"{QuoteColumnName("Id")} BIGINT PRIMARY KEY, ";
-            sql += $"{QuoteColumnName("CreateTime")} DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, ";
-            sql += $"{QuoteColumnName("UpdateTime")} DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, ";
+            sql += $"{QuoteColumnName(DynamicTableSystemColumns.Id)} BIGINT PRIMARY KEY, ";
+            sql += $"{QuoteColumnName(DynamicTableSystemColumns.CreatedTime)} DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, ";
+            sql += $"{QuoteColumnName(DynamicTableSystemColumns.UpdatedTime)} DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, ";
+            sql += $"{QuoteColumnName(DynamicTableSystemColumns.CreatedBy)} VARCHAR(50) NOT NULL DEFAULT '', ";
+            sql += $"{QuoteColumnName(DynamicTableSystemColumns.UpdatedBy)} VARCHAR(50) NOT NULL DEFAULT '', ";
 
             foreach (var field in fields)
             {
@@ -208,11 +210,13 @@ namespace DTSoft.Core.DbProviders
             var allFields = fields.Select(f => QuoteColumnName(f.FieldName)).ToList();
             if (!allFields.Any())
             {
-                return $"{QuoteColumnName("Id")}, {QuoteColumnName("CreateTime")}, {QuoteColumnName("UpdateTime")}";
+                return $"{QuoteColumnName(DynamicTableSystemColumns.Id)}, {QuoteColumnName(DynamicTableSystemColumns.CreatedTime)}, {QuoteColumnName(DynamicTableSystemColumns.UpdatedTime)}, {QuoteColumnName(DynamicTableSystemColumns.CreatedBy)}, {QuoteColumnName(DynamicTableSystemColumns.UpdatedBy)}";
             }
-            allFields.Add(QuoteColumnName("Id"));
-            allFields.Add(QuoteColumnName("CreateTime"));
-            allFields.Add(QuoteColumnName("UpdateTime"));
+            allFields.Add(QuoteColumnName(DynamicTableSystemColumns.Id));
+            allFields.Add(QuoteColumnName(DynamicTableSystemColumns.CreatedTime));
+            allFields.Add(QuoteColumnName(DynamicTableSystemColumns.UpdatedTime));
+            allFields.Add(QuoteColumnName(DynamicTableSystemColumns.CreatedBy));
+            allFields.Add(QuoteColumnName(DynamicTableSystemColumns.UpdatedBy));
             return string.Join(", ", allFields);
         }
 
@@ -221,7 +225,7 @@ namespace DTSoft.Core.DbProviders
             var selectFields = GetSelectableFields(fields);
             var where = " WHERE 1=1" + BuildSearchCondition(fields, keyword);
             var offset = (pageNum - 1) * pageSize;
-            return $"SELECT {selectFields} FROM {QuoteTableName(tableName)}{where} ORDER BY {QuoteColumnName("Id")} ASC LIMIT {offset}, {pageSize}";
+            return $"SELECT {selectFields} FROM {QuoteTableName(tableName)}{where} ORDER BY {QuoteColumnName(DynamicTableSystemColumns.Id)} ASC LIMIT {offset}, {pageSize}";
         }
 
         public string BuildCountSql(string tableName, List<FieldConfig> fields, string keyword)
@@ -232,12 +236,12 @@ namespace DTSoft.Core.DbProviders
 
         public string BuildSelectByIdSql(string tableName)
         {
-            return $"SELECT * FROM {QuoteTableName(tableName)} WHERE {QuoteColumnName("Id")} = {GetParameterPlaceholder("id")}";
+            return $"SELECT * FROM {QuoteTableName(tableName)} WHERE {QuoteColumnName(DynamicTableSystemColumns.Id)} = {GetParameterPlaceholder("id")}";
         }
 
         public string BuildDeleteByIdSql(string tableName)
         {
-            return $"DELETE FROM {QuoteTableName(tableName)} WHERE {QuoteColumnName("Id")} = {GetParameterPlaceholder("id")}";
+            return $"DELETE FROM {QuoteTableName(tableName)} WHERE {QuoteColumnName(DynamicTableSystemColumns.Id)} = {GetParameterPlaceholder("id")}";
         }
 
         public string BuildInsertSql(string tableName, List<string> columns, List<string> parameterNames)
@@ -249,12 +253,12 @@ namespace DTSoft.Core.DbProviders
 
         public string BuildGetNewIdSql(string tableName)
         {
-            return $"SELECT MAX({QuoteColumnName("Id")}) FROM {QuoteTableName(tableName)}";
+            return $"SELECT MAX({QuoteColumnName(DynamicTableSystemColumns.Id)}) FROM {QuoteTableName(tableName)}";
         }
 
         public string BuildUpdateSql(string tableName, string setClause)
         {
-            return $"UPDATE {QuoteTableName(tableName)} SET {setClause} WHERE {QuoteColumnName("Id")} = {GetParameterPlaceholder("Id")}";
+            return $"UPDATE {QuoteTableName(tableName)} SET {setClause} WHERE {QuoteColumnName(DynamicTableSystemColumns.Id)} = {GetParameterPlaceholder(DynamicTableSystemColumns.Id)}";
         }
 
         public void ConfigureDbContext(IServiceCollection services, string connectionString)
