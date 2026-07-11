@@ -206,14 +206,9 @@ namespace DTSoft.AppService.DynamicApp
                 throw new Exception("未找到指定的微应用配置");
             }
 
-            var oldModelName = existingConfig.ModelName;
-
-            // 验证模型名称是否被其他配置使用
-            var duplicateConfig = context.SysDynamicAppConfig!
-                .FirstOrDefault(c => c.ModelName == parameter.ModelName && c.ItemId != parameter.ItemId);
-            if (duplicateConfig != null)
+            if (!string.Equals(existingConfig.ModelName, parameter.ModelName, StringComparison.Ordinal))
             {
-                throw new Exception("模型名称已存在，请使用其他模型名称");
+                throw new Exception("数据模型创建后不允许修改");
             }
 
             var targetMicroAppPath = string.IsNullOrWhiteSpace(parameter.MicroAppPath)
@@ -229,7 +224,6 @@ namespace DTSoft.AppService.DynamicApp
 
             // 更新配置信息
             existingConfig.ConfigName = parameter.ConfigName;
-            existingConfig.ModelName = parameter.ModelName;
             existingConfig.ConfigDesc = parameter.ConfigDesc;
             existingConfig.Status = parameter.Status;
             existingConfig.SupportCreate = parameter.SupportCreate;
@@ -245,10 +239,6 @@ namespace DTSoft.AppService.DynamicApp
             // 保存更改
             await context.SaveChangesAsync();
 
-            if (!string.IsNullOrWhiteSpace(oldModelName))
-            {
-                dtSoftCache.RefreshCache(DynamicConfigCacheKeys.ActiveConfig(oldModelName));
-            }
             dtSoftCache.RefreshCache(DynamicConfigCacheKeys.ActiveConfig(existingConfig.ModelName));
 
             // 确保对应的数据表结构是最新的
