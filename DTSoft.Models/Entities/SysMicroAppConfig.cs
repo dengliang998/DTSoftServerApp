@@ -87,6 +87,12 @@ namespace DTSoft.Models.Entities
         public string? DataScope { get; set; }
 
         /// <summary>
+        /// 数据表单每行列数
+        /// </summary>
+        [Column("FormColumns")]
+        public int FormColumns { get; set; } = 1;
+
+        /// <summary>
         /// 接口前缀
         /// </summary>
         [Column("ApiPrefix")]

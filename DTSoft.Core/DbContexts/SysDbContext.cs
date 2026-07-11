@@ -52,6 +52,7 @@ public class SysDbContext(DbContextOptions<SysDbContext> options) : DbContext(op
         modelBuilder.Entity<SysApiKey>().Property(p => p.SecretKey).HasMaxLength(128);
         modelBuilder.Entity<SysApiKey>().Property(p => p.CreatedBy).HasMaxLength(50);
         modelBuilder.Entity<SysMicroAppConfig>().Property(p => p.DataScope).HasMaxLength(20);
+        modelBuilder.Entity<SysMicroAppConfig>().Property(p => p.FormColumns).HasDefaultValue(1);
         modelBuilder.Entity<SysUserSupervisor>().HasIndex(p => p.UserAcc).IsUnique();
 
         //建立主外键关系

@@ -107,6 +107,11 @@ namespace DTSoft.Models.Parameter.MicroApp
         public string? DataScope { get; set; }
 
         /// <summary>
+        /// 数据表单每行列数，1-4
+        /// </summary>
+        public int? FormColumns { get; set; }
+
+        /// <summary>
         /// 微应用路径
         /// </summary>
         [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_-]*$", ErrorMessage = "微应用路径只能包含英文、数字、中划线和下划线，且以英文开头")]
@@ -195,6 +200,11 @@ namespace DTSoft.Models.Parameter.MicroApp
         /// 数据权限范围，all-全部数据，self-本人数据，department-部门数据
         /// </summary>
         public string? DataScope { get; set; }
+
+        /// <summary>
+        /// 数据表单每行列数，1-4
+        /// </summary>
+        public int? FormColumns { get; set; }
 
         /// <summary>
         /// 微应用路径
@@ -337,6 +347,11 @@ namespace DTSoft.Models.Parameter.MicroApp
         public string? DateFormat { get; set; }
 
         /// <summary>
+        /// 字段显示顺序
+        /// </summary>
+        public int? SortOrder { get; set; }
+
+        /// <summary>
         /// 最小文本长度
         /// </summary>
         public int? MinLength { get; set; }
@@ -456,6 +471,11 @@ namespace DTSoft.Models.Parameter.MicroApp
         /// 数据权限范围，all-全部数据，self-本人数据，department-部门数据
         /// </summary>
         public string? DataScope { get; set; }
+
+        /// <summary>
+        /// 数据表单每行列数，1-4
+        /// </summary>
+        public int FormColumns { get; set; }
 
         /// <summary>
         /// 微应用路径
