@@ -305,7 +305,7 @@ namespace DTSoft.AppService.DynamicApp
                 command.CommandText = sql;
 
                 var param = command.CreateParameter();
-                param.ParameterName = _provider.GetParameterName("id");
+                param.ParameterName = _provider.GetParameterName(DynamicTableSystemColumns.Id);
                 param.Value = id;
                 command.Parameters.Add(param);
 

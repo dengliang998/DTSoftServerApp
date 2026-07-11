@@ -187,12 +187,12 @@ namespace DTSoft.Core.DbProviders
 
         public string BuildSelectByIdSql(string tableName)
         {
-            return $"SELECT * FROM {QuoteTableName(tableName)} WHERE {QuoteColumnName(DynamicTableSystemColumns.Id)} = {GetParameterPlaceholder("id")}";
+            return $"SELECT * FROM {QuoteTableName(tableName)} WHERE {QuoteColumnName(DynamicTableSystemColumns.Id)} = {GetParameterPlaceholder(DynamicTableSystemColumns.Id)}";
         }
 
         public string BuildDeleteByIdSql(string tableName)
         {
-            return $"DELETE FROM {QuoteTableName(tableName)} WHERE {QuoteColumnName(DynamicTableSystemColumns.Id)} = {GetParameterPlaceholder("id")}";
+            return $"DELETE FROM {QuoteTableName(tableName)} WHERE {QuoteColumnName(DynamicTableSystemColumns.Id)} = {GetParameterPlaceholder(DynamicTableSystemColumns.Id)}";
         }
 
         public string BuildInsertSql(string tableName, List<string> columns, List<string> parameterNames)
