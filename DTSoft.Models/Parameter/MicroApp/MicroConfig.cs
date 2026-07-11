@@ -332,6 +332,11 @@ namespace DTSoft.Models.Parameter.MicroApp
         public string? QueryMode { get; set; }
 
         /// <summary>
+        /// 日期格式，year-年，month-年月，date-年月日，datetime-时间
+        /// </summary>
+        public string? DateFormat { get; set; }
+
+        /// <summary>
         /// 最小文本长度
         /// </summary>
         public int? MinLength { get; set; }
