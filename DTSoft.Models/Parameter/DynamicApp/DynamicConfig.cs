@@ -20,6 +20,11 @@ namespace DTSoft.Models.Parameter.DynamicApp
         public string? ModelName { get; set; }
 
         /// <summary>
+        /// 微应用路径
+        /// </summary>
+        public string? MicroAppPath { get; set; }
+
+        /// <summary>
         /// 页码
         /// </summary>
         public int? PageNum { get; set; }
@@ -97,9 +102,10 @@ namespace DTSoft.Models.Parameter.DynamicApp
         public bool SupportExport { get; set; }
 
         /// <summary>
-        /// 接口前缀
+        /// 微应用路径
         /// </summary>
-        public string? ApiPrefix { get; set; }
+        [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_-]*$", ErrorMessage = "微应用路径只能包含英文、数字、中划线和下划线，且以英文开头")]
+        public string? MicroAppPath { get; set; }
 
         /// <summary>
         /// 字段配置列表
@@ -181,9 +187,10 @@ namespace DTSoft.Models.Parameter.DynamicApp
         public bool SupportExport { get; set; }
 
         /// <summary>
-        /// 接口前缀
+        /// 微应用路径
         /// </summary>
-        public required string ApiPrefix { get; set; }
+        [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_-]*$", ErrorMessage = "微应用路径只能包含英文、数字、中划线和下划线，且以英文开头")]
+        public string? MicroAppPath { get; set; }
 
         /// <summary>
         /// 字段配置列表
@@ -343,9 +350,9 @@ namespace DTSoft.Models.Parameter.DynamicApp
         public bool SupportExport { get; set; }
 
         /// <summary>
-        /// 接口前缀
+        /// 微应用路径
         /// </summary>
-        public string? ApiPrefix { get; set; }
+        public string? MicroAppPath { get; set; }
 
         /// <summary>
         /// 字段配置列表

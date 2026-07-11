@@ -13,7 +13,7 @@ namespace DTSoft.AppService.DynamicApp
         private readonly DynamicTableService _dynamicTableService = dynamicTableService;
 
         /// <summary>
-        /// 获取 CRUD 配置列表
+        /// 获取微应用配置列表
         /// </summary>
         /// <param name="parameter">查询参数</param>
         /// <returns>分页的 CRUD 配置列表</returns>
@@ -21,17 +21,23 @@ namespace DTSoft.AppService.DynamicApp
         {
             var query = context.SysDynamicAppConfig!.AsQueryable();
         
-            // 模糊匹配配置名称、模型名称
+            // 模糊匹配配置名称、模型名称、微应用路径
             if (!string.IsNullOrEmpty(parameter.Keyword))
             {
                 query = query.Where(c => c.ConfigName.Contains(parameter.Keyword) ||
-                                         c.ModelName.Contains(parameter.Keyword));
+                                         c.ModelName.Contains(parameter.Keyword) ||
+                                         (c.ApiPrefix != null && c.ApiPrefix.Contains(parameter.Keyword)));
             }
         
-            // 按模块名称精确匹配
+            // 按模型名称精确匹配
             if (!string.IsNullOrEmpty(parameter.ModelName))
             {
                 query = query.Where(c => c.ModelName == parameter.ModelName);
+            }
+
+            if (!string.IsNullOrEmpty(parameter.MicroAppPath))
+            {
+                query = query.Where(c => c.ApiPrefix == parameter.MicroAppPath);
             }
         
             // 计算总数
@@ -64,7 +70,7 @@ namespace DTSoft.AppService.DynamicApp
                     SupportBatchDelete = c.SupportBatchDelete,
                     SupportImport = c.SupportImport,
                     SupportExport = c.SupportExport,
-                    ApiPrefix = c.ApiPrefix,
+                    MicroAppPath = c.ApiPrefix,
                     Fields = string.IsNullOrEmpty(c.Fields) ? new List<FieldConfig>() :
                             JsonSerializer.Deserialize<List<FieldConfig>>(c.Fields),
                     CreateTime = c.CreateTime,
@@ -77,7 +83,7 @@ namespace DTSoft.AppService.DynamicApp
         }
 
         /// <summary>
-        /// 获取 CRUD 配置详情
+        /// 获取微应用配置详情
         /// </summary>
         /// <param name="id">配置 ID</param>
         /// <returns>CRUD 配置详情</returns>
@@ -86,7 +92,7 @@ namespace DTSoft.AppService.DynamicApp
             var config = context.SysDynamicAppConfig!.FirstOrDefault(c => c.ItemId == id);
             if (config == null)
             {
-                throw new Exception("未找到指定的 CRUD 配置");
+                throw new Exception("未找到指定的微应用配置");
             }
 
             return new CrudConfigResponse
@@ -102,7 +108,7 @@ namespace DTSoft.AppService.DynamicApp
                 SupportBatchDelete = config.SupportBatchDelete,
                 SupportImport = config.SupportImport,
                 SupportExport = config.SupportExport,
-                ApiPrefix = config.ApiPrefix,
+                MicroAppPath = config.ApiPrefix,
                 Fields = string.IsNullOrEmpty(config.Fields) ? new List<FieldConfig>() :
                         JsonSerializer.Deserialize<List<FieldConfig>>(config.Fields),
                 CreateTime = config.CreateTime,
@@ -111,10 +117,10 @@ namespace DTSoft.AppService.DynamicApp
         }
 
         /// <summary>
-        /// 添加 CRUD 配置
+        /// 添加微应用配置
         /// </summary>
         /// <param name="parameter">添加参数</param>
-        /// <returns>添加后的 CRUD 配置</returns>
+        /// <returns>添加后的微应用配置</returns>
         public async Task<CrudConfigResponse> AddDynamicAppConfig(CrudConfigAddParameter parameter)
         {
             // 验证模型名称是否已存在
@@ -125,7 +131,17 @@ namespace DTSoft.AppService.DynamicApp
                 throw new Exception("模型名称已存在，请使用其他模型名称");
             }
         
-            // 创建 CRUD 配置对象
+            if (!string.IsNullOrWhiteSpace(parameter.MicroAppPath))
+            {
+                var existingPathConfig = context.SysDynamicAppConfig!
+                    .FirstOrDefault(c => c.ApiPrefix == parameter.MicroAppPath);
+                if (existingPathConfig != null)
+                {
+                    throw new Exception("微应用路径已存在，请使用其他路径");
+                }
+            }
+
+            // 创建微应用配置对象
             var crudConfig = new SysDynamicAppConfig()
             {
                 ItemId = YitterHelper.NewId(),
@@ -139,7 +155,7 @@ namespace DTSoft.AppService.DynamicApp
                 SupportBatchDelete = parameter.SupportBatchDelete,
                 SupportImport = parameter.SupportImport,
                 SupportExport = parameter.SupportExport,
-                ApiPrefix = parameter.ApiPrefix,
+                ApiPrefix = string.IsNullOrWhiteSpace(parameter.MicroAppPath) ? parameter.ModelName : parameter.MicroAppPath,
                 Fields = JsonSerializer.Serialize(parameter.Fields),
                 CreateTime = DateTime.Now,
                 UpdateTime = DateTime.Now
@@ -168,7 +184,7 @@ namespace DTSoft.AppService.DynamicApp
                 SupportBatchDelete = crudConfig.SupportBatchDelete,
                 SupportImport = crudConfig.SupportImport,
                 SupportExport = crudConfig.SupportExport,
-                ApiPrefix = crudConfig.ApiPrefix,
+                MicroAppPath = crudConfig.ApiPrefix,
                 Fields = parameter.Fields,
                 CreateTime = crudConfig.CreateTime,
                 UpdateTime = crudConfig.UpdateTime
@@ -179,7 +195,7 @@ namespace DTSoft.AppService.DynamicApp
         /// 更新 App 配置
         /// </summary>
         /// <param name="parameter">更新参数</param>
-        /// <returns>更新后的 CRUD 配置</returns>
+        /// <returns>更新后的微应用配置</returns>
         public async Task<CrudConfigResponse> UpdateDynamicAppConfig(CrudConfigUpdateParameter parameter)
         {
             // 查找要更新的配置
@@ -187,7 +203,7 @@ namespace DTSoft.AppService.DynamicApp
                 .FirstOrDefault(c => c.ItemId == parameter.ItemId);
             if (existingConfig == null)
             {
-                throw new Exception("未找到指定的 App 配置");
+                throw new Exception("未找到指定的微应用配置");
             }
 
             var oldModelName = existingConfig.ModelName;
@@ -198,6 +214,17 @@ namespace DTSoft.AppService.DynamicApp
             if (duplicateConfig != null)
             {
                 throw new Exception("模型名称已存在，请使用其他模型名称");
+            }
+
+            var targetMicroAppPath = string.IsNullOrWhiteSpace(parameter.MicroAppPath)
+                ? parameter.ModelName
+                : parameter.MicroAppPath;
+
+            var duplicatePathConfig = context.SysDynamicAppConfig!
+                .FirstOrDefault(c => c.ApiPrefix == targetMicroAppPath && c.ItemId != parameter.ItemId);
+            if (duplicatePathConfig != null)
+            {
+                throw new Exception("微应用路径已存在，请使用其他路径");
             }
 
             // 更新配置信息
@@ -211,7 +238,7 @@ namespace DTSoft.AppService.DynamicApp
             existingConfig.SupportBatchDelete = parameter.SupportBatchDelete;
             existingConfig.SupportImport = parameter.SupportImport;
             existingConfig.SupportExport = parameter.SupportExport;
-            existingConfig.ApiPrefix = parameter.ApiPrefix;
+            existingConfig.ApiPrefix = targetMicroAppPath;
             existingConfig.Fields = JsonSerializer.Serialize(parameter.Fields);
             existingConfig.UpdateTime = DateTime.Now;
 
@@ -241,7 +268,7 @@ namespace DTSoft.AppService.DynamicApp
                 SupportBatchDelete = existingConfig.SupportBatchDelete,
                 SupportImport = existingConfig.SupportImport,
                 SupportExport = existingConfig.SupportExport,
-                ApiPrefix = existingConfig.ApiPrefix,
+                MicroAppPath = existingConfig.ApiPrefix,
                 Fields = parameter.Fields,
                 CreateTime = existingConfig.CreateTime,
                 UpdateTime = existingConfig.UpdateTime

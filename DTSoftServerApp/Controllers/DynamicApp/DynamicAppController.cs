@@ -4,27 +4,28 @@ using DTSoft.Models.Parameter.DynamicApp;
 namespace DTSoftServerApp.Controllers.DynamicApp
 {
     /// <summary>
-    /// 动态应用接口
+    /// 微应用接口
     /// </summary>
     /// <param name="dynamicConfigApp"></param>
     [Authorize]
     [ApiController]
-    [Tags("动态应用")]
+    [Tags("微应用")]
     [Route("api/[controller]")]
     public class DynamicAppController(DynamicConfigApp dynamicConfigApp) : ControllerBase
     {
 
         /// <summary>
-        /// 获取App配置列表
+        /// 获取微应用配置列表
         /// </summary>
         /// <param name="keyword">搜索关键词</param>
-        /// <param name="modelName">模块名称</param>
+        /// <param name="modelName">模型名称</param>
+        /// <param name="microAppPath">微应用路径</param>
         /// <param name="pageNum">页码</param>
         /// <param name="pageSize">每页条数</param>
-        /// <returns>App配置列表</returns>
+        /// <returns>微应用配置列表</returns>
         [HttpGet("GetDynamicAppConfigs")]
-        public async Task<IActionResult> GetDynamicAppConfigs([FromQuery] string? keyword, [FromQuery] string? modelName, [FromQuery] int? pageNum = 1,
-            [FromQuery] int? pageSize = 10)
+        public async Task<IActionResult> GetDynamicAppConfigs([FromQuery] string? keyword, [FromQuery] string? modelName,
+            [FromQuery] string? microAppPath, [FromQuery] int? pageNum = 1, [FromQuery] int? pageSize = 10)
         {
             try
             {
@@ -32,6 +33,7 @@ namespace DTSoftServerApp.Controllers.DynamicApp
                 {
                     Keyword = keyword,
                     ModelName = modelName,
+                    MicroAppPath = microAppPath,
                     PageNum = pageNum,
                     PageSize = pageSize
                 };
@@ -47,10 +49,10 @@ namespace DTSoftServerApp.Controllers.DynamicApp
         }
 
         /// <summary>
-        /// 添加App配置
+        /// 添加微应用配置
         /// </summary>
         /// <param name="parameter">添加参数</param>
-        /// <returns>添加的App配置</returns>
+        /// <returns>添加的微应用配置</returns>
         [HttpPost("AddDynamicAppConfig")]
         public async Task<IActionResult> AddDynamicAppConfig([FromBody] CrudConfigAddParameter parameter)
         {
@@ -87,7 +89,7 @@ namespace DTSoftServerApp.Controllers.DynamicApp
         }
 
         /// <summary>
-        /// 更新App配置
+        /// 更新微应用配置
         /// </summary>
         /// <param name="parameter">更新参数</param>
         /// <returns>更新结果</returns>
@@ -127,7 +129,7 @@ namespace DTSoftServerApp.Controllers.DynamicApp
         }
 
         /// <summary>
-        /// 删除App配置
+        /// 删除微应用配置
         /// </summary>
         /// <param name="parameter">删除参数</param>
         /// <returns>删除结果</returns>

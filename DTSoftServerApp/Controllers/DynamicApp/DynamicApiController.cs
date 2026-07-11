@@ -10,11 +10,11 @@ using System.Text.Json;
 namespace DTSoftServerApp.Controllers.DynamicApp
 {
     /// <summary>
-    /// 动态数据接口控制器
+    /// 微应用数据接口控制器
     /// </summary>
     [Authorize]
     [ApiController]
-    [Tags("动态接口")]
+    [Tags("微应用数据")]
     public class DynamicApiController : ControllerBase
     {
         private readonly SysDbContext _context;
@@ -64,7 +64,7 @@ namespace DTSoftServerApp.Controllers.DynamicApp
         }
 
         /// <summary>
-        /// 根据配置动态生成查询列表接口
+        /// 根据配置动态生成微应用查询列表接口
         /// </summary>
         /// <param name="modelName">模型名称</param>
         /// <param name="pageNum">页码</param>
@@ -84,7 +84,7 @@ namespace DTSoftServerApp.Controllers.DynamicApp
                     return Ok(new
                     {
                         success = false,
-                        msg = "未找到对应的App配置"
+                        msg = "未找到对应的微应用配置"
                     });
                 }
 
@@ -112,7 +112,7 @@ namespace DTSoftServerApp.Controllers.DynamicApp
         }
 
         /// <summary>
-        /// 根据配置动态生成获取详情接口
+        /// 根据配置动态生成微应用详情接口
         /// </summary>
         /// <param name="modelName">模型名称</param>
         /// <param name="id">数据ID</param>
@@ -130,7 +130,7 @@ namespace DTSoftServerApp.Controllers.DynamicApp
                     return Ok(new
                     {
                         success = false,
-                        msg = "未找到对应的App配置"
+                        msg = "未找到对应的微应用配置"
                     });
                 }
 
@@ -158,7 +158,7 @@ namespace DTSoftServerApp.Controllers.DynamicApp
         }
 
         /// <summary>
-        /// 根据配置动态生成新增数据接口
+        /// 根据配置动态生成微应用新增数据接口
         /// </summary>
         /// <param name="modelName">模型名称</param>
         /// <param name="data">新增数据</param>
@@ -176,7 +176,7 @@ namespace DTSoftServerApp.Controllers.DynamicApp
                     return Ok(new
                     {
                         success = false,
-                        msg = "未找到对应的App配置"
+                        msg = "未找到对应的微应用配置"
                     });
                 }
 
@@ -216,7 +216,7 @@ namespace DTSoftServerApp.Controllers.DynamicApp
         }
 
         /// <summary>
-        /// 根据配置动态生成更新数据接口
+        /// 根据配置动态生成微应用更新数据接口
         /// </summary>
         /// <param name="modelName">模型名称</param>
         /// <param name="id">数据ID</param>
@@ -235,7 +235,7 @@ namespace DTSoftServerApp.Controllers.DynamicApp
                     return Ok(new
                     {
                         success = false,
-                        msg = "未找到对应的CRUD配置"
+                        msg = "未找到对应的微应用配置"
                     });
                 }
 
@@ -283,7 +283,7 @@ namespace DTSoftServerApp.Controllers.DynamicApp
         }
 
         /// <summary>
-        /// 根据配置动态生成删除数据接口
+        /// 根据配置动态生成微应用删除数据接口
         /// </summary>
         /// <param name="modelName">模型名称</param>
         /// <param name="id">数据ID</param>
@@ -301,7 +301,7 @@ namespace DTSoftServerApp.Controllers.DynamicApp
                     return Ok(new
                     {
                         success = false,
-                        msg = "未找到对应的App配置",
+                        msg = "未找到对应的微应用配置",
                     });
                 }
 
@@ -346,7 +346,7 @@ namespace DTSoftServerApp.Controllers.DynamicApp
         }
 
         /// <summary>
-        /// 根据配置动态生成导出 Excel 接口
+        /// 根据配置动态生成微应用导出 Excel 接口
         /// </summary>
         /// <param name="modelName">模型名称</param>
         /// <param name="keyword">搜索关键词</param>
@@ -458,7 +458,7 @@ namespace DTSoftServerApp.Controllers.DynamicApp
         }
 
         /// <summary>
-        /// 根据配置动态生成Excel数据导入接口
+        /// 根据配置动态生成微应用 Excel 数据导入接口
         /// </summary>
         /// <param name="modelName">模型名称</param>
         /// <param name="file">上传的Excel文件</param>
@@ -499,7 +499,7 @@ namespace DTSoftServerApp.Controllers.DynamicApp
                     return Ok(new
                     {
                         success = false,
-                        msg = "未找到对应的App配置"
+                        msg = "未找到对应的微应用配置"
                     });
                 }
 

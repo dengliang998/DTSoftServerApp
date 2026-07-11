@@ -45,7 +45,7 @@ namespace DTSoft.AppService.DynamicApp
                 if (_cache.TryGetValue(cacheKey, out cachedSignature) && cachedSignature == signature)
                     return;
 
-            var tableName = $"DT_Dynamic_{config.ModelName}";
+            var tableName = BuildDynamicTableName(config.ModelName);
             var fields = string.IsNullOrEmpty(config.Fields)
                 ? new List<FieldConfig>()
                 : JsonSerializer.Deserialize<List<FieldConfig>>(config.Fields)!;
@@ -78,6 +78,14 @@ namespace DTSoft.AppService.DynamicApp
             var payload = $"{config.ItemId}|{updateTicks}|{fieldsJson}";
             var hash = SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(payload));
             return Convert.ToHexString(hash);
+        }
+
+        private static string BuildDynamicTableName(string modelName)
+        {
+            if (string.IsNullOrWhiteSpace(modelName))
+                throw new ArgumentException("ModelName cannot be empty", nameof(modelName));
+
+            return $"micro_app_{modelName.Trim().ToLowerInvariant()}";
         }
 
         private async Task<bool> CheckTableExistsAsync(string tableName)
@@ -217,7 +225,7 @@ namespace DTSoft.AppService.DynamicApp
 
         public async Task<object> ExecuteDynamicQueryAsync(SysDynamicAppConfig config, int pageNum, int pageSize, string keyword)
         {
-            var tableName = $"DT_Dynamic_{config.ModelName}";
+            var tableName = BuildDynamicTableName(config.ModelName);
             var fields = string.IsNullOrEmpty(config.Fields)
                 ? new List<FieldConfig>()
                 : JsonSerializer.Deserialize<List<FieldConfig>>(config.Fields)!;
@@ -283,7 +291,7 @@ namespace DTSoft.AppService.DynamicApp
 
         public async Task<Dictionary<string, object>> ExecuteDynamicDetailQueryAsync(SysDynamicAppConfig config, long id)
         {
-            var tableName = $"DT_Dynamic_{config.ModelName}";
+            var tableName = BuildDynamicTableName(config.ModelName);
             var connection = _context.Database.GetDbConnection();
             if (connection.State != ConnectionState.Open)
             {
@@ -330,7 +338,7 @@ namespace DTSoft.AppService.DynamicApp
             if (dataList == null || dataList.Count == 0)
                 return 0;
 
-            var tableName = $"DT_Dynamic_{config.ModelName}";
+            var tableName = BuildDynamicTableName(config.ModelName);
             var now = TimeUtil.CstDateTime;
             
             // 从第一条数据中提取列名（所有数据应该有相同的列）
@@ -486,7 +494,7 @@ namespace DTSoft.AppService.DynamicApp
 
         public async Task<Dictionary<string, object>> ExecuteDynamicInsertAsync(SysDynamicAppConfig config, Dictionary<string, object> dataDict)
         {
-            var tableName = $"DT_Dynamic_{config.ModelName}";
+            var tableName = BuildDynamicTableName(config.ModelName);
             var columns = new List<string>();
             var parameters = new List<string>();
             var paramValues = new List<object?>();
@@ -558,7 +566,7 @@ namespace DTSoft.AppService.DynamicApp
 
         public async Task<bool> ExecuteDynamicUpdateAsync(SysDynamicAppConfig config, long id, Dictionary<string, object> dataDict)
         {
-            var tableName = $"DT_Dynamic_{config.ModelName}";
+            var tableName = BuildDynamicTableName(config.ModelName);
             var setParts = new List<string>();
             var paramValues = new List<object?>();
 
@@ -618,7 +626,7 @@ namespace DTSoft.AppService.DynamicApp
 
         public async Task<bool> ExecuteDynamicDeleteAsync(SysDynamicAppConfig config, long id)
         {
-            var tableName = $"DT_Dynamic_{config.ModelName}";
+            var tableName = BuildDynamicTableName(config.ModelName);
             var connection = _context.Database.GetDbConnection();
             if (connection.State != ConnectionState.Open)
             {
