@@ -93,6 +93,12 @@ namespace DTSoft.Models.Entities
         public int FormColumns { get; set; } = 1;
 
         /// <summary>
+        /// 搜索字段每行列数
+        /// </summary>
+        [Column("QueryColumns")]
+        public int QueryColumns { get; set; } = 1;
+
+        /// <summary>
         /// 接口前缀
         /// </summary>
         [Column("ApiPrefix")]

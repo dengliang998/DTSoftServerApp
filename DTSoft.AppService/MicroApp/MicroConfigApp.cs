@@ -72,6 +72,7 @@ namespace DTSoft.AppService.MicroApp
                     SupportExport = c.SupportExport,
                     DataScope = NormalizeDataScope(c.DataScope),
                     FormColumns = NormalizeFormColumns(c.FormColumns),
+                    QueryColumns = NormalizeQueryColumns(c.QueryColumns),
                     MicroAppPath = c.ApiPrefix,
                     Fields = string.IsNullOrEmpty(c.Fields) ? new List<FieldConfig>() :
                             JsonSerializer.Deserialize<List<FieldConfig>>(c.Fields),
@@ -112,6 +113,7 @@ namespace DTSoft.AppService.MicroApp
                 SupportExport = config.SupportExport,
                 DataScope = NormalizeDataScope(config.DataScope),
                 FormColumns = NormalizeFormColumns(config.FormColumns),
+                QueryColumns = NormalizeQueryColumns(config.QueryColumns),
                 MicroAppPath = config.ApiPrefix,
                 Fields = string.IsNullOrEmpty(config.Fields) ? new List<FieldConfig>() :
                         JsonSerializer.Deserialize<List<FieldConfig>>(config.Fields),
@@ -161,6 +163,7 @@ namespace DTSoft.AppService.MicroApp
                 SupportExport = parameter.SupportExport,
                 DataScope = NormalizeDataScope(parameter.DataScope),
                 FormColumns = NormalizeFormColumns(parameter.FormColumns),
+                QueryColumns = NormalizeQueryColumns(parameter.QueryColumns),
                 ApiPrefix = string.IsNullOrWhiteSpace(parameter.MicroAppPath) ? parameter.ModelName : parameter.MicroAppPath,
                 Fields = JsonSerializer.Serialize(parameter.Fields),
                 CreateTime = DateTime.Now,
@@ -192,6 +195,7 @@ namespace DTSoft.AppService.MicroApp
                 SupportExport = microConfig.SupportExport,
                 DataScope = NormalizeDataScope(microConfig.DataScope),
                 FormColumns = NormalizeFormColumns(microConfig.FormColumns),
+                QueryColumns = NormalizeQueryColumns(microConfig.QueryColumns),
                 MicroAppPath = microConfig.ApiPrefix,
                 Fields = parameter.Fields,
                 CreateTime = microConfig.CreateTime,
@@ -242,6 +246,7 @@ namespace DTSoft.AppService.MicroApp
             existingConfig.SupportExport = parameter.SupportExport;
             existingConfig.DataScope = NormalizeDataScope(parameter.DataScope);
             existingConfig.FormColumns = NormalizeFormColumns(parameter.FormColumns);
+            existingConfig.QueryColumns = NormalizeQueryColumns(parameter.QueryColumns);
             existingConfig.ApiPrefix = targetMicroAppPath;
             existingConfig.Fields = JsonSerializer.Serialize(parameter.Fields);
             existingConfig.UpdateTime = DateTime.Now;
@@ -270,6 +275,7 @@ namespace DTSoft.AppService.MicroApp
                 SupportExport = existingConfig.SupportExport,
                 DataScope = NormalizeDataScope(existingConfig.DataScope),
                 FormColumns = NormalizeFormColumns(existingConfig.FormColumns),
+                QueryColumns = NormalizeQueryColumns(existingConfig.QueryColumns),
                 MicroAppPath = existingConfig.ApiPrefix,
                 Fields = parameter.Fields,
                 CreateTime = existingConfig.CreateTime,
@@ -329,6 +335,16 @@ namespace DTSoft.AppService.MicroApp
         private static int NormalizeFormColumns(int? formColumns)
         {
             return formColumns is >= 1 and <= 4 ? formColumns.Value : 1;
+        }
+
+        /// <summary>
+        /// 标准化微应用搜索字段每行列数，非法值默认返回 1 列。
+        /// </summary>
+        /// <param name="queryColumns">原始搜索字段每行列数。</param>
+        /// <returns>标准化后的搜索字段每行列数。</returns>
+        private static int NormalizeQueryColumns(int? queryColumns)
+        {
+            return queryColumns is >= 1 and <= 4 ? queryColumns.Value : 1;
         }
     }
 }

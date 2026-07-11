@@ -112,6 +112,11 @@ namespace DTSoft.Models.Parameter.MicroApp
         public int? FormColumns { get; set; }
 
         /// <summary>
+        /// 搜索字段每行列数，1-4
+        /// </summary>
+        public int? QueryColumns { get; set; }
+
+        /// <summary>
         /// 微应用路径
         /// </summary>
         [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_-]*$", ErrorMessage = "微应用路径只能包含英文、数字、中划线和下划线，且以英文开头")]
@@ -205,6 +210,11 @@ namespace DTSoft.Models.Parameter.MicroApp
         /// 数据表单每行列数，1-4
         /// </summary>
         public int? FormColumns { get; set; }
+
+        /// <summary>
+        /// 搜索字段每行列数，1-4
+        /// </summary>
+        public int? QueryColumns { get; set; }
 
         /// <summary>
         /// 微应用路径
@@ -342,6 +352,11 @@ namespace DTSoft.Models.Parameter.MicroApp
         public string? QueryMode { get; set; }
 
         /// <summary>
+        /// 查询控件宽度，单位 px
+        /// </summary>
+        public int? QueryWidth { get; set; }
+
+        /// <summary>
         /// 日期格式，year-年，month-年月，date-年月日，datetime-时间
         /// </summary>
         public string? DateFormat { get; set; }
@@ -476,6 +491,11 @@ namespace DTSoft.Models.Parameter.MicroApp
         /// 数据表单每行列数，1-4
         /// </summary>
         public int FormColumns { get; set; }
+
+        /// <summary>
+        /// 搜索字段每行列数，1-4
+        /// </summary>
+        public int QueryColumns { get; set; }
 
         /// <summary>
         /// 微应用路径
