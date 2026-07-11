@@ -16,7 +16,7 @@ public class SysDbContext(DbContextOptions<SysDbContext> options) : DbContext(op
     public virtual DbSet<SysActionLog>? SysActionLog { get; set; }
     public virtual DbSet<SysResultLog>? SysResultLog { get; set; }
     public virtual DbSet<SysConfig>? SysConfig { get; set; }
-    public virtual DbSet<SysDynamicAppConfig>? SysDynamicAppConfig { get; set; }
+    public virtual DbSet<SysMicroAppConfig>? SysMicroAppConfig { get; set; }
     public virtual DbSet<SysOu>? SysOu { get; set; }
     public virtual DbSet<SysUserMember>? SysUserMember { get; set; }
     public virtual DbSet<SysUserSupervisor>? SysUserSupervisor { get; set; }
@@ -37,7 +37,7 @@ public class SysDbContext(DbContextOptions<SysDbContext> options) : DbContext(op
         modelBuilder.Entity<SysRoleMember>().Property(p => p.ItemId).ValueGeneratedNever();
         modelBuilder.Entity<SysMenuAuthority>().Property(p => p.ItemId).ValueGeneratedNever();
         modelBuilder.Entity<SysSystemUrl>().Property(p => p.ItemId).ValueGeneratedNever();
-        modelBuilder.Entity<SysDynamicAppConfig>().Property(p => p.ItemId).ValueGeneratedNever();
+        modelBuilder.Entity<SysMicroAppConfig>().Property(p => p.ItemId).ValueGeneratedNever();
         modelBuilder.Entity<SysOu>().Property(p => p.ItemId).ValueGeneratedNever();
         modelBuilder.Entity<SysUserMember>().Property(p => p.ItemId).ValueGeneratedNever();
         modelBuilder.Entity<SysUserSupervisor>().Property(p => p.ItemId).ValueGeneratedNever();
@@ -51,6 +51,7 @@ public class SysDbContext(DbContextOptions<SysDbContext> options) : DbContext(op
         modelBuilder.Entity<SysApiKey>().Property(p => p.KeyName).HasMaxLength(100);
         modelBuilder.Entity<SysApiKey>().Property(p => p.SecretKey).HasMaxLength(128);
         modelBuilder.Entity<SysApiKey>().Property(p => p.CreatedBy).HasMaxLength(50);
+        modelBuilder.Entity<SysMicroAppConfig>().Property(p => p.DataScope).HasMaxLength(20);
         modelBuilder.Entity<SysUserSupervisor>().HasIndex(p => p.UserAcc).IsUnique();
 
         //建立主外键关系

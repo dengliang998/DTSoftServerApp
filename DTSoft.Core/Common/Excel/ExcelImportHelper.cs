@@ -1,4 +1,5 @@
-using DTSoft.Models.Parameter.DynamicApp;
+using DTSoft.Models.Parameter.MicroApp;
+using System.Text.RegularExpressions;
 
 namespace DTSoft.Core.Common.Excel
 {
@@ -55,11 +56,11 @@ namespace DTSoft.Core.Common.Excel
             // 过滤掉字段配置中不需要导入的系统字段
             var importableFields = fields
                 .Where(f =>
-                    f.FieldName != DynamicTableSystemColumns.Id &&
-                    f.FieldName != DynamicTableSystemColumns.CreatedTime &&
-                    f.FieldName != DynamicTableSystemColumns.UpdatedTime &&
-                    f.FieldName != DynamicTableSystemColumns.CreatedBy &&
-                    f.FieldName != DynamicTableSystemColumns.UpdatedBy)
+                    f.FieldName != MicroTableSystemColumns.Id &&
+                    f.FieldName != MicroTableSystemColumns.CreatedTime &&
+                    f.FieldName != MicroTableSystemColumns.UpdatedTime &&
+                    f.FieldName != MicroTableSystemColumns.CreatedBy &&
+                    f.FieldName != MicroTableSystemColumns.UpdatedBy)
                 .ToList();
 
             // 将读取的数据转换为字典列表，按列顺序映射，跳过第一行（标题行）
@@ -146,6 +147,12 @@ namespace DTSoft.Core.Common.Excel
                         {
                             // 根据字段类型转换值
                             var convertedValue = ConvertValueByFieldType(kvp.Value, fieldConfig.FieldType);
+                            var fieldErrors = ValidateFieldValue(convertedValue, fieldConfig);
+                            if (fieldErrors.Count > 0)
+                            {
+                                validationErrors.AddRange(fieldErrors);
+                                isValid = false;
+                            }
                             validatedRow[kvp.Key] = convertedValue;
                         }
                     }
@@ -247,6 +254,66 @@ namespace DTSoft.Core.Common.Excel
                         return stringValue;
                 default:
                     return stringValue;
+            }
+        }
+
+        /// <summary>
+        /// 根据字段配置校验 Excel 导入值。
+        /// </summary>
+        /// <param name="value">字段值。</param>
+        /// <param name="fieldConfig">字段配置。</param>
+        /// <returns>校验错误列表。</returns>
+        private static List<string> ValidateFieldValue(object? value, FieldConfig fieldConfig)
+        {
+            var errors = new List<string>();
+            var stringValue = value?.ToString() ?? string.Empty;
+
+            if (fieldConfig.MinLength.HasValue && stringValue.Length < fieldConfig.MinLength.Value)
+            {
+                errors.Add($"字段 '{fieldConfig.Label}' 不能少于{fieldConfig.MinLength.Value}个字符");
+            }
+
+            if (fieldConfig.MaxLength.HasValue && stringValue.Length > fieldConfig.MaxLength.Value)
+            {
+                errors.Add($"字段 '{fieldConfig.Label}' 不能超过{fieldConfig.MaxLength.Value}个字符");
+            }
+
+            if (fieldConfig.FieldType == "number" && decimal.TryParse(stringValue, out var numberValue))
+            {
+                if (fieldConfig.MinValue.HasValue && numberValue < fieldConfig.MinValue.Value)
+                {
+                    errors.Add($"字段 '{fieldConfig.Label}' 不能小于{fieldConfig.MinValue.Value}");
+                }
+
+                if (fieldConfig.MaxValue.HasValue && numberValue > fieldConfig.MaxValue.Value)
+                {
+                    errors.Add($"字段 '{fieldConfig.Label}' 不能大于{fieldConfig.MaxValue.Value}");
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(fieldConfig.Pattern) && !IsRegexMatch(stringValue, fieldConfig.Pattern))
+            {
+                errors.Add($"字段 '{fieldConfig.Label}' 格式不正确");
+            }
+
+            return errors;
+        }
+
+        /// <summary>
+        /// 执行正则匹配，正则表达式非法时返回 false。
+        /// </summary>
+        /// <param name="value">待校验文本。</param>
+        /// <param name="pattern">正则表达式。</param>
+        /// <returns>是否匹配。</returns>
+        private static bool IsRegexMatch(string value, string pattern)
+        {
+            try
+            {
+                return Regex.IsMatch(value, pattern);
+            }
+            catch
+            {
+                return false;
             }
         }
     }

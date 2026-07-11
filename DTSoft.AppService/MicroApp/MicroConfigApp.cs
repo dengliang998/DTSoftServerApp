@@ -2,24 +2,24 @@ using DTSoft.Core.Common;
 using DTSoft.Core.DbContexts;
 using DTSoft.Core.Interfaces;
 using DTSoft.Models.Entities;
-using DTSoft.Models.Parameter.DynamicApp;
+using DTSoft.Models.Parameter.MicroApp;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
-namespace DTSoft.AppService.DynamicApp
+namespace DTSoft.AppService.MicroApp
 {
-    public class DynamicConfigApp(SysDbContext context, DynamicTableService dynamicTableService, IDtSoftCache dtSoftCache)
+    public class MicroConfigApp(SysDbContext context, MicroTableService microTableService, IDtSoftCache dtSoftCache)
     {
-        private readonly DynamicTableService _dynamicTableService = dynamicTableService;
+        private readonly MicroTableService _microTableService = microTableService;
 
         /// <summary>
         /// 获取微应用配置列表
         /// </summary>
         /// <param name="parameter">查询参数</param>
-        /// <returns>分页的 CRUD 配置列表</returns>
-        public async Task<PagedResponse<CrudConfigResponse>> GetDynamicAppConfigs(CrudConfigQueryParameter parameter)
+        /// <returns>分页的微应用配置列表</returns>
+        public async Task<PagedResponse<MicroConfigResponse>> GetMicroAppConfigs(MicroConfigQueryParameter parameter)
         {
-            var query = context.SysDynamicAppConfig!.AsQueryable();
+            var query = context.SysMicroAppConfig!.AsQueryable();
         
             // 模糊匹配配置名称、模型名称、微应用路径
             if (!string.IsNullOrEmpty(parameter.Keyword))
@@ -55,9 +55,9 @@ namespace DTSoft.AppService.DynamicApp
             var configList = await configs.ToListAsync();
         
             // 转换为响应对象
-            var result = new PagedResponse<CrudConfigResponse>
+            var result = new PagedResponse<MicroConfigResponse>
             {
-                Data = configList.Select(c => new CrudConfigResponse
+                Data = configList.Select(c => new MicroConfigResponse
                 {
                     ItemId = c.ItemId,
                     ConfigName = c.ConfigName,
@@ -70,6 +70,7 @@ namespace DTSoft.AppService.DynamicApp
                     SupportBatchDelete = c.SupportBatchDelete,
                     SupportImport = c.SupportImport,
                     SupportExport = c.SupportExport,
+                    DataScope = NormalizeDataScope(c.DataScope),
                     MicroAppPath = c.ApiPrefix,
                     Fields = string.IsNullOrEmpty(c.Fields) ? new List<FieldConfig>() :
                             JsonSerializer.Deserialize<List<FieldConfig>>(c.Fields),
@@ -86,16 +87,16 @@ namespace DTSoft.AppService.DynamicApp
         /// 获取微应用配置详情
         /// </summary>
         /// <param name="id">配置 ID</param>
-        /// <returns>CRUD 配置详情</returns>
-        public CrudConfigResponse GetCrudConfigById(long id)
+        /// <returns>微应用配置详情</returns>
+        public MicroConfigResponse GetMicroConfigById(long id)
         {
-            var config = context.SysDynamicAppConfig!.FirstOrDefault(c => c.ItemId == id);
+            var config = context.SysMicroAppConfig!.FirstOrDefault(c => c.ItemId == id);
             if (config == null)
             {
                 throw new Exception("未找到指定的微应用配置");
             }
 
-            return new CrudConfigResponse
+            return new MicroConfigResponse
             {
                 ItemId = config.ItemId,
                 ConfigName = config.ConfigName,
@@ -108,6 +109,7 @@ namespace DTSoft.AppService.DynamicApp
                 SupportBatchDelete = config.SupportBatchDelete,
                 SupportImport = config.SupportImport,
                 SupportExport = config.SupportExport,
+                DataScope = NormalizeDataScope(config.DataScope),
                 MicroAppPath = config.ApiPrefix,
                 Fields = string.IsNullOrEmpty(config.Fields) ? new List<FieldConfig>() :
                         JsonSerializer.Deserialize<List<FieldConfig>>(config.Fields),
@@ -121,10 +123,10 @@ namespace DTSoft.AppService.DynamicApp
         /// </summary>
         /// <param name="parameter">添加参数</param>
         /// <returns>添加后的微应用配置</returns>
-        public async Task<CrudConfigResponse> AddDynamicAppConfig(CrudConfigAddParameter parameter)
+        public async Task<MicroConfigResponse> AddMicroAppConfig(MicroConfigAddParameter parameter)
         {
             // 验证模型名称是否已存在
-            var existingConfig = context.SysDynamicAppConfig!
+            var existingConfig = context.SysMicroAppConfig!
                 .FirstOrDefault(c => c.ModelName == parameter.ModelName);
             if (existingConfig != null)
             {
@@ -133,7 +135,7 @@ namespace DTSoft.AppService.DynamicApp
         
             if (!string.IsNullOrWhiteSpace(parameter.MicroAppPath))
             {
-                var existingPathConfig = context.SysDynamicAppConfig!
+                var existingPathConfig = context.SysMicroAppConfig!
                     .FirstOrDefault(c => c.ApiPrefix == parameter.MicroAppPath);
                 if (existingPathConfig != null)
                 {
@@ -142,7 +144,7 @@ namespace DTSoft.AppService.DynamicApp
             }
 
             // 创建微应用配置对象
-            var crudConfig = new SysDynamicAppConfig()
+            var microConfig = new SysMicroAppConfig()
             {
                 ItemId = YitterHelper.NewId(),
                 ConfigName = parameter.ConfigName,
@@ -155,6 +157,7 @@ namespace DTSoft.AppService.DynamicApp
                 SupportBatchDelete = parameter.SupportBatchDelete,
                 SupportImport = parameter.SupportImport,
                 SupportExport = parameter.SupportExport,
+                DataScope = NormalizeDataScope(parameter.DataScope),
                 ApiPrefix = string.IsNullOrWhiteSpace(parameter.MicroAppPath) ? parameter.ModelName : parameter.MicroAppPath,
                 Fields = JsonSerializer.Serialize(parameter.Fields),
                 CreateTime = DateTime.Now,
@@ -162,44 +165,45 @@ namespace DTSoft.AppService.DynamicApp
             };
         
             // 添加到数据库
-            context.SysDynamicAppConfig!.Add(crudConfig);
+            context.SysMicroAppConfig!.Add(microConfig);
             await context.SaveChangesAsync();
 
-            dtSoftCache.RefreshCache(DynamicConfigCacheKeys.ActiveConfig(crudConfig.ModelName));
+            dtSoftCache.RefreshCache(MicroConfigCacheKeys.ActiveConfig(microConfig.ModelName));
         
             // 确保对应的数据表存在
-            await _dynamicTableService.EnsureTableExistsAsync(crudConfig);
+            await _microTableService.EnsureTableExistsAsync(microConfig);
         
             // 返回添加后的配置信息
-            return new CrudConfigResponse
+            return new MicroConfigResponse
             {
-                ItemId = crudConfig.ItemId,
-                ConfigName = crudConfig.ConfigName,
-                ModelName = crudConfig.ModelName,
-                ConfigDesc = crudConfig.ConfigDesc,
-                Status = crudConfig.Status,
-                SupportCreate = crudConfig.SupportCreate,
-                SupportUpdate = crudConfig.SupportUpdate,
-                SupportDelete = crudConfig.SupportDelete,
-                SupportBatchDelete = crudConfig.SupportBatchDelete,
-                SupportImport = crudConfig.SupportImport,
-                SupportExport = crudConfig.SupportExport,
-                MicroAppPath = crudConfig.ApiPrefix,
+                ItemId = microConfig.ItemId,
+                ConfigName = microConfig.ConfigName,
+                ModelName = microConfig.ModelName,
+                ConfigDesc = microConfig.ConfigDesc,
+                Status = microConfig.Status,
+                SupportCreate = microConfig.SupportCreate,
+                SupportUpdate = microConfig.SupportUpdate,
+                SupportDelete = microConfig.SupportDelete,
+                SupportBatchDelete = microConfig.SupportBatchDelete,
+                SupportImport = microConfig.SupportImport,
+                SupportExport = microConfig.SupportExport,
+                DataScope = NormalizeDataScope(microConfig.DataScope),
+                MicroAppPath = microConfig.ApiPrefix,
                 Fields = parameter.Fields,
-                CreateTime = crudConfig.CreateTime,
-                UpdateTime = crudConfig.UpdateTime
+                CreateTime = microConfig.CreateTime,
+                UpdateTime = microConfig.UpdateTime
             };
         }
 
         /// <summary>
-        /// 更新 App 配置
+        /// 更新微应用配置
         /// </summary>
         /// <param name="parameter">更新参数</param>
         /// <returns>更新后的微应用配置</returns>
-        public async Task<CrudConfigResponse> UpdateDynamicAppConfig(CrudConfigUpdateParameter parameter)
+        public async Task<MicroConfigResponse> UpdateMicroAppConfig(MicroConfigUpdateParameter parameter)
         {
             // 查找要更新的配置
-            var existingConfig = context.SysDynamicAppConfig!
+            var existingConfig = context.SysMicroAppConfig!
                 .FirstOrDefault(c => c.ItemId == parameter.ItemId);
             if (existingConfig == null)
             {
@@ -215,7 +219,7 @@ namespace DTSoft.AppService.DynamicApp
                 ? parameter.ModelName
                 : parameter.MicroAppPath;
 
-            var duplicatePathConfig = context.SysDynamicAppConfig!
+            var duplicatePathConfig = context.SysMicroAppConfig!
                 .FirstOrDefault(c => c.ApiPrefix == targetMicroAppPath && c.ItemId != parameter.ItemId);
             if (duplicatePathConfig != null)
             {
@@ -232,6 +236,7 @@ namespace DTSoft.AppService.DynamicApp
             existingConfig.SupportBatchDelete = parameter.SupportBatchDelete;
             existingConfig.SupportImport = parameter.SupportImport;
             existingConfig.SupportExport = parameter.SupportExport;
+            existingConfig.DataScope = NormalizeDataScope(parameter.DataScope);
             existingConfig.ApiPrefix = targetMicroAppPath;
             existingConfig.Fields = JsonSerializer.Serialize(parameter.Fields);
             existingConfig.UpdateTime = DateTime.Now;
@@ -239,13 +244,13 @@ namespace DTSoft.AppService.DynamicApp
             // 保存更改
             await context.SaveChangesAsync();
 
-            dtSoftCache.RefreshCache(DynamicConfigCacheKeys.ActiveConfig(existingConfig.ModelName));
+            dtSoftCache.RefreshCache(MicroConfigCacheKeys.ActiveConfig(existingConfig.ModelName));
 
             // 确保对应的数据表结构是最新的
-            await _dynamicTableService.EnsureTableExistsAsync(existingConfig);
+            await _microTableService.EnsureTableExistsAsync(existingConfig);
 
             // 返回更新后的配置信息
-            return new CrudConfigResponse
+            return new MicroConfigResponse
             {
                 ItemId = existingConfig.ItemId,
                 ConfigName = existingConfig.ConfigName,
@@ -258,6 +263,7 @@ namespace DTSoft.AppService.DynamicApp
                 SupportBatchDelete = existingConfig.SupportBatchDelete,
                 SupportImport = existingConfig.SupportImport,
                 SupportExport = existingConfig.SupportExport,
+                DataScope = NormalizeDataScope(existingConfig.DataScope),
                 MicroAppPath = existingConfig.ApiPrefix,
                 Fields = parameter.Fields,
                 CreateTime = existingConfig.CreateTime,
@@ -266,32 +272,47 @@ namespace DTSoft.AppService.DynamicApp
         }
 
         /// <summary>
-        /// 删除 CRUD 配置
+        /// 删除微应用配置
         /// </summary>
         /// <param name="parameter">删除参数</param>
         /// <returns>是否删除成功</returns>
-        public async Task<bool> DeleteDynamicAppConfig(CrudConfigDeleteParameter parameter)
+        public async Task<bool> DeleteMicroAppConfig(MicroConfigDeleteParameter parameter)
         {
             // 查找要删除的配置
-            var existingConfig = context.SysDynamicAppConfig!
+            var existingConfig = context.SysMicroAppConfig!
                 .FirstOrDefault(c => c.ItemId == parameter.ItemId);
             if (existingConfig == null)
             {
-                throw new Exception("未找到指定的 App 配置");
+                throw new Exception("未找到指定的微应用配置");
             }
 
             var modelName = existingConfig.ModelName;
         
             // 从数据库中删除
-            context.SysDynamicAppConfig!.Remove(existingConfig);
+            context.SysMicroAppConfig!.Remove(existingConfig);
             await context.SaveChangesAsync();
 
             if (!string.IsNullOrWhiteSpace(modelName))
             {
-                dtSoftCache.RefreshCache(DynamicConfigCacheKeys.ActiveConfig(modelName));
+                dtSoftCache.RefreshCache(MicroConfigCacheKeys.ActiveConfig(modelName));
             }
         
             return true;
+        }
+
+        /// <summary>
+        /// 标准化微应用数据权限范围，非法或空值默认返回全部数据。
+        /// </summary>
+        /// <param name="dataScope">原始数据权限范围。</param>
+        /// <returns>标准化后的数据权限范围。</returns>
+        private static string NormalizeDataScope(string? dataScope)
+        {
+            return dataScope?.Trim().ToLowerInvariant() switch
+            {
+                "self" => "self",
+                "department" => "department",
+                _ => "all"
+            };
         }
     }
 }

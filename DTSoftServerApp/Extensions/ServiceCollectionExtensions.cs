@@ -1,7 +1,7 @@
 using DTSoft.AppService.Attachment;
 using DTSoft.AppService.ApiKey;
 using DTSoft.AppService.Ou;
-using DTSoft.AppService.DynamicApp;
+using DTSoft.AppService.MicroApp;
 using DTSoft.AppService.Log;
 using DTSoft.AppService.Menu;
 using DTSoft.AppService.Role;
@@ -51,8 +51,8 @@ namespace DTSoftServerApp.Extensions
             services.AddScoped<RoleApp>();
             services.AddScoped<UserApp>();
             services.AddScoped<SysConfigApp>();
-            services.AddScoped<DynamicConfigApp>();
-            services.AddScoped<DynamicTableService>();
+            services.AddScoped<MicroConfigApp>();
+            services.AddScoped<MicroTableService>();
             services.AddScoped<OuApp>();
             services.AddScoped<ApiKeyApp>();
 

@@ -3,37 +3,45 @@ using DTSoft.Core.Common;
 using DTSoft.Core.DbProviders;
 using DTSoft.Core.DbContexts;
 using DTSoft.Models.Entities;
-using DTSoft.Models.Parameter.DynamicApp;
+using DTSoft.Models.Parameter.MicroApp;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.Data;
+using System.Data.Common;
 using System.Security.Cryptography;
 using System.Text.Json;
 
-namespace DTSoft.AppService.DynamicApp
+namespace DTSoft.AppService.MicroApp
 {
-    public class DynamicTableService
+    /// <summary>
+    /// 微应用数据表结构维护与数据访问服务。
+    /// </summary>
+    public class MicroTableService
     {
         private readonly SysDbContext _context;
         private readonly IDbProvider _provider;
-        private readonly ILogger<DynamicTableService> _logger;
+        private readonly ILogger<MicroTableService> _logger;
         private readonly IMemoryCache _cache;
         private static readonly ConcurrentDictionary<long, SemaphoreSlim> EnsureLocks = new();
 
-        public DynamicTableService(SysDbContext context, ILogger<DynamicTableService> logger, IMemoryCache cache)
+        public MicroTableService(SysDbContext context, ILogger<MicroTableService> logger, IMemoryCache cache)
         {
             _context = context;
             var databaseName = GetDatabaseName();
-            _provider = DbProviderFactory.Create(_context.Database.ProviderName, databaseName);
+            _provider = Core.DbProviders.DbProviderFactory.Create(_context.Database.ProviderName, databaseName);
             _logger = logger;
             _cache = cache;
         }
 
-        public async Task EnsureTableExistsAsync(SysDynamicAppConfig config)
+        /// <summary>
+        /// 根据微应用配置创建或更新对应的数据表结构。
+        /// </summary>
+        /// <param name="config">微应用配置。</param>
+        public async Task EnsureTableExistsAsync(SysMicroAppConfig config)
         {
-            var cacheKey = $"DynamicTableEnsured:{config.ItemId}";
+            var cacheKey = $"MicroTableEnsured:{config.ItemId}";
             var signature = ComputeConfigSignature(config);
             if (_cache.TryGetValue(cacheKey, out string? cachedSignature) && cachedSignature == signature)
                 return;
@@ -45,20 +53,20 @@ namespace DTSoft.AppService.DynamicApp
                 if (_cache.TryGetValue(cacheKey, out cachedSignature) && cachedSignature == signature)
                     return;
 
-            var tableName = BuildDynamicTableName(config.ModelName);
-            var fields = string.IsNullOrEmpty(config.Fields)
-                ? new List<FieldConfig>()
-                : JsonSerializer.Deserialize<List<FieldConfig>>(config.Fields)!;
+                var tableName = BuildMicroTableName(config.ModelName);
+                var fields = string.IsNullOrEmpty(config.Fields)
+                    ? new List<FieldConfig>()
+                    : JsonSerializer.Deserialize<List<FieldConfig>>(config.Fields)!;
 
-            var tableExists = await CheckTableExistsAsync(tableName);
-            if (!tableExists)
-            {
-                await CreateDynamicTableAsync(tableName, fields);
-            }
-            else
-            {
-                await UpdateDynamicTableAsync(tableName, fields);
-            }
+                var tableExists = await CheckTableExistsAsync(tableName);
+                if (!tableExists)
+                {
+                    await CreateMicroTableAsync(tableName, fields);
+                }
+                else
+                {
+                    await UpdateMicroTableAsync(tableName, fields);
+                }
 
                 _cache.Set(cacheKey, signature, new MemoryCacheEntryOptions
                 {
@@ -71,7 +79,7 @@ namespace DTSoft.AppService.DynamicApp
             }
         }
 
-        private static string ComputeConfigSignature(SysDynamicAppConfig config)
+        private static string ComputeConfigSignature(SysMicroAppConfig config)
         {
             var fieldsJson = config.Fields ?? string.Empty;
             var updateTicks = config.UpdateTime.Ticks;
@@ -80,7 +88,7 @@ namespace DTSoft.AppService.DynamicApp
             return Convert.ToHexString(hash);
         }
 
-        private static string BuildDynamicTableName(string modelName)
+        private static string BuildMicroTableName(string modelName)
         {
             if (string.IsNullOrWhiteSpace(modelName))
                 throw new ArgumentException("ModelName cannot be empty", nameof(modelName));
@@ -122,7 +130,7 @@ namespace DTSoft.AppService.DynamicApp
             }
         }
 
-        private async Task CreateDynamicTableAsync(string tableName, List<FieldConfig> fields)
+        private async Task CreateMicroTableAsync(string tableName, List<FieldConfig> fields)
         {
             if (!IsValidTableName(tableName))
             {
@@ -141,7 +149,7 @@ namespace DTSoft.AppService.DynamicApp
             await _context.Database.ExecuteSqlRawAsync(createTableSql);
         }
 
-        private async Task UpdateDynamicTableAsync(string tableName, List<FieldConfig> fields)
+        private async Task UpdateMicroTableAsync(string tableName, List<FieldConfig> fields)
         {
             if (!IsValidTableName(tableName))
             {
@@ -223,12 +231,35 @@ namespace DTSoft.AppService.DynamicApp
             return columns;
         }
 
-        public async Task<object> ExecuteDynamicQueryAsync(SysDynamicAppConfig config, int pageNum, int pageSize, string keyword)
+        /// <summary>
+        /// 执行微应用分页查询，支持关键词、字段筛选、排序和数据范围过滤。
+        /// </summary>
+        /// <param name="config">微应用配置。</param>
+        /// <param name="pageNum">页码。</param>
+        /// <param name="pageSize">每页条数。</param>
+        /// <param name="keyword">全局关键词。</param>
+        /// <param name="filters">字段级查询条件。</param>
+        /// <param name="sortField">排序字段。</param>
+        /// <param name="sortOrder">排序方向。</param>
+        /// <param name="userAccount">当前登录用户账号。</param>
+        /// <returns>包含列表和总数的查询结果。</returns>
+        public async Task<object> ExecuteMicroQueryAsync(
+            SysMicroAppConfig config,
+            int pageNum,
+            int pageSize,
+            string keyword,
+            List<MicroQueryFilter>? filters,
+            string? sortField,
+            string? sortOrder,
+            string userAccount)
         {
-            var tableName = BuildDynamicTableName(config.ModelName);
+            var tableName = BuildMicroTableName(config.ModelName);
             var fields = string.IsNullOrEmpty(config.Fields)
                 ? new List<FieldConfig>()
                 : JsonSerializer.Deserialize<List<FieldConfig>>(config.Fields)!;
+            var scopedAccounts = await GetScopedAccountsAsync(config.DataScope, userAccount);
+            var queryContext = BuildQueryContext(fields, keyword, filters, scopedAccounts);
+            var orderByClause = BuildOrderByClause(fields, sortField, sortOrder);
 
             var connection = _context.Database.GetDbConnection();
             if (connection.State != ConnectionState.Open)
@@ -238,31 +269,17 @@ namespace DTSoft.AppService.DynamicApp
 
             try
             {
-                var countSql = _provider.BuildCountSql(tableName, fields, keyword);
+                var countSql = _provider.BuildCountSql(tableName, queryContext.WhereClause);
                 await using var countCommand = connection.CreateCommand();
                 countCommand.CommandText = countSql;
-
-                if (!string.IsNullOrEmpty(keyword))
-                {
-                    var param = countCommand.CreateParameter();
-                    param.ParameterName = _provider.GetParameterName("keyword");
-                    param.Value = $"%{keyword}%";
-                    countCommand.Parameters.Add(param);
-                }
+                AddParameters(countCommand, queryContext.Parameters);
 
                 var totalCount = Convert.ToInt32(await countCommand.ExecuteScalarAsync());
 
-                var selectSql = _provider.BuildSelectWithPagingSql(tableName, fields, keyword, pageNum, pageSize);
+                var selectSql = _provider.BuildSelectWithPagingSql(tableName, fields, queryContext.WhereClause, orderByClause, pageNum, pageSize);
                 await using var queryCommand = connection.CreateCommand();
                 queryCommand.CommandText = selectSql;
-
-                if (!string.IsNullOrEmpty(keyword))
-                {
-                    var param = queryCommand.CreateParameter();
-                    param.ParameterName = _provider.GetParameterName("keyword");
-                    param.Value = $"%{keyword}%";
-                    queryCommand.Parameters.Add(param);
-                }
+                AddParameters(queryCommand, queryContext.Parameters);
 
                 await using var reader = await queryCommand.ExecuteReaderAsync();
                 var result = new List<Dictionary<string, object>>();
@@ -289,9 +306,18 @@ namespace DTSoft.AppService.DynamicApp
             }
         }
 
-        public async Task<Dictionary<string, object>> ExecuteDynamicDetailQueryAsync(SysDynamicAppConfig config, long id)
+        /// <summary>
+        /// 根据数据 ID 查询微应用表详情，并应用数据范围过滤。
+        /// </summary>
+        /// <param name="config">微应用配置。</param>
+        /// <param name="id">数据 ID。</param>
+        /// <param name="userAccount">当前登录用户账号。</param>
+        /// <returns>微应用数据详情，不存在或无权限时返回空字典。</returns>
+        public async Task<Dictionary<string, object>> ExecuteMicroDetailQueryAsync(SysMicroAppConfig config, long id, string userAccount = "")
         {
-            var tableName = BuildDynamicTableName(config.ModelName);
+            var tableName = BuildMicroTableName(config.ModelName);
+            var scopedAccounts = await GetScopedAccountsAsync(config.DataScope, userAccount);
+            var dataScopeContext = BuildDataScopeContext(scopedAccounts);
             var connection = _context.Database.GetDbConnection();
             if (connection.State != ConnectionState.Open)
             {
@@ -300,14 +326,15 @@ namespace DTSoft.AppService.DynamicApp
 
             try
             {
-                var sql = _provider.BuildSelectByIdSql(tableName);
+                var sql = $"SELECT * FROM {_provider.QuoteTableName(tableName)} WHERE {_provider.QuoteColumnName(MicroTableSystemColumns.Id)} = {_provider.GetParameterPlaceholder(MicroTableSystemColumns.Id)}{dataScopeContext.WhereSuffix}";
                 await using var command = connection.CreateCommand();
                 command.CommandText = sql;
 
                 var param = command.CreateParameter();
-                param.ParameterName = _provider.GetParameterName(DynamicTableSystemColumns.Id);
+                param.ParameterName = _provider.GetParameterName(MicroTableSystemColumns.Id);
                 param.Value = id;
                 command.Parameters.Add(param);
+                AddParameters(command, dataScopeContext.Parameters);
 
                 await using var reader = await command.ExecuteReaderAsync();
                 if (!await reader.ReadAsync())
@@ -333,12 +360,19 @@ namespace DTSoft.AppService.DynamicApp
             }
         }
 
-        public async Task<int> ExecuteDynamicBatchInsertAsync(SysDynamicAppConfig config, List<Dictionary<string, object>> dataList, string userAccount)
+        /// <summary>
+        /// 批量写入微应用数据，并自动补齐系统字段。
+        /// </summary>
+        /// <param name="config">微应用配置。</param>
+        /// <param name="dataList">待写入的数据列表。</param>
+        /// <param name="userAccount">当前登录用户账号。</param>
+        /// <returns>成功写入的数据条数。</returns>
+        public async Task<int> ExecuteMicroBatchInsertAsync(SysMicroAppConfig config, List<Dictionary<string, object>> dataList, string userAccount)
         {
             if (dataList == null || dataList.Count == 0)
                 return 0;
 
-            var tableName = BuildDynamicTableName(config.ModelName);
+            var tableName = BuildMicroTableName(config.ModelName);
             var now = TimeUtil.CstDateTime;
             
             // 从第一条数据中提取列名（所有数据应该有相同的列）
@@ -347,8 +381,8 @@ namespace DTSoft.AppService.DynamicApp
             var columnNames = new List<string>();
             
             // 添加Id列
-            columns.Add(_provider.QuoteColumnName(DynamicTableSystemColumns.Id));
-            columnNames.Add(DynamicTableSystemColumns.Id);
+            columns.Add(_provider.QuoteColumnName(MicroTableSystemColumns.Id));
+            columnNames.Add(MicroTableSystemColumns.Id);
             
             foreach (var kvp in firstRow)
             {
@@ -362,14 +396,14 @@ namespace DTSoft.AppService.DynamicApp
             }
 
             // 添加系统字段
-            columns.Add(_provider.QuoteColumnName(DynamicTableSystemColumns.CreatedTime));
-            columnNames.Add(DynamicTableSystemColumns.CreatedTime);
-            columns.Add(_provider.QuoteColumnName(DynamicTableSystemColumns.UpdatedTime));
-            columnNames.Add(DynamicTableSystemColumns.UpdatedTime);
-            columns.Add(_provider.QuoteColumnName(DynamicTableSystemColumns.CreatedBy));
-            columnNames.Add(DynamicTableSystemColumns.CreatedBy);
-            columns.Add(_provider.QuoteColumnName(DynamicTableSystemColumns.UpdatedBy));
-            columnNames.Add(DynamicTableSystemColumns.UpdatedBy);
+            columns.Add(_provider.QuoteColumnName(MicroTableSystemColumns.CreatedTime));
+            columnNames.Add(MicroTableSystemColumns.CreatedTime);
+            columns.Add(_provider.QuoteColumnName(MicroTableSystemColumns.UpdatedTime));
+            columnNames.Add(MicroTableSystemColumns.UpdatedTime);
+            columns.Add(_provider.QuoteColumnName(MicroTableSystemColumns.CreatedBy));
+            columnNames.Add(MicroTableSystemColumns.CreatedBy);
+            columns.Add(_provider.QuoteColumnName(MicroTableSystemColumns.UpdatedBy));
+            columnNames.Add(MicroTableSystemColumns.UpdatedBy);
 
             var connection = _context.Database.GetDbConnection();
             if (connection.State != ConnectionState.Open)
@@ -500,17 +534,24 @@ namespace DTSoft.AppService.DynamicApp
             }
         }
 
-        public async Task<Dictionary<string, object>> ExecuteDynamicInsertAsync(SysDynamicAppConfig config, Dictionary<string, object> dataDict, string userAccount)
+        /// <summary>
+        /// 新增一条微应用数据，并返回新增后的数据详情。
+        /// </summary>
+        /// <param name="config">微应用配置。</param>
+        /// <param name="dataDict">待写入的数据。</param>
+        /// <param name="userAccount">当前登录用户账号。</param>
+        /// <returns>新增后的数据详情。</returns>
+        public async Task<Dictionary<string, object>> ExecuteMicroInsertAsync(SysMicroAppConfig config, Dictionary<string, object> dataDict, string userAccount)
         {
-            var tableName = BuildDynamicTableName(config.ModelName);
+            var tableName = BuildMicroTableName(config.ModelName);
             var columns = new List<string>();
             var parameters = new List<string>();
             var paramValues = new List<object?>();
 
             // 生成雪花ID
             var snowflakeId = YitterHelper.NewId();
-            columns.Add(_provider.QuoteColumnName(DynamicTableSystemColumns.Id));
-            parameters.Add(_provider.GetParameterPlaceholder(DynamicTableSystemColumns.Id));
+            columns.Add(_provider.QuoteColumnName(MicroTableSystemColumns.Id));
+            parameters.Add(_provider.GetParameterPlaceholder(MicroTableSystemColumns.Id));
             paramValues.Add(snowflakeId);
 
             foreach (var kvp in dataDict)
@@ -525,20 +566,20 @@ namespace DTSoft.AppService.DynamicApp
                 paramValues.Add(ConvertToBasicType(kvp.Value));
             }
 
-            columns.Add(_provider.QuoteColumnName(DynamicTableSystemColumns.CreatedTime));
-            parameters.Add(_provider.GetParameterPlaceholder(DynamicTableSystemColumns.CreatedTime));
+            columns.Add(_provider.QuoteColumnName(MicroTableSystemColumns.CreatedTime));
+            parameters.Add(_provider.GetParameterPlaceholder(MicroTableSystemColumns.CreatedTime));
             paramValues.Add(TimeUtil.CstDateTime);
 
-            columns.Add(_provider.QuoteColumnName(DynamicTableSystemColumns.UpdatedTime));
-            parameters.Add(_provider.GetParameterPlaceholder(DynamicTableSystemColumns.UpdatedTime));
+            columns.Add(_provider.QuoteColumnName(MicroTableSystemColumns.UpdatedTime));
+            parameters.Add(_provider.GetParameterPlaceholder(MicroTableSystemColumns.UpdatedTime));
             paramValues.Add(TimeUtil.CstDateTime);
 
-            columns.Add(_provider.QuoteColumnName(DynamicTableSystemColumns.CreatedBy));
-            parameters.Add(_provider.GetParameterPlaceholder(DynamicTableSystemColumns.CreatedBy));
+            columns.Add(_provider.QuoteColumnName(MicroTableSystemColumns.CreatedBy));
+            parameters.Add(_provider.GetParameterPlaceholder(MicroTableSystemColumns.CreatedBy));
             paramValues.Add(userAccount ?? string.Empty);
 
-            columns.Add(_provider.QuoteColumnName(DynamicTableSystemColumns.UpdatedBy));
-            parameters.Add(_provider.GetParameterPlaceholder(DynamicTableSystemColumns.UpdatedBy));
+            columns.Add(_provider.QuoteColumnName(MicroTableSystemColumns.UpdatedBy));
+            parameters.Add(_provider.GetParameterPlaceholder(MicroTableSystemColumns.UpdatedBy));
             paramValues.Add(userAccount ?? string.Empty);
 
             var insertSql = _provider.BuildInsertSql(tableName, columns, parameters);
@@ -567,7 +608,7 @@ namespace DTSoft.AppService.DynamicApp
                 await command.ExecuteNonQueryAsync();
                 
                 // 使用生成的雪花ID查询返回新插入的数据
-                return await ExecuteDynamicDetailQueryAsync(config, snowflakeId);
+                return await ExecuteMicroDetailQueryAsync(config, snowflakeId, userAccount!);
             }
             finally
             {
@@ -578,11 +619,21 @@ namespace DTSoft.AppService.DynamicApp
             }
         }
 
-        public async Task<bool> ExecuteDynamicUpdateAsync(SysDynamicAppConfig config, long id, Dictionary<string, object> dataDict, string userAccount)
+        /// <summary>
+        /// 根据数据 ID 更新微应用数据，并应用数据范围过滤。
+        /// </summary>
+        /// <param name="config">微应用配置。</param>
+        /// <param name="id">数据 ID。</param>
+        /// <param name="dataDict">待更新的数据。</param>
+        /// <param name="userAccount">当前登录用户账号。</param>
+        /// <returns>是否更新成功。</returns>
+        public async Task<bool> ExecuteMicroUpdateAsync(SysMicroAppConfig config, long id, Dictionary<string, object> dataDict, string userAccount)
         {
-            var tableName = BuildDynamicTableName(config.ModelName);
+            var tableName = BuildMicroTableName(config.ModelName);
             var setParts = new List<string>();
             var paramValues = new List<object?>();
+            var scopedAccounts = await GetScopedAccountsAsync(config.DataScope, userAccount);
+            var dataScopeContext = BuildDataScopeContext(scopedAccounts);
 
             foreach (var kvp in dataDict)
             {
@@ -595,12 +646,12 @@ namespace DTSoft.AppService.DynamicApp
                 paramValues.Add(ConvertToBasicType(kvp.Value));
             }
 
-            setParts.Add($"{_provider.QuoteColumnName(DynamicTableSystemColumns.UpdatedTime)} = {_provider.GetParameterPlaceholder(DynamicTableSystemColumns.UpdatedTime)}");
+            setParts.Add($"{_provider.QuoteColumnName(MicroTableSystemColumns.UpdatedTime)} = {_provider.GetParameterPlaceholder(MicroTableSystemColumns.UpdatedTime)}");
             paramValues.Add(TimeUtil.CstDateTime);
-            setParts.Add($"{_provider.QuoteColumnName(DynamicTableSystemColumns.UpdatedBy)} = {_provider.GetParameterPlaceholder(DynamicTableSystemColumns.UpdatedBy)}");
+            setParts.Add($"{_provider.QuoteColumnName(MicroTableSystemColumns.UpdatedBy)} = {_provider.GetParameterPlaceholder(MicroTableSystemColumns.UpdatedBy)}");
             paramValues.Add(userAccount ?? string.Empty);
 
-            var sql = _provider.BuildUpdateSql(tableName, string.Join(", ", setParts));
+            var sql = _provider.BuildUpdateSql(tableName, string.Join(", ", setParts)) + dataScopeContext.WhereSuffix;
 
             var connection = _context.Database.GetDbConnection();
             if (connection.State != ConnectionState.Open)
@@ -623,9 +674,10 @@ namespace DTSoft.AppService.DynamicApp
                 }
 
                 var idParam = command.CreateParameter();
-                idParam.ParameterName = _provider.GetParameterName(DynamicTableSystemColumns.Id);
+                idParam.ParameterName = _provider.GetParameterName(MicroTableSystemColumns.Id);
                 idParam.Value = id;
                 command.Parameters.Add(idParam);
+                AddParameters(command, dataScopeContext.Parameters);
 
                 var rowsAffected = await command.ExecuteNonQueryAsync();
                 return rowsAffected > 0;
@@ -639,9 +691,18 @@ namespace DTSoft.AppService.DynamicApp
             }
         }
 
-        public async Task<bool> ExecuteDynamicDeleteAsync(SysDynamicAppConfig config, long id)
+        /// <summary>
+        /// 根据数据 ID 删除微应用表数据，并应用数据范围过滤。
+        /// </summary>
+        /// <param name="config">微应用配置。</param>
+        /// <param name="id">数据 ID。</param>
+        /// <param name="userAccount">当前登录用户账号。</param>
+        /// <returns>是否删除成功。</returns>
+        public async Task<bool> ExecuteMicroDeleteAsync(SysMicroAppConfig config, long id, string userAccount)
         {
-            var tableName = BuildDynamicTableName(config.ModelName);
+            var tableName = BuildMicroTableName(config.ModelName);
+            var scopedAccounts = await GetScopedAccountsAsync(config.DataScope, userAccount);
+            var dataScopeContext = BuildDataScopeContext(scopedAccounts);
             var connection = _context.Database.GetDbConnection();
             if (connection.State != ConnectionState.Open)
             {
@@ -650,14 +711,15 @@ namespace DTSoft.AppService.DynamicApp
 
             try
             {
-                var sql = _provider.BuildDeleteByIdSql(tableName);
+                var sql = _provider.BuildDeleteByIdSql(tableName) + dataScopeContext.WhereSuffix;
                 await using var command = connection.CreateCommand();
                 command.CommandText = sql;
 
                 var param = command.CreateParameter();
-                param.ParameterName = _provider.GetParameterName(DynamicTableSystemColumns.Id);
+                param.ParameterName = _provider.GetParameterName(MicroTableSystemColumns.Id);
                 param.Value = id;
                 command.Parameters.Add(param);
+                AddParameters(command, dataScopeContext.Parameters);
 
                 var rowsAffected = await command.ExecuteNonQueryAsync();
                 return rowsAffected > 0;
@@ -669,6 +731,315 @@ namespace DTSoft.AppService.DynamicApp
                     await connection.CloseAsync();
                 }
             }
+        }
+
+        /// <summary>
+        /// 批量删除微应用表数据，并应用数据范围过滤。
+        /// </summary>
+        /// <param name="config">微应用配置。</param>
+        /// <param name="ids">待删除的数据 ID 列表。</param>
+        /// <param name="userAccount">当前登录用户账号。</param>
+        /// <returns>实际删除的数据条数。</returns>
+        public async Task<int> ExecuteMicroBatchDeleteAsync(SysMicroAppConfig config, List<long> ids, string userAccount)
+        {
+            if (ids == null || ids.Count == 0)
+            {
+                return 0;
+            }
+
+            var tableName = BuildMicroTableName(config.ModelName);
+            var scopedAccounts = await GetScopedAccountsAsync(config.DataScope, userAccount);
+            var dataScopeContext = BuildDataScopeContext(scopedAccounts);
+            var normalizedIds = ids.Distinct().ToList();
+            var idParameterNames = normalizedIds
+                .Select((_, index) => _provider.GetParameterPlaceholder($"id{index}"))
+                .ToList();
+
+            var connection = _context.Database.GetDbConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                await connection.OpenAsync();
+            }
+
+            try
+            {
+                var sql = _provider.BuildDeleteByIdsSql(tableName, idParameterNames) + dataScopeContext.WhereSuffix;
+                await using var command = connection.CreateCommand();
+                command.CommandText = sql;
+
+                for (var i = 0; i < normalizedIds.Count; i++)
+                {
+                    var param = command.CreateParameter();
+                    param.ParameterName = _provider.GetParameterName($"id{i}");
+                    param.Value = normalizedIds[i];
+                    command.Parameters.Add(param);
+                }
+
+                AddParameters(command, dataScopeContext.Parameters);
+                return await command.ExecuteNonQueryAsync();
+            }
+            finally
+            {
+                if (connection.State == ConnectionState.Open)
+                {
+                    await connection.CloseAsync();
+                }
+            }
+        }
+
+        /// <summary>
+        /// 构建微应用查询的 WHERE 条件和参数集合。
+        /// </summary>
+        /// <param name="fields">字段配置列表。</param>
+        /// <param name="keyword">全局关键词。</param>
+        /// <param name="filters">字段级查询条件。</param>
+        /// <param name="scopedAccounts">数据范围允许访问的创建人账号列表，null 表示不过滤。</param>
+        /// <returns>查询上下文。</returns>
+        private QueryContext BuildQueryContext(
+            List<FieldConfig> fields,
+            string keyword,
+            List<MicroQueryFilter>? filters,
+            List<string>? scopedAccounts)
+        {
+            var whereParts = new List<string> { "1=1" };
+            var parameters = new List<QueryParameter>();
+            var searchableFields = fields
+                .Where(f => !string.IsNullOrWhiteSpace(f.FieldName))
+                .GroupBy(f => f.FieldName, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+            if (!string.IsNullOrWhiteSpace(keyword))
+            {
+                var textFields = fields
+                    .Where(f => !string.IsNullOrWhiteSpace(f.FieldName) &&
+                                IsValidColumnName(f.FieldName) &&
+                                f.FieldType is "string" or "textarea" or "select" or "radio")
+                    .ToList();
+
+                if (textFields.Count > 0)
+                {
+                    var keywordParamName = "keyword";
+                    var conditions = textFields
+                        .Select(f => $"{_provider.QuoteColumnName(f.FieldName)} LIKE {_provider.GetParameterPlaceholder(keywordParamName)}");
+                    whereParts.Add($"({string.Join(" OR ", conditions)})");
+                    parameters.Add(new QueryParameter(keywordParamName, $"%{keyword.Trim()}%"));
+                }
+            }
+
+            if (filters != null)
+            {
+                var filterIndex = 0;
+                foreach (var filter in filters)
+                {
+                    if (string.IsNullOrWhiteSpace(filter.FieldName) ||
+                        !searchableFields.TryGetValue(filter.FieldName, out var field) ||
+                        !IsValidColumnName(field.FieldName))
+                    {
+                        continue;
+                    }
+
+                    var mode = NormalizeQueryMode(filter.Mode ?? field.QueryMode);
+                    if (mode == "none")
+                    {
+                        continue;
+                    }
+
+                    var columnName = _provider.QuoteColumnName(field.FieldName);
+                    if (mode == "range")
+                    {
+                        var startValue = ConvertToBasicType(filter.StartValue);
+                        var endValue = ConvertToBasicType(filter.EndValue);
+
+                        if (!IsEmptyQueryValue(startValue))
+                        {
+                            var paramName = $"filter{filterIndex++}";
+                            whereParts.Add($"{columnName} >= {_provider.GetParameterPlaceholder(paramName)}");
+                            parameters.Add(new QueryParameter(paramName, startValue));
+                        }
+
+                        if (!IsEmptyQueryValue(endValue))
+                        {
+                            var paramName = $"filter{filterIndex++}";
+                            whereParts.Add($"{columnName} <= {_provider.GetParameterPlaceholder(paramName)}");
+                            parameters.Add(new QueryParameter(paramName, endValue));
+                        }
+
+                        continue;
+                    }
+
+                    var value = ConvertToBasicType(filter.Value);
+                    if (IsEmptyQueryValue(value))
+                    {
+                        continue;
+                    }
+
+                    var valueParamName = $"filter{filterIndex++}";
+                    var operatorText = mode == "fuzzy" ? "LIKE" : "=";
+                    whereParts.Add($"{columnName} {operatorText} {_provider.GetParameterPlaceholder(valueParamName)}");
+                    parameters.Add(new QueryParameter(valueParamName, mode == "fuzzy" ? $"%{value}%" : value));
+                }
+            }
+
+            var dataScopeContext = BuildDataScopeContext(scopedAccounts);
+            parameters.AddRange(dataScopeContext.Parameters);
+
+            return new QueryContext($" WHERE {string.Join(" AND ", whereParts)}{dataScopeContext.WhereSuffix}", parameters);
+        }
+
+        /// <summary>
+        /// 构建数据范围过滤 SQL 片段和参数集合。
+        /// </summary>
+        /// <param name="scopedAccounts">允许访问的创建人账号列表，null 表示全部数据。</param>
+        /// <returns>数据范围过滤上下文。</returns>
+        private DataScopeContext BuildDataScopeContext(List<string>? scopedAccounts)
+        {
+            if (scopedAccounts == null)
+            {
+                return new DataScopeContext(string.Empty, new List<QueryParameter>());
+            }
+
+            if (scopedAccounts.Count == 0)
+            {
+                return new DataScopeContext(" AND 1=0", new List<QueryParameter>());
+            }
+
+            var parameters = new List<QueryParameter>();
+            var placeholders = new List<string>();
+            for (var i = 0; i < scopedAccounts.Count; i++)
+            {
+                var paramName = $"scopeUser{i}";
+                placeholders.Add(_provider.GetParameterPlaceholder(paramName));
+                parameters.Add(new QueryParameter(paramName, scopedAccounts[i]));
+            }
+
+            var whereSuffix =
+                $" AND {_provider.QuoteColumnName(MicroTableSystemColumns.CreatedBy)} IN ({string.Join(", ", placeholders)})";
+            return new DataScopeContext(whereSuffix, parameters);
+        }
+
+        /// <summary>
+        /// 根据数据权限范围解析当前用户可访问的创建人账号集合。
+        /// </summary>
+        /// <param name="dataScope">数据权限范围。</param>
+        /// <param name="userAccount">当前登录用户账号。</param>
+        /// <returns>null 表示全部数据；空列表表示无可访问数据。</returns>
+        private async Task<List<string>?> GetScopedAccountsAsync(string? dataScope, string userAccount)
+        {
+            var normalizedScope = dataScope?.Trim().ToLowerInvariant();
+            if (normalizedScope is null or "" or "all")
+            {
+                return null;
+            }
+
+            if (string.IsNullOrWhiteSpace(userAccount))
+            {
+                return new List<string>();
+            }
+
+            if (normalizedScope == "self")
+            {
+                return new List<string> { userAccount };
+            }
+
+            if (normalizedScope != "department")
+            {
+                return null;
+            }
+
+            var ouIds = await _context.SysUserMember!
+                .AsNoTracking()
+                .Where(m => m.UserAcc == userAccount)
+                .Select(m => m.OuId)
+                .Distinct()
+                .ToListAsync();
+
+            if (ouIds.Count == 0)
+            {
+                return new List<string> { userAccount };
+            }
+
+            var departmentAccounts = await _context.SysUserMember!
+                .AsNoTracking()
+                .Where(m => ouIds.Contains(m.OuId) && m.UserAcc != null)
+                .Select(m => m.UserAcc!)
+                .Distinct()
+                .ToListAsync();
+
+            if (!departmentAccounts.Contains(userAccount, StringComparer.OrdinalIgnoreCase))
+            {
+                departmentAccounts.Add(userAccount);
+            }
+
+            return departmentAccounts;
+        }
+
+        /// <summary>
+        /// 构建经过字段配置校验的排序 SQL 片段。
+        /// </summary>
+        /// <param name="fields">字段配置列表。</param>
+        /// <param name="sortField">排序字段。</param>
+        /// <param name="sortOrder">排序方向。</param>
+        /// <returns>ORDER BY SQL 片段。</returns>
+        private string BuildOrderByClause(List<FieldConfig> fields, string? sortField, string? sortOrder)
+        {
+            var field = fields.FirstOrDefault(f =>
+                f.Sortable &&
+                !string.IsNullOrWhiteSpace(f.FieldName) &&
+                f.FieldName.Equals(sortField, StringComparison.OrdinalIgnoreCase));
+
+            var orderColumn = field != null && IsValidColumnName(field.FieldName)
+                ? field.FieldName
+                : MicroTableSystemColumns.Id;
+
+            var direction = sortOrder?.Trim().ToLowerInvariant() is "desc" or "descending"
+                ? "DESC"
+                : "ASC";
+
+            return $"ORDER BY {_provider.QuoteColumnName(orderColumn)} {direction}";
+        }
+
+        /// <summary>
+        /// 向数据库命令追加查询参数。
+        /// </summary>
+        /// <param name="command">数据库命令。</param>
+        /// <param name="parameters">参数集合。</param>
+        private void AddParameters(DbCommand command, List<QueryParameter> parameters)
+        {
+            foreach (var item in parameters)
+            {
+                var param = command.CreateParameter();
+                param.ParameterName = _provider.GetParameterName(item.Name);
+                param.Value = item.Value ?? DBNull.Value;
+                command.Parameters.Add(param);
+            }
+        }
+
+        /// <summary>
+        /// 标准化字段查询模式，非法值返回 none。
+        /// </summary>
+        /// <param name="mode">原始查询模式。</param>
+        /// <returns>标准化后的查询模式。</returns>
+        private static string NormalizeQueryMode(string? mode)
+        {
+            return mode?.Trim().ToLowerInvariant() switch
+            {
+                "exact" => "exact",
+                "fuzzy" => "fuzzy",
+                "range" => "range",
+                _ => "none"
+            };
+        }
+
+        /// <summary>
+        /// 判断查询值是否为空。
+        /// </summary>
+        /// <param name="value">待判断的查询值。</param>
+        /// <returns>是否为空查询值。</returns>
+        private static bool IsEmptyQueryValue(object? value)
+        {
+            return value == null ||
+                   value == DBNull.Value ||
+                   value is string text && string.IsNullOrWhiteSpace(text);
         }
 
         private bool IsValidTableName(string tableName)
@@ -762,11 +1133,11 @@ namespace DTSoft.AppService.DynamicApp
 
         private static bool IsSystemColumn(string columnName)
         {
-            return columnName.Equals(DynamicTableSystemColumns.Id, StringComparison.OrdinalIgnoreCase) ||
-                   columnName.Equals(DynamicTableSystemColumns.CreatedTime, StringComparison.OrdinalIgnoreCase) ||
-                   columnName.Equals(DynamicTableSystemColumns.UpdatedTime, StringComparison.OrdinalIgnoreCase) ||
-                   columnName.Equals(DynamicTableSystemColumns.CreatedBy, StringComparison.OrdinalIgnoreCase) ||
-                   columnName.Equals(DynamicTableSystemColumns.UpdatedBy, StringComparison.OrdinalIgnoreCase);
+            return columnName.Equals(MicroTableSystemColumns.Id, StringComparison.OrdinalIgnoreCase) ||
+                   columnName.Equals(MicroTableSystemColumns.CreatedTime, StringComparison.OrdinalIgnoreCase) ||
+                   columnName.Equals(MicroTableSystemColumns.UpdatedTime, StringComparison.OrdinalIgnoreCase) ||
+                   columnName.Equals(MicroTableSystemColumns.CreatedBy, StringComparison.OrdinalIgnoreCase) ||
+                   columnName.Equals(MicroTableSystemColumns.UpdatedBy, StringComparison.OrdinalIgnoreCase);
         }
 
         private class ColumnInfo
@@ -774,5 +1145,11 @@ namespace DTSoft.AppService.DynamicApp
             public required string Name { get; set; }
             public bool IsNullable { get; init; }
         }
+
+        private record QueryParameter(string Name, object? Value);
+
+        private record QueryContext(string WhereClause, List<QueryParameter> Parameters);
+
+        private record DataScopeContext(string WhereSuffix, List<QueryParameter> Parameters);
     }
 }

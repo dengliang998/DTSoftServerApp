@@ -1,4 +1,4 @@
-using DTSoft.Models.Parameter.DynamicApp;
+using DTSoft.Models.Parameter.MicroApp;
 using MiniExcelLibs;
 using System.Data;
 
@@ -161,20 +161,20 @@ namespace DTSoft.Core.Common.Excel
             // 创建字段标识到显示名称的映射，并过滤掉系统字段
             var fieldMapping = fields
                 .Where(f =>
-                    f.FieldName != DynamicTableSystemColumns.Id &&
-                    f.FieldName != DynamicTableSystemColumns.CreatedTime &&
-                    f.FieldName != DynamicTableSystemColumns.UpdatedTime &&
-                    f.FieldName != DynamicTableSystemColumns.CreatedBy &&
-                    f.FieldName != DynamicTableSystemColumns.UpdatedBy)
+                    f.FieldName != MicroTableSystemColumns.Id &&
+                    f.FieldName != MicroTableSystemColumns.CreatedTime &&
+                    f.FieldName != MicroTableSystemColumns.UpdatedTime &&
+                    f.FieldName != MicroTableSystemColumns.CreatedBy &&
+                    f.FieldName != MicroTableSystemColumns.UpdatedBy)
                 .ToDictionary(f => f.FieldName, f => f.Label);
 
             // 添加列 - 使用字段显示名称作为列名
             foreach (var field in fields.Where(f =>
-                         f.FieldName != DynamicTableSystemColumns.Id &&
-                         f.FieldName != DynamicTableSystemColumns.CreatedTime &&
-                         f.FieldName != DynamicTableSystemColumns.UpdatedTime &&
-                         f.FieldName != DynamicTableSystemColumns.CreatedBy &&
-                         f.FieldName != DynamicTableSystemColumns.UpdatedBy))
+                         f.FieldName != MicroTableSystemColumns.Id &&
+                         f.FieldName != MicroTableSystemColumns.CreatedTime &&
+                         f.FieldName != MicroTableSystemColumns.UpdatedTime &&
+                         f.FieldName != MicroTableSystemColumns.CreatedBy &&
+                         f.FieldName != MicroTableSystemColumns.UpdatedBy))
             {
                 // 获取第一个数据行中该字段的值类型作为列类型
                 var sampleValue = data.FirstOrDefault()?[field.FieldName];
@@ -189,11 +189,11 @@ namespace DTSoft.Core.Common.Excel
                 foreach (var kvp in dict)
                 {
                     // 检查字段是否为系统字段，如果是则跳过
-                    if (kvp.Key.Equals(DynamicTableSystemColumns.Id, StringComparison.OrdinalIgnoreCase) ||
-                        kvp.Key.Equals(DynamicTableSystemColumns.CreatedTime, StringComparison.OrdinalIgnoreCase) ||
-                        kvp.Key.Equals(DynamicTableSystemColumns.UpdatedTime, StringComparison.OrdinalIgnoreCase) ||
-                        kvp.Key.Equals(DynamicTableSystemColumns.CreatedBy, StringComparison.OrdinalIgnoreCase) ||
-                        kvp.Key.Equals(DynamicTableSystemColumns.UpdatedBy, StringComparison.OrdinalIgnoreCase))
+                    if (kvp.Key.Equals(MicroTableSystemColumns.Id, StringComparison.OrdinalIgnoreCase) ||
+                        kvp.Key.Equals(MicroTableSystemColumns.CreatedTime, StringComparison.OrdinalIgnoreCase) ||
+                        kvp.Key.Equals(MicroTableSystemColumns.UpdatedTime, StringComparison.OrdinalIgnoreCase) ||
+                        kvp.Key.Equals(MicroTableSystemColumns.CreatedBy, StringComparison.OrdinalIgnoreCase) ||
+                        kvp.Key.Equals(MicroTableSystemColumns.UpdatedBy, StringComparison.OrdinalIgnoreCase))
                         continue;
 
                     // 使用字段显示名称作为列名

@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 using DTSoft.Core.DbContexts;
-using DTSoft.Models.Parameter.DynamicApp;
+using DTSoft.Models.Parameter.MicroApp;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -110,11 +110,11 @@ namespace DTSoft.Core.DbProviders
         public string BuildCreateTableSql(string tableName, List<FieldConfig> fields)
         {
             var sql = $"CREATE TABLE {QuoteTableName(tableName)} (";
-            sql += $"{QuoteColumnName(DynamicTableSystemColumns.Id)} NUMBER(19) PRIMARY KEY, ";
-            sql += $"{QuoteColumnName(DynamicTableSystemColumns.CreatedTime)} TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, ";
-            sql += $"{QuoteColumnName(DynamicTableSystemColumns.UpdatedTime)} TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, ";
-            sql += $"{QuoteColumnName(DynamicTableSystemColumns.CreatedBy)} NVARCHAR2(50) DEFAULT '' NOT NULL, ";
-            sql += $"{QuoteColumnName(DynamicTableSystemColumns.UpdatedBy)} NVARCHAR2(50) DEFAULT '' NOT NULL, ";
+            sql += $"{QuoteColumnName(MicroTableSystemColumns.Id)} NUMBER(19) PRIMARY KEY, ";
+            sql += $"{QuoteColumnName(MicroTableSystemColumns.CreatedTime)} TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, ";
+            sql += $"{QuoteColumnName(MicroTableSystemColumns.UpdatedTime)} TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, ";
+            sql += $"{QuoteColumnName(MicroTableSystemColumns.CreatedBy)} NVARCHAR2(50) DEFAULT '' NOT NULL, ";
+            sql += $"{QuoteColumnName(MicroTableSystemColumns.UpdatedBy)} NVARCHAR2(50) DEFAULT '' NOT NULL, ";
 
             foreach (var field in fields)
             {
@@ -183,39 +183,42 @@ namespace DTSoft.Core.DbProviders
             var allFields = fields.Select(f => QuoteColumnName(f.FieldName)).ToList();
             if (!allFields.Any())
             {
-                return $"{QuoteColumnName(DynamicTableSystemColumns.Id)}, {QuoteColumnName(DynamicTableSystemColumns.CreatedTime)}, {QuoteColumnName(DynamicTableSystemColumns.UpdatedTime)}, {QuoteColumnName(DynamicTableSystemColumns.CreatedBy)}, {QuoteColumnName(DynamicTableSystemColumns.UpdatedBy)}";
+                return $"{QuoteColumnName(MicroTableSystemColumns.Id)}, {QuoteColumnName(MicroTableSystemColumns.CreatedTime)}, {QuoteColumnName(MicroTableSystemColumns.UpdatedTime)}, {QuoteColumnName(MicroTableSystemColumns.CreatedBy)}, {QuoteColumnName(MicroTableSystemColumns.UpdatedBy)}";
             }
-            allFields.Add(QuoteColumnName(DynamicTableSystemColumns.Id));
-            allFields.Add(QuoteColumnName(DynamicTableSystemColumns.CreatedTime));
-            allFields.Add(QuoteColumnName(DynamicTableSystemColumns.UpdatedTime));
-            allFields.Add(QuoteColumnName(DynamicTableSystemColumns.CreatedBy));
-            allFields.Add(QuoteColumnName(DynamicTableSystemColumns.UpdatedBy));
+            allFields.Add(QuoteColumnName(MicroTableSystemColumns.Id));
+            allFields.Add(QuoteColumnName(MicroTableSystemColumns.CreatedTime));
+            allFields.Add(QuoteColumnName(MicroTableSystemColumns.UpdatedTime));
+            allFields.Add(QuoteColumnName(MicroTableSystemColumns.CreatedBy));
+            allFields.Add(QuoteColumnName(MicroTableSystemColumns.UpdatedBy));
             return string.Join(", ", allFields);
         }
 
-        public string BuildSelectWithPagingSql(string tableName, List<FieldConfig> fields, string keyword, int pageNum, int pageSize)
+        public string BuildSelectWithPagingSql(string tableName, List<FieldConfig> fields, string whereClause, string orderByClause, int pageNum, int pageSize)
         {
             var selectFields = GetSelectableFields(fields);
-            var where = " WHERE 1=1" + BuildSearchCondition(fields, keyword);
             var startRow = (pageNum - 1) * pageSize + 1;
             var endRow = pageNum * pageSize;
-            return $"SELECT * FROM ( SELECT inner_query.*, ROWNUM rn FROM ( SELECT {selectFields} FROM {QuoteTableName(tableName)}{where} ORDER BY {QuoteColumnName(DynamicTableSystemColumns.Id)} ASC ) inner_query WHERE ROWNUM <= {endRow} ) WHERE rn >= {startRow}";
+            return $"SELECT * FROM ( SELECT inner_query.*, ROWNUM rn FROM ( SELECT {selectFields} FROM {QuoteTableName(tableName)}{whereClause} {orderByClause} ) inner_query WHERE ROWNUM <= {endRow} ) WHERE rn >= {startRow}";
         }
 
-        public string BuildCountSql(string tableName, List<FieldConfig> fields, string keyword)
+        public string BuildCountSql(string tableName, string whereClause)
         {
-            var where = " WHERE 1=1" + BuildSearchCondition(fields, keyword);
-            return $"SELECT COUNT(*) FROM {QuoteTableName(tableName)}{where}";
+            return $"SELECT COUNT(*) FROM {QuoteTableName(tableName)}{whereClause}";
         }
 
         public string BuildSelectByIdSql(string tableName)
         {
-            return $"SELECT * FROM {QuoteTableName(tableName)} WHERE {QuoteColumnName(DynamicTableSystemColumns.Id)} = {GetParameterPlaceholder(DynamicTableSystemColumns.Id)}";
+            return $"SELECT * FROM {QuoteTableName(tableName)} WHERE {QuoteColumnName(MicroTableSystemColumns.Id)} = {GetParameterPlaceholder(MicroTableSystemColumns.Id)}";
         }
 
         public string BuildDeleteByIdSql(string tableName)
         {
-            return $"DELETE FROM {QuoteTableName(tableName)} WHERE {QuoteColumnName(DynamicTableSystemColumns.Id)} = {GetParameterPlaceholder(DynamicTableSystemColumns.Id)}";
+            return $"DELETE FROM {QuoteTableName(tableName)} WHERE {QuoteColumnName(MicroTableSystemColumns.Id)} = {GetParameterPlaceholder(MicroTableSystemColumns.Id)}";
+        }
+
+        public string BuildDeleteByIdsSql(string tableName, List<string> parameterNames)
+        {
+            return $"DELETE FROM {QuoteTableName(tableName)} WHERE {QuoteColumnName(MicroTableSystemColumns.Id)} IN ({string.Join(", ", parameterNames)})";
         }
 
         public string BuildInsertSql(string tableName, List<string> columns, List<string> parameterNames)
@@ -227,12 +230,12 @@ namespace DTSoft.Core.DbProviders
 
         public string BuildGetNewIdSql(string tableName)
         {
-            return $"SELECT MAX({QuoteColumnName(DynamicTableSystemColumns.Id)}) FROM {QuoteTableName(tableName)}";
+            return $"SELECT MAX({QuoteColumnName(MicroTableSystemColumns.Id)}) FROM {QuoteTableName(tableName)}";
         }
 
         public string BuildUpdateSql(string tableName, string setClause)
         {
-            return $"UPDATE {QuoteTableName(tableName)} SET {setClause} WHERE {QuoteColumnName(DynamicTableSystemColumns.Id)} = {GetParameterPlaceholder(DynamicTableSystemColumns.Id)}";
+            return $"UPDATE {QuoteTableName(tableName)} SET {setClause} WHERE {QuoteColumnName(MicroTableSystemColumns.Id)} = {GetParameterPlaceholder(MicroTableSystemColumns.Id)}";
         }
 
         public void ConfigureDbContext(IServiceCollection services, string connectionString)

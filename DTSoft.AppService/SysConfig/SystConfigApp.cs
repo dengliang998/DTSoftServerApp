@@ -309,7 +309,7 @@ public class SysConfigApp(SysDbContext dbContext, ConfigHelper configHelper, Att
         
         // 三级菜单
         var systemLog = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemManagement.ItemId, MenuName = "系统日志", MenuPath = "log/logaction", Icon = "List", MType = 0 };
-        var appConfig = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemManagement.ItemId, MenuName = "应用配置", MenuPath = "DynamicApp/DynamicApiConfig", Icon = "Coin", MType = 0 };
+        var appConfig = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemManagement.ItemId, MenuName = "微应用配置", MenuPath = "MicroApp/MicroApiConfig", Icon = "Coin", MType = 0 };
         var systemSettingsPage = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemManagement.ItemId, MenuName = "系统设置", MenuPath = "common/systemsettings", Icon = "Setting", MType = 0 };
         var menuMaintenance = new SysMenu { ItemId = YitterHelper.NewId(), Pid = menuManagement.ItemId, MenuName = "菜单维护", MenuPath = "common/menus", Icon = "Menu", MType = 0 };
         var apiKeyManagement = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemIntegration.ItemId, MenuName = "第三方集成", MenuPath = "apikey/management", Icon = "Key", MType = 0 };

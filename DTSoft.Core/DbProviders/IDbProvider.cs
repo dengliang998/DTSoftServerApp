@@ -1,4 +1,4 @@
-using DTSoft.Models.Parameter.DynamicApp;
+using DTSoft.Models.Parameter.MicroApp;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DTSoft.Core.DbProviders
@@ -27,13 +27,15 @@ namespace DTSoft.Core.DbProviders
 
         string BuildAlterColumnSql(string tableName, FieldConfig field);
 
-        string BuildSelectWithPagingSql(string tableName, List<FieldConfig> fields, string keyword, int pageNum, int pageSize);
+        string BuildSelectWithPagingSql(string tableName, List<FieldConfig> fields, string whereClause, string orderByClause, int pageNum, int pageSize);
 
-        string BuildCountSql(string tableName, List<FieldConfig> fields, string keyword);
+        string BuildCountSql(string tableName, string whereClause);
 
         string BuildSelectByIdSql(string tableName);
 
         string BuildDeleteByIdSql(string tableName);
+
+        string BuildDeleteByIdsSql(string tableName, List<string> parameterNames);
 
         string BuildInsertSql(string tableName, List<string> columns, List<string> parameterNames);
 

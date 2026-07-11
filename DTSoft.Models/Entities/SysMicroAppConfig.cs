@@ -4,10 +4,10 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace DTSoft.Models.Entities
 {
     /// <summary>
-    /// CRUD配置表
+    /// 微应用配置表
     /// </summary>
-    [Table("sys_dynamicappconfig")]
-    public class SysDynamicAppConfig
+    [Table("sys_microappconfig")]
+    public class SysMicroAppConfig
     {
         /// <summary>
         /// 配置 ID
@@ -78,6 +78,13 @@ namespace DTSoft.Models.Entities
         /// </summary>
         [Column("SupportExport")]
         public bool SupportExport { get; set; }
+
+        /// <summary>
+        /// 数据权限范围，all-全部数据，self-本人数据，department-部门数据
+        /// </summary>
+        [Column("DataScope")]
+        [StringLength(20)]
+        public string? DataScope { get; set; }
 
         /// <summary>
         /// 接口前缀

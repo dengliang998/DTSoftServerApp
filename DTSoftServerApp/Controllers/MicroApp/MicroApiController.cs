@@ -1,14 +1,15 @@
-using DTSoft.AppService.DynamicApp;
+using DTSoft.AppService.MicroApp;
 using DTSoft.Core.Common;
 using DTSoft.Core.Common.Excel;
 using DTSoft.Core.DbContexts;
 using DTSoft.Core.Interfaces;
 using DTSoft.Models.Entities;
-using DTSoft.Models.Parameter.DynamicApp;
+using DTSoft.Models.Parameter.MicroApp;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
-namespace DTSoftServerApp.Controllers.DynamicApp
+namespace DTSoftServerApp.Controllers.MicroApp
 {
     /// <summary>
     /// 微应用数据接口控制器
@@ -16,30 +17,30 @@ namespace DTSoftServerApp.Controllers.DynamicApp
     [Authorize]
     [ApiController]
     [Tags("微应用数据")]
-    public class DynamicApiController : ControllerBase
+    public class MicroApiController : ControllerBase
     {
         private readonly SysDbContext _context;
-        private readonly DynamicTableService _dynamicTableService;
+        private readonly MicroTableService _microTableService;
         private readonly IDtSoftCache _dtSoftCache;
 
-        public DynamicApiController(SysDbContext context, DynamicTableService dynamicTableService, IDtSoftCache dtSoftCache)
+        public MicroApiController(SysDbContext context, MicroTableService microTableService, IDtSoftCache dtSoftCache)
         {
             _context = context;
-            _dynamicTableService = dynamicTableService;
+            _microTableService = microTableService;
             _dtSoftCache = dtSoftCache;
         }
 
-        private async Task<SysDynamicAppConfig?> GetActiveConfigAsync(string modelName)
+        private async Task<SysMicroAppConfig?> GetActiveConfigAsync(string modelName)
         {
             if (string.IsNullOrWhiteSpace(modelName)) return null;
 
-            var cacheKey = DynamicConfigCacheKeys.ActiveConfig(modelName);
+            var cacheKey = MicroConfigCacheKeys.ActiveConfig(modelName);
             var cachedJson = await _dtSoftCache.GetAsync<string>(cacheKey);
             if (!string.IsNullOrWhiteSpace(cachedJson))
             {
                 try
                 {
-                    var cached = JsonSerializer.Deserialize<SysDynamicAppConfig>(cachedJson);
+                    var cached = JsonSerializer.Deserialize<SysMicroAppConfig>(cachedJson);
                     if (cached is { Status: 1 } &&
                         cached.ModelName.Equals(modelName, StringComparison.OrdinalIgnoreCase))
                     {
@@ -52,7 +53,7 @@ namespace DTSoftServerApp.Controllers.DynamicApp
                 }
             }
 
-            var config = await _context.Set<SysDynamicAppConfig>()
+            var config = await _context.Set<SysMicroAppConfig>()
                 .AsNoTracking()
                 .FirstOrDefaultAsync(c => c.ModelName == modelName && c.Status == 1);
 
@@ -65,15 +66,25 @@ namespace DTSoftServerApp.Controllers.DynamicApp
         }
 
         /// <summary>
-        /// 根据配置动态生成微应用查询列表接口
+        /// 查询微应用数据列表
         /// </summary>
         /// <param name="modelName">模型名称</param>
         /// <param name="pageNum">页码</param>
         /// <param name="pageSize">每页条数</param>
         /// <param name="keyword">搜索关键词</param>
+        /// <param name="filters">字段级查询条件 JSON</param>
+        /// <param name="sortField">排序字段</param>
+        /// <param name="sortOrder">排序方向</param>
         /// <returns>数据列表</returns>
         [HttpGet("/api/{modelName}")]
-        public async Task<IActionResult> GetList(string modelName, [FromQuery] int pageNum, [FromQuery] int pageSize, [FromQuery] string keyword = "")
+        public async Task<IActionResult> GetList(
+            string modelName,
+            [FromQuery] int pageNum,
+            [FromQuery] int pageSize,
+            [FromQuery] string keyword = "",
+            [FromQuery] string filters = "",
+            [FromQuery] string sortField = "",
+            [FromQuery] string sortOrder = "")
         {
             try
             {
@@ -90,10 +101,18 @@ namespace DTSoftServerApp.Controllers.DynamicApp
                 }
 
                 // 确保数据表存在
-                await _dynamicTableService.EnsureTableExistsAsync(config);
+                await _microTableService.EnsureTableExistsAsync(config);
 
                 // 构建动态查询
-                var result = await _dynamicTableService.ExecuteDynamicQueryAsync(config, pageNum, pageSize, keyword);
+                var result = await _microTableService.ExecuteMicroQueryAsync(
+                    config,
+                    pageNum,
+                    pageSize,
+                    keyword,
+                    ParseQueryFilters(filters),
+                    sortField,
+                    sortOrder,
+                    DtSoftHelper.GetLoginUserAccount(User));
 
                 return Ok(new
                 {
@@ -113,7 +132,7 @@ namespace DTSoftServerApp.Controllers.DynamicApp
         }
 
         /// <summary>
-        /// 根据配置动态生成微应用详情接口
+        /// 查询微应用数据详情
         /// </summary>
         /// <param name="modelName">模型名称</param>
         /// <param name="id">数据ID</param>
@@ -136,10 +155,13 @@ namespace DTSoftServerApp.Controllers.DynamicApp
                 }
 
                 // 确保数据表存在
-                await _dynamicTableService.EnsureTableExistsAsync(config);
+                await _microTableService.EnsureTableExistsAsync(config);
 
                 // 构建动态查询详情
-                var result = await _dynamicTableService.ExecuteDynamicDetailQueryAsync(config, id);
+                var result = await _microTableService.ExecuteMicroDetailQueryAsync(
+                    config,
+                    id,
+                    DtSoftHelper.GetLoginUserAccount(User));
 
                 return Ok(new
                 {
@@ -159,7 +181,7 @@ namespace DTSoftServerApp.Controllers.DynamicApp
         }
 
         /// <summary>
-        /// 根据配置动态生成微应用新增数据接口
+        /// 新增微应用数据
         /// </summary>
         /// <param name="modelName">模型名称</param>
         /// <param name="data">新增数据</param>
@@ -191,13 +213,22 @@ namespace DTSoftServerApp.Controllers.DynamicApp
                 }
 
                 // 确保数据表存在
-                await _dynamicTableService.EnsureTableExistsAsync(config);
+                await _microTableService.EnsureTableExistsAsync(config);
 
                 // 将数据转换为字典，并处理JsonElement类型
                 var dataDict = ConvertObjectToDictionary(data);
+                var validationErrors = ValidateMicroData(config, dataDict);
+                if (validationErrors.Count > 0)
+                {
+                    return Ok(new
+                    {
+                        success = false,
+                        msg = string.Join("；", validationErrors)
+                    });
+                }
 
-                // 执行动态插入
-                var result = await _dynamicTableService.ExecuteDynamicInsertAsync(
+                // 执行微应用数据插入
+                var result = await _microTableService.ExecuteMicroInsertAsync(
                     config,
                     dataDict,
                     DtSoftHelper.GetLoginUserAccount(User));
@@ -220,7 +251,7 @@ namespace DTSoftServerApp.Controllers.DynamicApp
         }
 
         /// <summary>
-        /// 根据配置动态生成微应用更新数据接口
+        /// 更新微应用数据
         /// </summary>
         /// <param name="modelName">模型名称</param>
         /// <param name="id">数据ID</param>
@@ -253,13 +284,22 @@ namespace DTSoftServerApp.Controllers.DynamicApp
                 }
 
                 // 确保数据表存在
-                await _dynamicTableService.EnsureTableExistsAsync(config);
+                await _microTableService.EnsureTableExistsAsync(config);
 
                 // 将数据转换为字典，并处理JsonElement类型
                 var dataDict = ConvertObjectToDictionary(data);
+                var validationErrors = ValidateMicroData(config, dataDict);
+                if (validationErrors.Count > 0)
+                {
+                    return Ok(new
+                    {
+                        success = false,
+                        msg = string.Join("；", validationErrors)
+                    });
+                }
 
-                // 执行动态更新
-                var result = await _dynamicTableService.ExecuteDynamicUpdateAsync(
+                // 执行微应用数据更新
+                var result = await _microTableService.ExecuteMicroUpdateAsync(
                     config,
                     id,
                     dataDict,
@@ -291,7 +331,7 @@ namespace DTSoftServerApp.Controllers.DynamicApp
         }
 
         /// <summary>
-        /// 根据配置动态生成微应用删除数据接口
+        /// 删除微应用数据
         /// </summary>
         /// <param name="modelName">模型名称</param>
         /// <param name="id">数据ID</param>
@@ -323,10 +363,13 @@ namespace DTSoftServerApp.Controllers.DynamicApp
                 }
 
                 // 确保数据表存在
-                await _dynamicTableService.EnsureTableExistsAsync(config);
+                await _microTableService.EnsureTableExistsAsync(config);
 
-                // 执行动态删除
-                var result = await _dynamicTableService.ExecuteDynamicDeleteAsync(config, id);
+                // 执行微应用数据删除
+                var result = await _microTableService.ExecuteMicroDeleteAsync(
+                    config,
+                    id,
+                    DtSoftHelper.GetLoginUserAccount(User));
 
                 if (!result)
                 {
@@ -354,13 +397,85 @@ namespace DTSoftServerApp.Controllers.DynamicApp
         }
 
         /// <summary>
-        /// 根据配置动态生成微应用导出 Excel 接口
+        /// 批量删除微应用数据
+        /// </summary>
+        /// <param name="modelName">模型名称</param>
+        /// <param name="parameter">批量删除参数</param>
+        /// <returns>删除结果</returns>
+        [HttpPost("/api/{modelName}/batch-delete")]
+        public async Task<IActionResult> BatchDelete(string modelName, [FromBody] MicroBatchDeleteParameter parameter)
+        {
+            try
+            {
+                var config = await GetActiveConfigAsync(modelName);
+
+                if (config == null)
+                {
+                    return Ok(new
+                    {
+                        success = false,
+                        msg = "未找到对应的微应用配置"
+                    });
+                }
+
+                if (!config.SupportDelete || !config.SupportBatchDelete)
+                {
+                    return Ok(new
+                    {
+                        success = false,
+                        msg = "该配置不支持批量删除操作"
+                    });
+                }
+
+                if (parameter.Ids.Count == 0)
+                {
+                    return Ok(new
+                    {
+                        success = false,
+                        msg = "请选择要删除的数据"
+                    });
+                }
+
+                await _microTableService.EnsureTableExistsAsync(config);
+
+                var rowsAffected = await _microTableService.ExecuteMicroBatchDeleteAsync(
+                    config,
+                    parameter.Ids,
+                    DtSoftHelper.GetLoginUserAccount(User));
+
+                return Ok(new
+                {
+                    success = true,
+                    msg = $"删除成功，共删除 {rowsAffected} 条数据",
+                    data = new { deleted = rowsAffected }
+                });
+            }
+            catch (Exception ex)
+            {
+                return Ok(new
+                {
+                    success = false,
+                    msg = $"批量删除失败: {ex.Message}"
+                });
+            }
+        }
+
+        /// <summary>
+        /// 导出微应用数据 Excel
         /// </summary>
         /// <param name="modelName">模型名称</param>
         /// <param name="keyword">搜索关键词</param>
+        /// <param name="filters">字段级查询条件 JSON</param>
+        /// <param name="sortField">排序字段</param>
+        /// <param name="sortOrder">排序方向</param>
         /// <returns>Excel 文件</returns>
         [HttpGet("/api/{modelName}/export")]
-        public async Task<IActionResult> ExportExcel(string modelName, [FromQuery] string keyword = "")
+        public async Task<IActionResult> ExportExcel(
+            string modelName,
+            [FromQuery] string keyword = "",
+            [FromQuery] string filters = "",
+            [FromQuery] string sortField = "",
+            [FromQuery] string sortOrder = "")
         {
             try
             {
@@ -372,7 +487,7 @@ namespace DTSoftServerApp.Controllers.DynamicApp
                     return Ok(new
                     {
                         success = false,
-                        msg = "未找到对应的 App 配置"
+                        msg = "未找到对应的微应用配置"
                     });
                 }
         
@@ -387,7 +502,7 @@ namespace DTSoftServerApp.Controllers.DynamicApp
                 }
         
                 // 确保数据表存在
-                await _dynamicTableService.EnsureTableExistsAsync(config);
+                await _microTableService.EnsureTableExistsAsync(config);
         
                 // 获取字段配置
                 var fields = string.IsNullOrEmpty(config.Fields) ?
@@ -395,7 +510,15 @@ namespace DTSoftServerApp.Controllers.DynamicApp
                     JsonSerializer.Deserialize<List<FieldConfig>>(config.Fields);
         
                 // 获取所有数据（不分页）
-                var result = await _dynamicTableService.ExecuteDynamicQueryAsync(config, 1, int.MaxValue, keyword);
+                var result = await _microTableService.ExecuteMicroQueryAsync(
+                    config,
+                    1,
+                    int.MaxValue,
+                    keyword,
+                    ParseQueryFilters(filters),
+                    sortField,
+                    sortOrder,
+                    DtSoftHelper.GetLoginUserAccount(User));
         
                 // 提取数据列表
                 var resultType = result.GetType();
@@ -466,7 +589,117 @@ namespace DTSoftServerApp.Controllers.DynamicApp
         }
 
         /// <summary>
-        /// 根据配置动态生成微应用 Excel 数据导入接口
+        /// 解析字段级查询条件 JSON，解析失败时返回空集合。
+        /// </summary>
+        /// <param name="filters">字段级查询条件 JSON。</param>
+        /// <returns>字段级查询条件集合。</returns>
+        private static List<MicroQueryFilter> ParseQueryFilters(string filters)
+        {
+            if (string.IsNullOrWhiteSpace(filters))
+            {
+                return new List<MicroQueryFilter>();
+            }
+
+            try
+            {
+                return JsonSerializer.Deserialize<List<MicroQueryFilter>>(
+                           filters,
+                           new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ??
+                       new List<MicroQueryFilter>();
+            }
+            catch
+            {
+                return new List<MicroQueryFilter>();
+            }
+        }
+
+        /// <summary>
+        /// 根据微应用字段配置校验提交的数据。
+        /// </summary>
+        /// <param name="config">微应用配置。</param>
+        /// <param name="dataDict">待校验的数据字典。</param>
+        /// <returns>校验错误列表。</returns>
+        private List<string> ValidateMicroData(SysMicroAppConfig config, Dictionary<string, object> dataDict)
+        {
+            var errors = new List<string>();
+            var fields = string.IsNullOrWhiteSpace(config.Fields)
+                ? new List<FieldConfig>()
+                : JsonSerializer.Deserialize<List<FieldConfig>>(config.Fields) ?? new List<FieldConfig>();
+
+            foreach (var field in fields)
+            {
+                if (string.IsNullOrWhiteSpace(field.FieldName))
+                {
+                    continue;
+                }
+
+                dataDict.TryGetValue(field.FieldName, out var rawValue);
+                var value = rawValue is JsonElement jsonElement ? ConvertJsonValue(jsonElement) : rawValue;
+                var textValue = value?.ToString();
+
+                if (field.Required && string.IsNullOrWhiteSpace(textValue))
+                {
+                    errors.Add($"{field.Label}不能为空");
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(textValue))
+                {
+                    continue;
+                }
+
+                if (field.MinLength.HasValue && textValue.Length < field.MinLength.Value)
+                {
+                    errors.Add($"{field.Label}不能少于{field.MinLength.Value}个字符");
+                }
+
+                if (field.MaxLength.HasValue && textValue.Length > field.MaxLength.Value)
+                {
+                    errors.Add($"{field.Label}不能超过{field.MaxLength.Value}个字符");
+                }
+
+                if (field.FieldType == "number" && decimal.TryParse(textValue, out var numberValue))
+                {
+                    if (field.MinValue.HasValue && numberValue < field.MinValue.Value)
+                    {
+                        errors.Add($"{field.Label}不能小于{field.MinValue.Value}");
+                    }
+
+                    if (field.MaxValue.HasValue && numberValue > field.MaxValue.Value)
+                    {
+                        errors.Add($"{field.Label}不能大于{field.MaxValue.Value}");
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(field.Pattern) && !IsRegexMatch(textValue, field.Pattern))
+                {
+                    errors.Add($"{field.Label}格式不正确");
+                }
+            }
+
+            return errors;
+        }
+
+        /// <summary>
+        /// 执行正则匹配，正则表达式非法时返回 false。
+        /// </summary>
+        /// <param name="value">待校验文本。</param>
+        /// <param name="pattern">正则表达式。</param>
+        /// <returns>是否匹配。</returns>
+        private static bool IsRegexMatch(string value, string pattern)
+        {
+            try
+            {
+                return Regex.IsMatch(value, pattern);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 导入微应用 Excel 数据
         /// </summary>
         /// <param name="modelName">模型名称</param>
         /// <param name="file">上传的Excel文件</param>
@@ -522,7 +755,7 @@ namespace DTSoftServerApp.Controllers.DynamicApp
                 }
 
                 // 确保数据表存在
-                await _dynamicTableService.EnsureTableExistsAsync(config);
+                await _microTableService.EnsureTableExistsAsync(config);
 
                 // 获取字段配置
                 var fields = string.IsNullOrEmpty(config.Fields) ?
@@ -541,7 +774,7 @@ namespace DTSoftServerApp.Controllers.DynamicApp
                 try
                 {
                     // 使用批量插入方法，一次性插入所有数据
-                    successCount = await _dynamicTableService.ExecuteDynamicBatchInsertAsync(
+                    successCount = await _microTableService.ExecuteMicroBatchInsertAsync(
                         config,
                         importedData,
                         DtSoftHelper.GetLoginUserAccount(User));

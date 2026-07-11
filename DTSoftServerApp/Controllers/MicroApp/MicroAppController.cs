@@ -1,17 +1,17 @@
-using DTSoft.AppService.DynamicApp;
-using DTSoft.Models.Parameter.DynamicApp;
+using DTSoft.AppService.MicroApp;
+using DTSoft.Models.Parameter.MicroApp;
 
-namespace DTSoftServerApp.Controllers.DynamicApp
+namespace DTSoftServerApp.Controllers.MicroApp
 {
     /// <summary>
     /// 微应用接口
     /// </summary>
-    /// <param name="dynamicConfigApp"></param>
+    /// <param name="microConfigApp"></param>
     [Authorize]
     [ApiController]
     [Tags("微应用")]
     [Route("api/[controller]")]
-    public class DynamicAppController(DynamicConfigApp dynamicConfigApp) : ControllerBase
+    public class MicroAppController(MicroConfigApp microConfigApp) : ControllerBase
     {
 
         /// <summary>
@@ -23,13 +23,13 @@ namespace DTSoftServerApp.Controllers.DynamicApp
         /// <param name="pageNum">页码</param>
         /// <param name="pageSize">每页条数</param>
         /// <returns>微应用配置列表</returns>
-        [HttpGet("GetDynamicAppConfigs")]
-        public async Task<IActionResult> GetDynamicAppConfigs([FromQuery] string? keyword, [FromQuery] string? modelName,
+        [HttpGet("GetMicroAppConfigs")]
+        public async Task<IActionResult> GetMicroAppConfigs([FromQuery] string? keyword, [FromQuery] string? modelName,
             [FromQuery] string? microAppPath, [FromQuery] int? pageNum = 1, [FromQuery] int? pageSize = 10)
         {
             try
             {
-                var parameter = new CrudConfigQueryParameter
+                var parameter = new MicroConfigQueryParameter
                 {
                     Keyword = keyword,
                     ModelName = modelName,
@@ -38,7 +38,7 @@ namespace DTSoftServerApp.Controllers.DynamicApp
                     PageSize = pageSize
                 };
 
-                var result = await dynamicConfigApp.GetDynamicAppConfigs(parameter);
+                var result = await microConfigApp.GetMicroAppConfigs(parameter);
 
                 return Ok(new { success = true, msg = "获取成功", data = result.Data, total = result.Total });
             }
@@ -53,8 +53,8 @@ namespace DTSoftServerApp.Controllers.DynamicApp
         /// </summary>
         /// <param name="parameter">添加参数</param>
         /// <returns>添加的微应用配置</returns>
-        [HttpPost("AddDynamicAppConfig")]
-        public async Task<IActionResult> AddDynamicAppConfig([FromBody] CrudConfigAddParameter parameter)
+        [HttpPost("AddMicroAppConfig")]
+        public async Task<IActionResult> AddMicroAppConfig([FromBody] MicroConfigAddParameter parameter)
         {
             try
             {
@@ -69,7 +69,7 @@ namespace DTSoftServerApp.Controllers.DynamicApp
                     });
                 }
 
-                var result =await dynamicConfigApp.AddDynamicAppConfig(parameter);
+                var result = await microConfigApp.AddMicroAppConfig(parameter);
 
                 return Ok(new
                 {
@@ -93,8 +93,8 @@ namespace DTSoftServerApp.Controllers.DynamicApp
         /// </summary>
         /// <param name="parameter">更新参数</param>
         /// <returns>更新结果</returns>
-        [HttpPost("UpdateDynamicAppConfig")]
-        public async Task<IActionResult> UpdateDynamicAppConfig([FromBody] CrudConfigUpdateParameter parameter)
+        [HttpPost("UpdateMicroAppConfig")]
+        public async Task<IActionResult> UpdateMicroAppConfig([FromBody] MicroConfigUpdateParameter parameter)
         {
             try
             {
@@ -109,7 +109,7 @@ namespace DTSoftServerApp.Controllers.DynamicApp
                     });
                 }
 
-                var result =await dynamicConfigApp.UpdateDynamicAppConfig(parameter);
+                var result = await microConfigApp.UpdateMicroAppConfig(parameter);
 
                 return Ok(new
                 {
@@ -133,8 +133,8 @@ namespace DTSoftServerApp.Controllers.DynamicApp
         /// </summary>
         /// <param name="parameter">删除参数</param>
         /// <returns>删除结果</returns>
-        [HttpPost("DeleteDynamicAppConfig")]
-        public async Task<IActionResult> DeleteDynamicAppConfig([FromBody] CrudConfigDeleteParameter parameter)
+        [HttpPost("DeleteMicroAppConfig")]
+        public async Task<IActionResult> DeleteMicroAppConfig([FromBody] MicroConfigDeleteParameter parameter)
         {
             try
             {
@@ -149,7 +149,7 @@ namespace DTSoftServerApp.Controllers.DynamicApp
                     });
                 }
 
-                await dynamicConfigApp.DeleteDynamicAppConfig(parameter);
+                await microConfigApp.DeleteMicroAppConfig(parameter);
 
                 return Ok(new
                 {
