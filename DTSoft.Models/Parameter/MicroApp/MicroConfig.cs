@@ -377,6 +377,11 @@ namespace DTSoft.Models.Parameter.MicroApp
         public int? MaxLength { get; set; }
 
         /// <summary>
+        /// 数据库存储长度，仅用于短文本字段
+        /// </summary>
+        public int? ColumnLength { get; set; }
+
+        /// <summary>
         /// 最小数值
         /// </summary>
         public decimal? MinValue { get; set; }

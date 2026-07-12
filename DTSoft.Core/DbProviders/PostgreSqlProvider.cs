@@ -75,7 +75,8 @@ namespace DTSoft.Core.DbProviders
             return $@"
                 SELECT
                     COLUMN_NAME AS ColumnName,
-                    IS_NULLABLE AS IsNullable
+                    IS_NULLABLE AS IsNullable,
+                    CHARACTER_MAXIMUM_LENGTH AS MaxLength
                 FROM information_schema.columns
                 WHERE table_schema = current_schema() AND table_name = '{EscapeStringValue(tableName)}'
             ";
@@ -93,6 +94,26 @@ namespace DTSoft.Core.DbProviders
             _ => "VARCHAR(500)",
         };
 
+        private static int NormalizeColumnLength(FieldConfig field, int defaultLength, int? existingMaxLength = null)
+        {
+            var length = field.ColumnLength ?? defaultLength;
+            if (existingMaxLength.HasValue && existingMaxLength.Value > 0)
+            {
+                length = Math.Max(length, existingMaxLength.Value);
+            }
+
+            return Math.Clamp(length, 1, 10485760);
+        }
+
+        private string MapFieldTypeToDbType(FieldConfig field, int? existingMaxLength = null) => field.FieldType switch
+        {
+            "string" => $"VARCHAR({NormalizeColumnLength(field, 500, existingMaxLength)})",
+            "select" => $"VARCHAR({NormalizeColumnLength(field, 200, existingMaxLength)})",
+            "radio" => $"VARCHAR({NormalizeColumnLength(field, 500, existingMaxLength)})",
+            "checkbox" => $"VARCHAR({NormalizeColumnLength(field, 500, existingMaxLength)})",
+            _ => MapFieldTypeToDbType(field.FieldType),
+        };
+
         public string BuildCreateTableSql(string tableName, List<FieldConfig> fields)
         {
             var sql = $"CREATE TABLE {QuoteTableName(tableName)} (";
@@ -104,7 +125,7 @@ namespace DTSoft.Core.DbProviders
 
             foreach (var field in fields)
             {
-                var columnType = MapFieldTypeToDbType(field.FieldType);
+                var columnType = MapFieldTypeToDbType(field);
                 sql += $"{QuoteColumnName(field.FieldName)} {columnType}";
                 sql += field.Required && field.FieldType != "boolean" ? " NOT NULL" : " NULL";
 
@@ -126,7 +147,7 @@ namespace DTSoft.Core.DbProviders
 
         public string BuildAddColumnSql(string tableName, FieldConfig field)
         {
-            var columnType = MapFieldTypeToDbType(field.FieldType);
+            var columnType = MapFieldTypeToDbType(field);
             var sql = $"ALTER TABLE {QuoteTableName(tableName)} ADD COLUMN {QuoteColumnName(field.FieldName)} {columnType}";
             sql += field.Required && field.FieldType != "boolean" ? " NOT NULL" : " NULL";
 
@@ -141,9 +162,11 @@ namespace DTSoft.Core.DbProviders
             return sql;
         }
 
-        public string BuildAlterColumnSql(string tableName, FieldConfig field)
+        public string BuildAlterColumnSql(string tableName, FieldConfig field, int? existingMaxLength = null)
         {
-            var sql = $"ALTER TABLE {QuoteTableName(tableName)} ALTER COLUMN {QuoteColumnName(field.FieldName)} ";
+            var columnName = QuoteColumnName(field.FieldName);
+            var columnType = MapFieldTypeToDbType(field, existingMaxLength);
+            var sql = $"ALTER TABLE {QuoteTableName(tableName)} ALTER COLUMN {columnName} TYPE {columnType}, ALTER COLUMN {columnName} ";
             sql += field.Required && field.FieldType != "boolean" ? "SET NOT NULL" : "DROP NOT NULL";
             return sql;
         }

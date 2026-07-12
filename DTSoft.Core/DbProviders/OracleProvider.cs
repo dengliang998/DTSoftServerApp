@@ -86,7 +86,8 @@ namespace DTSoft.Core.DbProviders
             return $@"
                 SELECT
                     COLUMN_NAME AS ColumnName,
-                    NULLABLE AS IsNullable
+                    NULLABLE AS IsNullable,
+                    CHAR_LENGTH AS MaxLength
                 FROM user_tab_columns
                 WHERE table_name = '{EscapeStringValue(tableName.ToUpper())}'
             ";
@@ -104,6 +105,26 @@ namespace DTSoft.Core.DbProviders
             _ => "NVARCHAR2(500)",
         };
 
+        private static int NormalizeColumnLength(FieldConfig field, int defaultLength, int? existingMaxLength = null)
+        {
+            var length = field.ColumnLength ?? defaultLength;
+            if (existingMaxLength.HasValue && existingMaxLength.Value > 0)
+            {
+                length = Math.Max(length, existingMaxLength.Value);
+            }
+
+            return Math.Clamp(length, 1, 2000);
+        }
+
+        private string MapFieldTypeToDbType(FieldConfig field, int? existingMaxLength = null) => field.FieldType switch
+        {
+            "string" => $"NVARCHAR2({NormalizeColumnLength(field, 500, existingMaxLength)})",
+            "select" => $"NVARCHAR2({NormalizeColumnLength(field, 200, existingMaxLength)})",
+            "radio" => $"NVARCHAR2({NormalizeColumnLength(field, 500, existingMaxLength)})",
+            "checkbox" => $"NVARCHAR2({NormalizeColumnLength(field, 500, existingMaxLength)})",
+            _ => MapFieldTypeToDbType(field.FieldType),
+        };
+
         /// <summary>
         /// 构建 CREATE TABLE 语句
         /// 注意：DDL 语句无法使用参数化，依赖表名和列名的严格验证来保证安全
@@ -119,7 +140,7 @@ namespace DTSoft.Core.DbProviders
 
             foreach (var field in fields)
             {
-                var columnType = MapFieldTypeToDbType(field.FieldType);
+                var columnType = MapFieldTypeToDbType(field);
                 sql += $"{QuoteColumnName(field.FieldName)} {columnType}";
 
                 if (field.Required && field.FieldType != "boolean")
@@ -141,7 +162,7 @@ namespace DTSoft.Core.DbProviders
         /// </summary>
         public string BuildAddColumnSql(string tableName, FieldConfig field)
         {
-            var columnType = MapFieldTypeToDbType(field.FieldType);
+            var columnType = MapFieldTypeToDbType(field);
             var sql = $"ALTER TABLE {QuoteTableName(tableName)} ADD {QuoteColumnName(field.FieldName)} {columnType}";
 
             if (field.Required && field.FieldType != "boolean")
@@ -156,9 +177,9 @@ namespace DTSoft.Core.DbProviders
         /// 构建 ALTER COLUMN 语句
         /// 注意：DDL 语句无法使用参数化，依赖表名和列名的严格验证来保证安全
         /// </summary>
-        public string BuildAlterColumnSql(string tableName, FieldConfig field)
+        public string BuildAlterColumnSql(string tableName, FieldConfig field, int? existingMaxLength = null)
         {
-            var columnType = MapFieldTypeToDbType(field.FieldType);
+            var columnType = MapFieldTypeToDbType(field, existingMaxLength);
             var sql = $"ALTER TABLE {QuoteTableName(tableName)} MODIFY ({QuoteColumnName(field.FieldName)} {columnType}";
 
             if (field.Required && field.FieldType != "boolean")

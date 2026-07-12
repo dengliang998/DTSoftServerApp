@@ -25,7 +25,7 @@ namespace DTSoft.Core.DbProviders
 
         string BuildAddColumnSql(string tableName, FieldConfig field);
 
-        string BuildAlterColumnSql(string tableName, FieldConfig field);
+        string BuildAlterColumnSql(string tableName, FieldConfig field, int? existingMaxLength = null);
 
         string BuildSelectWithPagingSql(string tableName, List<FieldConfig> fields, string whereClause, string orderByClause, int pageNum, int pageSize);
 

@@ -164,25 +164,30 @@ namespace DTSoft.AppService.MicroApp
                 }
             }
 
-            var existingColumns = await GetTableColumnsWithInfoAsync(tableName);
-            foreach (var field in fields)
-            {
-                var columnName = field.FieldName;
-                if (!existingColumns.TryGetValue(columnName, out var existingColumnInfo))
+                var existingColumns = await GetTableColumnsWithInfoAsync(tableName);
+                foreach (var field in fields)
+                {
+                    var columnName = field.FieldName;
+                    if (!existingColumns.TryGetValue(columnName, out var existingColumnInfo))
                 {
                     var addColumnSql = _provider.BuildAddColumnSql(tableName, field);
                     await _context.Database.ExecuteSqlRawAsync(addColumnSql);
-                }
-                else
-                {
-                    if (existingColumnInfo.IsNullable && field.Required || !existingColumnInfo.IsNullable && !field.Required)
+                    }
+                    else
                     {
-                        var alterColumnSql = _provider.BuildAlterColumnSql(tableName, field);
-                        await _context.Database.ExecuteSqlRawAsync(alterColumnSql);
+                        var nullabilityChanged =
+                            existingColumnInfo.IsNullable && field.Required ||
+                            !existingColumnInfo.IsNullable && !field.Required;
+                        var shouldExpandLength = ShouldExpandColumnLength(field, existingColumnInfo.MaxLength);
+
+                        if (nullabilityChanged || shouldExpandLength)
+                        {
+                            var alterColumnSql = _provider.BuildAlterColumnSql(tableName, field, existingColumnInfo.MaxLength);
+                            await _context.Database.ExecuteSqlRawAsync(alterColumnSql);
+                        }
                     }
                 }
             }
-        }
 
         private async Task<Dictionary<string, ColumnInfo>> GetTableColumnsWithInfoAsync(string tableName)
         {
@@ -212,10 +217,17 @@ namespace DTSoft.AppService.MicroApp
 
                     if (!string.IsNullOrEmpty(columnName))
                     {
+                        int? maxLength = null;
+                        if (reader["MaxLength"] != DBNull.Value && int.TryParse(reader["MaxLength"].ToString(), out var parsedMaxLength))
+                        {
+                            maxLength = parsedMaxLength;
+                        }
+
                         columns[columnName] = new ColumnInfo
                         {
                             Name = columnName,
-                            IsNullable = isNullable
+                            IsNullable = isNullable,
+                            MaxLength = maxLength
                         };
                     }
                 }
@@ -1140,10 +1152,37 @@ namespace DTSoft.AppService.MicroApp
                    columnName.Equals(MicroTableSystemColumns.UpdatedBy, StringComparison.OrdinalIgnoreCase);
         }
 
+        private static bool SupportsColumnLength(FieldConfig field)
+        {
+            return field.FieldType is "string" or "select" or "radio" or "checkbox";
+        }
+
+        private static bool ShouldExpandColumnLength(FieldConfig field, int? existingMaxLength)
+        {
+            if (!SupportsColumnLength(field))
+            {
+                return false;
+            }
+
+            var desiredLength = field.ColumnLength ?? field.FieldType switch
+            {
+                "select" => 200,
+                _ => 500
+            };
+
+            if (existingMaxLength.HasValue && existingMaxLength.Value > 0)
+            {
+                return desiredLength > existingMaxLength.Value;
+            }
+
+            return true;
+        }
+
         private class ColumnInfo
         {
             public required string Name { get; set; }
             public bool IsNullable { get; init; }
+            public int? MaxLength { get; init; }
         }
 
         private record QueryParameter(string Name, object? Value);
