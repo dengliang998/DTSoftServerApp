@@ -12,3 +12,5 @@ DTSoft.AppService/bin
 DTSoft.Core/bin
 DTSoft.Models/bin
 DTSoftServerApp/bin
+DTSoft.Plugin.Abstractions/obj
+DTSoft.Plugin.Abstractions/bin

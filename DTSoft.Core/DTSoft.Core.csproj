@@ -10,6 +10,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\DTSoft.Models\DTSoft.Models.csproj" />
+      <ProjectReference Include="..\DTSoft.Plugin.Abstractions\DTSoft.Plugin.Abstractions.csproj" />
     </ItemGroup>
 
     <ItemGroup>

@@ -16,6 +16,7 @@
 
   <ItemGroup>
       <ProjectReference Include="..\DTSoft.AppService\DTSoft.AppService.csproj" />
+      <ProjectReference Include="..\DTSoft.Plugin.Abstractions\DTSoft.Plugin.Abstractions.csproj" />
   </ItemGroup>
 
     <ItemGroup>

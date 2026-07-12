@@ -1,5 +1,6 @@
 using DTSoft.Core.DbContexts;
 using DTSoft.Core.Interfaces;
+using DTSoft.Plugin.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -10,7 +11,7 @@ namespace DTSoft.Core.Common;
 /// <summary>
 /// DTSoft系统类
 /// </summary>
-public sealed class DtSoftHelper(SysDbContext dbContext, UserCacheHelper userCacheHelper, IDtSoftCache dtSoftCache)
+public sealed class DtSoftHelper(SysDbContext dbContext, UserCacheHelper userCacheHelper, IDtSoftCache dtSoftCache) : IDtSoftHelper
 {
     private static string IsAdminCacheKey(string userAcc) => $"Auth:IsAdmin:{userAcc.Trim().ToLowerInvariant()}";
     private static string RoleNameCacheKey(long roleId) => $"Role:Name:{roleId}";

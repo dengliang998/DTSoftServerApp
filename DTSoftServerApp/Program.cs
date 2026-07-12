@@ -2,6 +2,7 @@ using DTSoft.AppService.SysConfig;
 using DTSoft.Core.Common;
 using DTSoftServerApp.Extensions;
 using DTSoftServerApp.Middleware;
+using DTSoftServerApp.Plugins;
 using DTSoftServerApp.Services;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.OpenApi;
@@ -35,7 +36,7 @@ try
         ?? builder.Configuration.GetValue<int?>(AppConfigurationKeys.Security.PasswordHashing.LegacyIterations));
 
     // 基础服务
-    builder.Services.AddControllers()
+    var mvcBuilder = builder.Services.AddControllers()
         .AddJsonOptions(options =>
         {
             // 保持 PascalCase 命名，不使用默认的 camelCase
@@ -61,6 +62,8 @@ try
     builder.Services.AddHelpers();              // Helper 工具类
     builder.Services.AddAppServices();          // App 服务
     builder.Services.AddInfrastructure(builder.Configuration); // 基础设施服务
+    var pluginLoadResult = builder.Services.AddDynamicWebApiPlugins(builder.Configuration);
+    DynamicWebApiPluginLoader.RegisterApplicationParts(mvcBuilder, pluginLoadResult);
     
     // 添加日志队列服务（单例模式，后台运行）
     builder.Services.AddSingleton<LogQueueService>();
@@ -68,6 +71,28 @@ try
     builder.Services.AddHostedService(sp => sp.GetRequiredService<LogQueueService>());
 
     var app = builder.Build();
+
+    if (pluginLoadResult.Plugins.Count > 0)
+    {
+        Log.Information("已加载动态 WebAPI 插件：{Count}", pluginLoadResult.Plugins.Count);
+        foreach (var plugin in pluginLoadResult.Plugins)
+        {
+            Log.Information(
+                "插件：{PluginName} | 程序集：{AssemblyName} | 控制器：{ControllerCount} | 模块：{ModuleCount}",
+                plugin.PluginName ?? plugin.AssemblyName,
+                plugin.AssemblyName,
+                plugin.ControllerTypes.Count,
+                plugin.ModuleTypes.Count);
+        }
+    }
+
+    foreach (var failure in pluginLoadResult.Failures)
+    {
+        Log.Warning("插件加载失败：{FilePath} | {Message} | {ExceptionType}",
+            failure.FilePath,
+            failure.Message,
+            failure.ExceptionType);
+    }
 
     // =========================================
     // 中间件管道配置

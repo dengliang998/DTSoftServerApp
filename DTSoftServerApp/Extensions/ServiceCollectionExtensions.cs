@@ -10,7 +10,9 @@ using DTSoft.AppService.User;
 using DTSoft.Core.Cache;
 using DTSoft.Core.Common;
 using DTSoft.Core.DbProviders;
+using DTSoft.Plugin.Abstractions;
 using DTSoft.Core.Interfaces;
+using DTSoft.Core.DbContexts;
 using DTSoftServerApp.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
@@ -33,6 +35,7 @@ namespace DTSoftServerApp.Extensions
         public static IServiceCollection AddHelpers(this IServiceCollection services)
         {
             services.AddScoped<DtSoftHelper>();
+            services.AddScoped<IDtSoftHelper>(sp => sp.GetRequiredService<DtSoftHelper>());
             services.AddScoped<ConfigHelper>();
             services.AddScoped<UserCacheHelper>();
 
@@ -158,6 +161,7 @@ namespace DTSoftServerApp.Extensions
             #region 数据库配置
 
             DatabaseConfigurationService.ConfigureDatabase(services, configuration);
+            services.AddScoped<IPluginDbContext>(sp => sp.GetRequiredService<SysDbContext>());
 
             #endregion
 

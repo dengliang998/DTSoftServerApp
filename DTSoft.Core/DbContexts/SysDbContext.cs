@@ -1,10 +1,14 @@
 ﻿using DTSoft.Models.Entities;
+using DTSoft.Plugin.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using System.Data.Common;
 
 namespace DTSoft.Core.DbContexts;
 
-public class SysDbContext(DbContextOptions<SysDbContext> options) : DbContext(options)
+public class SysDbContext(
+    DbContextOptions<SysDbContext> options,
+    IEnumerable<IPluginEntityModelConfiguration> pluginEntityModelConfigurations) : DbContext(options), IPluginDbContext
 {
     public virtual DbSet<SysUser> SysUser { get; set; }
     public virtual DbSet<SysAttachments>? Attachments { get; set; }
@@ -107,6 +111,11 @@ public class SysDbContext(DbContextOptions<SysDbContext> options) : DbContext(op
             .HasForeignKey(p => p.SupervisorAcc)
             .OnDelete(DeleteBehavior.Restrict);
 
+        foreach (var configuration in pluginEntityModelConfigurations)
+        {
+            configuration.Configure(modelBuilder);
+        }
+
         if (isPostgreSql)
         {
             var dateTimeConverter = new ValueConverter<DateTime, DateTime>(
@@ -142,4 +151,6 @@ public class SysDbContext(DbContextOptions<SysDbContext> options) : DbContext(op
         if (value.Kind == DateTimeKind.Utc) return DateTime.SpecifyKind(value.ToLocalTime(), DateTimeKind.Unspecified);
         return DateTime.SpecifyKind(value, DateTimeKind.Unspecified);
     }
+
+    public DbConnection GetDbConnection() => Database.GetDbConnection();
 }
