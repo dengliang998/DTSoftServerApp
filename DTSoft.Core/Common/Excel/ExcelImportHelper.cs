@@ -187,6 +187,7 @@ namespace DTSoft.Core.Common.Excel
                 case "string":
                 case "text":
                 case "textarea":
+                case "attachment":
                     return string.Empty; // 空字符串而不是null
                 case "number":
                 case "int":
@@ -225,6 +226,7 @@ namespace DTSoft.Core.Common.Excel
                 case "string":
                 case "text":
                 case "textarea":
+                case "attachment":
                     return stringValue;
                 case "number":
                 case "int":

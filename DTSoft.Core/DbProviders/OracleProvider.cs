@@ -100,6 +100,7 @@ namespace DTSoft.Core.DbProviders
             "boolean" => "NUMBER(1)",
             "textarea" => "NCLOB",
             "select" => "NVARCHAR2(200)",
+            "attachment" => "NCLOB",
             _ => "NVARCHAR2(500)",
         };
 

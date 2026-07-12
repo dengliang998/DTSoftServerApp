@@ -100,6 +100,7 @@ namespace DTSoft.Core.DbProviders
             "boolean" => "BIT",
             "textarea" => "NTEXT",
             "select" => "NVARCHAR(200)",
+            "attachment" => "NVARCHAR(MAX)",
             _ => "NVARCHAR(500)",
         };
 
@@ -124,7 +125,7 @@ namespace DTSoft.Core.DbProviders
 
                 if (!string.IsNullOrEmpty(field.DefaultValue))
                 {
-                    var value = field.FieldType is "string" or "textarea" or "datetime" 
+                    var value = field.FieldType is "string" or "textarea" or "datetime" or "attachment"
                         ? $"'{EscapeStringValue(field.DefaultValue)}'" 
                         : field.DefaultValue;
                     sql += $" DEFAULT {value}";
@@ -150,7 +151,7 @@ namespace DTSoft.Core.DbProviders
 
             if (!string.IsNullOrEmpty(field.DefaultValue))
             {
-                var value = field.FieldType is "string" or "textarea" or "datetime" 
+                var value = field.FieldType is "string" or "textarea" or "datetime" or "attachment"
                     ? $"'{EscapeStringValue(field.DefaultValue)}'" 
                     : field.DefaultValue;
                 sql += $" DEFAULT {value}";

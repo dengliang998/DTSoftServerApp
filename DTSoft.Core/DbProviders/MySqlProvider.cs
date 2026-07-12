@@ -109,6 +109,7 @@ namespace DTSoft.Core.DbProviders
             "boolean" => "TINYINT(1)",
             "textarea" => "TEXT",
             "select" => "VARCHAR(200)",
+            "attachment" => "TEXT",
             _ => "VARCHAR(500)",
         };
 
@@ -136,7 +137,7 @@ namespace DTSoft.Core.DbProviders
                 if (!string.IsNullOrEmpty(field.DefaultValue))
                 {
                     // DefaultValue 需要转义处理
-                    var value = field.FieldType is "string" or "textarea" or "datetime" 
+                    var value = field.FieldType is "string" or "textarea" or "datetime" or "attachment"
                         ? $"'{EscapeStringValue(field.DefaultValue)}'" 
                         : field.DefaultValue;
                     sql += $" DEFAULT {value}";
@@ -166,7 +167,7 @@ namespace DTSoft.Core.DbProviders
 
             if (!string.IsNullOrEmpty(field.DefaultValue))
             {
-                var value = field.FieldType is "string" or "textarea" or "datetime" 
+                var value = field.FieldType is "string" or "textarea" or "datetime" or "attachment"
                     ? $"'{EscapeStringValue(field.DefaultValue)}'" 
                     : field.DefaultValue;
                 sql += $" DEFAULT {value}";
