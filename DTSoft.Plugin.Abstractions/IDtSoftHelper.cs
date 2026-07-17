@@ -16,4 +16,6 @@ public interface IDtSoftHelper
     string GetLoginUserAccountFromJwt(string token);
 
     Task<JsonObject> CheckAccStatus(string userAcc);
+
+    Task<JsonArray> GetDictionaryItemsAsync(string dictCode);
 }

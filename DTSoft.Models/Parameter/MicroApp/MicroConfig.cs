@@ -405,6 +405,16 @@ namespace DTSoft.Models.Parameter.MicroApp
         /// 选项列表，用于select等类型字段
         /// </summary>
         public List<OptionItem>? Options { get; set; }
+
+        /// <summary>
+        /// 选项来源，manual-手动维护，dictionary-数据字典
+        /// </summary>
+        public string? OptionSource { get; set; }
+
+        /// <summary>
+        /// 字典编码，当选项来源为数据字典时使用
+        /// </summary>
+        public string? DictCode { get; set; }
     }
 
     /// <summary>

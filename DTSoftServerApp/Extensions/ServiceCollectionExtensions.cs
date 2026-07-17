@@ -1,5 +1,6 @@
 using DTSoft.AppService.Attachment;
 using DTSoft.AppService.ApiKey;
+using DTSoft.AppService.Dictionary;
 using DTSoft.AppService.Ou;
 using DTSoft.AppService.MicroApp;
 using DTSoft.AppService.Log;
@@ -59,6 +60,7 @@ namespace DTSoftServerApp.Extensions
             services.AddScoped<MicroTableService>();
             services.AddScoped<OuApp>();
             services.AddScoped<ApiKeyApp>();
+            services.AddScoped<DictionaryApp>();
 
             // 其他服务
             services.AddScoped<JwtService>();

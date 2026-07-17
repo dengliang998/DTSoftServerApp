@@ -25,6 +25,8 @@ public class SysDbContext(
     public virtual DbSet<SysUserMember>? SysUserMember { get; set; }
     public virtual DbSet<SysUserSupervisor>? SysUserSupervisor { get; set; }
     public virtual DbSet<SysApiKey>? SysApiKey { get; set; }
+    public virtual DbSet<SysDictionaryType>? SysDictionaryType { get; set; }
+    public virtual DbSet<SysDictionaryData>? SysDictionaryData { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -46,6 +48,8 @@ public class SysDbContext(
         modelBuilder.Entity<SysUserMember>().Property(p => p.ItemId).ValueGeneratedNever();
         modelBuilder.Entity<SysUserSupervisor>().Property(p => p.ItemId).ValueGeneratedNever();
         modelBuilder.Entity<SysApiKey>().Property(p => p.ItemId).ValueGeneratedNever();
+        modelBuilder.Entity<SysDictionaryType>().Property(p => p.ItemId).ValueGeneratedNever();
+        modelBuilder.Entity<SysDictionaryData>().Property(p => p.ItemId).ValueGeneratedNever();
 
         //配置外键字段长度
         modelBuilder.Entity<SysRoleMember>().Property(p => p.UserAcc).HasMaxLength(50);
@@ -55,10 +59,17 @@ public class SysDbContext(
         modelBuilder.Entity<SysApiKey>().Property(p => p.KeyName).HasMaxLength(100);
         modelBuilder.Entity<SysApiKey>().Property(p => p.SecretKey).HasMaxLength(128);
         modelBuilder.Entity<SysApiKey>().Property(p => p.CreatedBy).HasMaxLength(50);
+        modelBuilder.Entity<SysDictionaryType>().Property(p => p.DictCode).HasMaxLength(100);
+        modelBuilder.Entity<SysDictionaryType>().Property(p => p.DictName).HasMaxLength(100);
+        modelBuilder.Entity<SysDictionaryData>().Property(p => p.DictCode).HasMaxLength(100);
+        modelBuilder.Entity<SysDictionaryData>().Property(p => p.ItemLabel).HasMaxLength(100);
+        modelBuilder.Entity<SysDictionaryData>().Property(p => p.ItemValue).HasMaxLength(200);
         modelBuilder.Entity<SysMicroAppConfig>().Property(p => p.DataScope).HasMaxLength(20);
         modelBuilder.Entity<SysMicroAppConfig>().Property(p => p.FormColumns).HasDefaultValue(1);
         modelBuilder.Entity<SysMicroAppConfig>().Property(p => p.QueryColumns).HasDefaultValue(1);
         modelBuilder.Entity<SysUserSupervisor>().HasIndex(p => p.UserAcc).IsUnique();
+        modelBuilder.Entity<SysDictionaryType>().HasIndex(p => p.DictCode).IsUnique();
+        modelBuilder.Entity<SysDictionaryData>().HasIndex(p => new { p.DictCode, p.ItemValue }).IsUnique();
 
         //建立主外键关系
         //SYS_RoleMember--SYS_Role
@@ -78,6 +89,11 @@ public class SysDbContext(
             .HasOne(p => p.SysRole)
             .WithMany(b => b.SysMenuAuthority)
             .HasForeignKey(p => p.RoleID);
+
+        modelBuilder.Entity<SysDictionaryData>()
+            .HasOne(p => p.DictType)
+            .WithMany(b => b.Items)
+            .HasForeignKey(p => p.DictTypeId);
 
         //SYS_RoleMember--SYS_USER
         modelBuilder.Entity<SysRoleMember>()

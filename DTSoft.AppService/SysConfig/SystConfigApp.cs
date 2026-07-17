@@ -312,10 +312,11 @@ public class SysConfigApp(SysDbContext dbContext, ConfigHelper configHelper, Att
         var appConfig = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemManagement.ItemId, MenuName = "微应用配置", MenuPath = "MicroApp/MicroApiConfig", Icon = "Coin", MType = 0 };
         var systemSettingsPage = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemManagement.ItemId, MenuName = "系统设置", MenuPath = "common/systemsettings", Icon = "Setting", MType = 0 };
         var onlineUsers = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemManagement.ItemId, MenuName = "在线用户", MenuPath = "common/onlineusers", Icon = "User", MType = 0 };
+        var dictionaryManagement = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemManagement.ItemId, MenuName = "数据字典", MenuPath = "common/dictionaries", Icon = "Collection", MType = 0 };
         var menuMaintenance = new SysMenu { ItemId = YitterHelper.NewId(), Pid = menuManagement.ItemId, MenuName = "菜单维护", MenuPath = "common/menus", Icon = "Menu", MType = 0 };
         var apiKeyManagement = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemIntegration.ItemId, MenuName = "第三方集成", MenuPath = "apikey/management", Icon = "Key", MType = 0 };
         
-        menuList.AddRange([userManagement, userList, attachmentManagement, attachmentList, roleManagement, roleList, adminPanel, systemManagement, menuManagement, systemIntegration, apiKeyManagement, systemSettingsPage, systemLog, appConfig, onlineUsers, menuMaintenance]);
+        menuList.AddRange([userManagement, userList, attachmentManagement, attachmentList, roleManagement, roleList, adminPanel, systemManagement, menuManagement, systemIntegration, apiKeyManagement, systemSettingsPage, systemLog, appConfig, onlineUsers, dictionaryManagement, menuMaintenance]);
         
         // 批量添加菜单
         dbContext.SysMenu.AddRange(menuList);

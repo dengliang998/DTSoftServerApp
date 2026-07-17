@@ -162,4 +162,31 @@ public sealed class DtSoftHelper(SysDbContext dbContext, UserCacheHelper userCac
 
         return rv;
     }
+
+    public async Task<JsonArray> GetDictionaryItemsAsync(string dictCode)
+    {
+        if (string.IsNullOrWhiteSpace(dictCode))
+            return new JsonArray();
+
+        var normalizedCode = dictCode.Trim();
+        var items = await dbContext.SysDictionaryData!
+            .AsNoTracking()
+            .Where(item => item.DictCode == normalizedCode && item.Enabled)
+            .OrderBy(item => item.Sort)
+            .ThenBy(item => item.ItemLabel)
+            .Select(item => new
+            {
+                item.ItemLabel,
+                item.ItemValue,
+                item.TagType
+            })
+            .ToListAsync();
+
+        return new JsonArray(items.Select(item => new JsonObject
+        {
+            ["Label"] = item.ItemLabel,
+            ["Value"] = item.ItemValue,
+            ["TagType"] = item.TagType
+        }).ToArray());
+    }
 }
