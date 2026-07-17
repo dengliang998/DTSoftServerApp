@@ -139,6 +139,33 @@ public class DictionaryApp(SysDbContext dbContext, IDtSoftCache dtSoftCache)
         return Success("删除成功");
     }
 
+    public async Task<JsonObject> SortTypesAsync(DictionaryTypeSortRequest request)
+    {
+        if (request.Items == null || request.Items.Count == 0)
+            return Error("排序数据不能为空");
+
+        if (request.Items.Select(item => item.ItemId).Distinct().Count() != request.Items.Count)
+            return Error("排序数据存在重复项");
+
+        var sortMap = request.Items.ToDictionary(item => item.ItemId, item => item.Sort);
+        var itemIds = sortMap.Keys.ToList();
+        var types = await dbContext.SysDictionaryType!
+            .Where(type => itemIds.Contains(type.ItemId))
+            .ToListAsync();
+        if (types.Count != request.Items.Count)
+            return Error("排序数据已变更，请刷新后重试");
+
+        var now = TimeUtil.CstDateTime;
+        foreach (var type in types)
+        {
+            type.Sort = sortMap[type.ItemId];
+            type.UpdateTime = now;
+        }
+
+        await dbContext.SaveChangesAsync();
+        return Success("排序保存成功");
+    }
+
     public async Task<JsonObject> GetItemsAsync(DictionaryItemQuery query)
     {
         if (string.IsNullOrWhiteSpace(query.DictCode))
@@ -305,6 +332,38 @@ public class DictionaryApp(SysDbContext dbContext, IDtSoftCache dtSoftCache)
         await dbContext.SaveChangesAsync();
         dtSoftCache.RefreshCache(DictionaryItemsCacheKey(dictCode));
         return Success("删除成功");
+    }
+
+    public async Task<JsonObject> SortItemsAsync(DictionaryItemSortRequest request)
+    {
+        var normalizedCode = (request.DictCode ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(normalizedCode))
+            return Error("字典编码不能为空");
+
+        if (request.Items == null || request.Items.Count == 0)
+            return Error("排序数据不能为空");
+
+        if (request.Items.Select(item => item.ItemId).Distinct().Count() != request.Items.Count)
+            return Error("排序数据存在重复项");
+
+        var sortMap = request.Items.ToDictionary(item => item.ItemId, item => item.Sort);
+        var itemIds = sortMap.Keys.ToList();
+        var items = await dbContext.SysDictionaryData!
+            .Where(item => item.DictCode == normalizedCode && itemIds.Contains(item.ItemId))
+            .ToListAsync();
+        if (items.Count != request.Items.Count)
+            return Error("排序数据已变更，请刷新后重试");
+
+        var now = TimeUtil.CstDateTime;
+        foreach (var item in items)
+        {
+            item.Sort = sortMap[item.ItemId];
+            item.UpdateTime = now;
+        }
+
+        await dbContext.SaveChangesAsync();
+        dtSoftCache.RefreshCache(DictionaryItemsCacheKey(normalizedCode));
+        return Success("排序保存成功");
     }
 
     private static JsonObject Success(string message) => new()

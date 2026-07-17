@@ -34,6 +34,15 @@ public class DictionaryController(DictionaryApp dictionaryApp) : ControllerBase
     }
 
     [HttpPost]
+    public async Task<IActionResult> SortTypes([FromBody] DictionaryTypeSortRequest? request)
+    {
+        if (request == null)
+            return Ok(Error("参数不能为空"));
+
+        return Ok(await dictionaryApp.SortTypesAsync(request));
+    }
+
+    [HttpPost]
     public async Task<IActionResult> GetItems([FromBody] DictionaryItemQuery? query)
     {
         return Ok(await dictionaryApp.GetItemsAsync(query ?? new DictionaryItemQuery()));
@@ -61,6 +70,15 @@ public class DictionaryController(DictionaryApp dictionaryApp) : ControllerBase
             return Ok(Error("参数不能为空"));
 
         return Ok(await dictionaryApp.DeleteItemAsync(request.ItemId));
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> SortItems([FromBody] DictionaryItemSortRequest? request)
+    {
+        if (request == null)
+            return Ok(Error("参数不能为空"));
+
+        return Ok(await dictionaryApp.SortItemsAsync(request));
     }
 
     private static JsonObject Error(string message) => new()

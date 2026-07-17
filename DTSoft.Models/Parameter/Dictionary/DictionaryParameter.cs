@@ -63,3 +63,22 @@ public class DictionaryItemDto
 
     public int Sort { get; set; }
 }
+
+public class DictionarySortItem
+{
+    public long ItemId { get; set; }
+
+    public int Sort { get; set; }
+}
+
+public class DictionaryTypeSortRequest
+{
+    public List<DictionarySortItem> Items { get; set; } = [];
+}
+
+public class DictionaryItemSortRequest
+{
+    public string DictCode { get; set; } = string.Empty;
+
+    public List<DictionarySortItem> Items { get; set; } = [];
+}
