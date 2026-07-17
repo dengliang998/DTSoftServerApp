@@ -47,6 +47,16 @@ public class UserController(UserApp user) : Controller
     }
 
     /// <summary>
+    /// 获取在线用户列表
+    /// </summary>
+    /// <returns></returns>
+    [HttpPost]
+    public async Task<IActionResult> GetOnlineUsers()
+    {
+        return Ok(await user.GetOnlineUsersAsync());
+    }
+
+    /// <summary>
     /// 创建用户
     /// </summary>
     /// <param name="obj"></param>

@@ -17,6 +17,7 @@ namespace DTSoftServerApp.Controllers.Auth
         JwtService jwtService,
         SysDbContext dbContext,
         UserCacheHelper userCacheHelper,
+        OnlineUserService onlineUserService,
         CaptchaService captchaService,
         AuthEncryptionService authEncryptionService,
         ILogQueueService logQueueService) : ControllerBase
@@ -101,6 +102,7 @@ namespace DTSoftServerApp.Controllers.Auth
             if (user != null)
             {
                 var (token, expires) = jwtService.GenerateToken(username, user.Account!); // 用户ID来自数据库
+                await onlineUserService.MarkActiveAsync(user.Account);
 
                 log.Result = "登录成功";
                 logQueueService.Enqueue(log);

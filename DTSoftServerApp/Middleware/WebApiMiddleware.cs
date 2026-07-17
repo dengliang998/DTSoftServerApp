@@ -8,7 +8,10 @@ using System.Text.RegularExpressions;
 
 namespace DTSoftServerApp.Middleware
 {
-    public class WebApiMiddleware(RequestDelegate next, ILogger<WebApiMiddleware> logger, ILogQueueService logQueueService)
+    public class WebApiMiddleware(
+        RequestDelegate next,
+        ILogger<WebApiMiddleware> logger,
+        ILogQueueService logQueueService)
     {
         private const int MaxLoggedBodyBytes = 64 * 1024;
         private const int MaxLoggedFormValueLength = 4 * 1024;
@@ -19,7 +22,7 @@ namespace DTSoftServerApp.Middleware
             "(eyJ[a-zA-Z0-9_\\-]{10,}\\.[a-zA-Z0-9_\\-]{10,}\\.[a-zA-Z0-9_\\-]{10,})",
             RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-        public async Task InvokeAsync(HttpContext context, DtSoftHelper dtSoftHelper)
+        public async Task InvokeAsync(HttpContext context, DtSoftHelper dtSoftHelper, OnlineUserService onlineUserService)
         {
             // 检查是否为API请求，如果不是则跳过中间件处理
             var requestPath = context.Request.Path.HasValue ? context.Request.Path.Value : string.Empty;
@@ -69,6 +72,8 @@ namespace DTSoftServerApp.Middleware
                     await context.Response.WriteAsync(Convert.ToString(rv)!);
                     return; // 如果账号状态检查失败，直接返回，不执行后续中间件
                 }
+
+                await onlineUserService.MarkActiveAsync(userAccount);
             }
             #endregion
 

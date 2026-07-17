@@ -15,6 +15,7 @@ public class UserApp(
     SysDbContext dbContext,
     DtSoftHelper dtSoftHelper,
     ConfigHelper configHelper,
+    OnlineUserService onlineUserService,
     AttachmentApp att)
 {
     public async Task<JsonObject> GetUserInfoAsync(string userAcc)
@@ -104,6 +105,24 @@ public class UserApp(
             ["Email"] = user.Email,
             ["SupervisorAcc"] = supervisorAcc,
             ["SupervisorDisplayName"] = supervisorDisplayName
+        };
+    }
+
+    public async Task<JsonObject> GetOnlineUsersAsync()
+    {
+        var onlineUsers = await onlineUserService.GetOnlineUsersAsync();
+
+        return new JsonObject
+        {
+            ["success"] = true,
+            ["StateCode"] = 0,
+            ["Total"] = onlineUsers.Count,
+            ["data"] = new JsonArray(onlineUsers.Select(user => new JsonObject
+            {
+                ["Account"] = user.Account,
+                ["DisplayName"] = user.DisplayName,
+                ["LastActiveTime"] = user.LastActiveTime.ToString("yyyy-MM-dd HH:mm:ss")
+            }).ToArray())
         };
     }
 

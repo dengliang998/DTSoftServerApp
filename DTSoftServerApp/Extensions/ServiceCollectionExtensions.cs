@@ -38,6 +38,7 @@ namespace DTSoftServerApp.Extensions
             services.AddScoped<IDtSoftHelper>(sp => sp.GetRequiredService<DtSoftHelper>());
             services.AddScoped<ConfigHelper>();
             services.AddScoped<UserCacheHelper>();
+            services.AddScoped<OnlineUserService>();
 
             return services;
         }
