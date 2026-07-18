@@ -102,6 +102,11 @@ namespace DTSoft.Models.Parameter.MicroApp
         public bool SupportExport { get; set; }
 
         /// <summary>
+        /// 列表页是否显示子表关联数据
+        /// </summary>
+        public bool ShowSubTablesInList { get; set; } = true;
+
+        /// <summary>
         /// 数据权限范围，all-全部数据，self-本人数据，department-部门数据
         /// </summary>
         public string? DataScope { get; set; }
@@ -127,6 +132,11 @@ namespace DTSoft.Models.Parameter.MicroApp
         /// </summary>
         [Required]
         public required List<FieldConfig> Fields { get; set; }
+
+        /// <summary>
+        /// 子表配置列表
+        /// </summary>
+        public List<SubTableConfig>? SubTables { get; set; }
     }
 
     /// <summary>
@@ -202,6 +212,11 @@ namespace DTSoft.Models.Parameter.MicroApp
         public bool SupportExport { get; set; }
 
         /// <summary>
+        /// 列表页是否显示子表关联数据
+        /// </summary>
+        public bool ShowSubTablesInList { get; set; } = true;
+
+        /// <summary>
         /// 数据权限范围，all-全部数据，self-本人数据，department-部门数据
         /// </summary>
         public string? DataScope { get; set; }
@@ -227,6 +242,11 @@ namespace DTSoft.Models.Parameter.MicroApp
         /// </summary>
         [Required]
         public required List<FieldConfig> Fields { get; set; }
+
+        /// <summary>
+        /// 子表配置列表
+        /// </summary>
+        public List<SubTableConfig>? SubTables { get; set; }
     }
 
     /// <summary>
@@ -458,6 +478,76 @@ namespace DTSoft.Models.Parameter.MicroApp
     }
 
     /// <summary>
+    /// 微应用子表配置对象。
+    /// </summary>
+    public class SubTableConfig
+    {
+        /// <summary>
+        /// 子表显示名称。
+        /// </summary>
+        [Required]
+        public required string Label { get; set; }
+
+        /// <summary>
+        /// 子表标识，会用于拼接物理表名。
+        /// </summary>
+        [Required]
+        [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_]*$", ErrorMessage = "子表标识只能包含英文、数字和下划线，且以英文开头")]
+        public required string TableName { get; set; }
+
+        /// <summary>
+        /// 最小行数。
+        /// </summary>
+        public int? MinRows { get; set; }
+
+        /// <summary>
+        /// 最大行数。
+        /// </summary>
+        public int? MaxRows { get; set; }
+
+        /// <summary>
+        /// 显示顺序。
+        /// </summary>
+        public int? SortOrder { get; set; }
+
+        /// <summary>
+        /// 是否启用子表开窗带入。
+        /// </summary>
+        public bool? EnableLookup { get; set; }
+
+        /// <summary>
+        /// 子表开窗查询数据源编码。
+        /// </summary>
+        public string? LookupDataSourceCode { get; set; }
+
+        /// <summary>
+        /// 子表开窗查询参数 JSON。
+        /// </summary>
+        public string? LookupParams { get; set; }
+
+        /// <summary>
+        /// 子表开窗查询分页大小。
+        /// </summary>
+        public int? LookupPageSize { get; set; }
+
+        /// <summary>
+        /// 子表开窗查询弹窗显示列。
+        /// </summary>
+        public List<LookupColumnConfig>? LookupColumns { get; set; }
+
+        /// <summary>
+        /// 子表开窗查询字段回填映射。
+        /// </summary>
+        public List<LookupMappingConfig>? LookupMappings { get; set; }
+
+        /// <summary>
+        /// 子表字段配置列表。
+        /// </summary>
+        [Required]
+        public required List<FieldConfig> Fields { get; set; }
+    }
+
+    /// <summary>
     /// 开窗查询显示列配置。
     /// </summary>
     public class LookupColumnConfig
@@ -560,6 +650,11 @@ namespace DTSoft.Models.Parameter.MicroApp
         public bool SupportExport { get; set; }
 
         /// <summary>
+        /// 列表页是否显示子表关联数据
+        /// </summary>
+        public bool ShowSubTablesInList { get; set; } = true;
+
+        /// <summary>
         /// 数据权限范围，all-全部数据，self-本人数据，department-部门数据
         /// </summary>
         public string? DataScope { get; set; }
@@ -583,6 +678,11 @@ namespace DTSoft.Models.Parameter.MicroApp
         /// 字段配置列表
         /// </summary>
         public List<FieldConfig>? Fields { get; set; }
+
+        /// <summary>
+        /// 子表配置列表
+        /// </summary>
+        public List<SubTableConfig>? SubTables { get; set; }
 
         /// <summary>
         /// 创建时间

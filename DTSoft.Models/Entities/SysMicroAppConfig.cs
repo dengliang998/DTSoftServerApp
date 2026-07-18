@@ -80,6 +80,12 @@ namespace DTSoft.Models.Entities
         public bool SupportExport { get; set; }
 
         /// <summary>
+        /// 列表页是否显示子表关联数据
+        /// </summary>
+        [Column("ShowSubTablesInList")]
+        public bool ShowSubTablesInList { get; set; } = true;
+
+        /// <summary>
         /// 数据权限范围，all-全部数据，self-本人数据，department-部门数据
         /// </summary>
         [Column("DataScope")]
@@ -110,6 +116,12 @@ namespace DTSoft.Models.Entities
         /// </summary>
         [Column("Fields")]
         public string? Fields { get; set; }
+
+        /// <summary>
+        /// 子表配置列表(JSON格式)
+        /// </summary>
+        [Column("SubTables")]
+        public string? SubTables { get; set; }
 
         /// <summary>
         /// 创建时间

@@ -25,6 +25,9 @@ namespace DTSoft.AppService.MicroApp
         private readonly ILogger<MicroTableService> _logger;
         private readonly IMemoryCache _cache;
         private static readonly ConcurrentDictionary<long, SemaphoreSlim> EnsureLocks = new();
+        private const string MicroConfigTableName = "sys_microappconfig";
+        private const string MicroConfigSubTablesColumnName = "SubTables";
+        private const string MicroConfigShowSubTablesInListColumnName = "ShowSubTablesInList";
 
         public MicroTableService(SysDbContext context, ILogger<MicroTableService> logger, IMemoryCache cache)
         {
@@ -41,6 +44,8 @@ namespace DTSoft.AppService.MicroApp
         /// <param name="config">微应用配置。</param>
         public async Task EnsureTableExistsAsync(SysMicroAppConfig config)
         {
+            await EnsureMicroConfigSubTablesColumnAsync();
+
             var cacheKey = $"MicroTableEnsured:{config.ItemId}";
             var signature = ComputeConfigSignature(config);
             if (_cache.TryGetValue(cacheKey, out string? cachedSignature) && cachedSignature == signature)
@@ -57,6 +62,7 @@ namespace DTSoft.AppService.MicroApp
                 var fields = string.IsNullOrEmpty(config.Fields)
                     ? new List<FieldConfig>()
                     : JsonSerializer.Deserialize<List<FieldConfig>>(config.Fields)!;
+                var subTables = ParseSubTables(config.SubTables);
 
                 var tableExists = await CheckTableExistsAsync(tableName);
                 if (!tableExists)
@@ -66,6 +72,21 @@ namespace DTSoft.AppService.MicroApp
                 else
                 {
                     await UpdateMicroTableAsync(tableName, fields);
+                }
+
+                foreach (var subTable in subTables)
+                {
+                    var subTableName = BuildMicroSubTableName(config.ModelName, subTable.TableName);
+                    var subTableFields = BuildSubTableFields(subTable);
+                    var subTableExists = await CheckTableExistsAsync(subTableName);
+                    if (!subTableExists)
+                    {
+                        await CreateMicroTableAsync(subTableName, subTableFields);
+                    }
+                    else
+                    {
+                        await UpdateMicroTableAsync(subTableName, subTableFields);
+                    }
                 }
 
                 _cache.Set(cacheKey, signature, new MemoryCacheEntryOptions
@@ -82,8 +103,9 @@ namespace DTSoft.AppService.MicroApp
         private static string ComputeConfigSignature(SysMicroAppConfig config)
         {
             var fieldsJson = config.Fields ?? string.Empty;
+            var subTablesJson = config.SubTables ?? string.Empty;
             var updateTicks = config.UpdateTime.Ticks;
-            var payload = $"{config.ItemId}|{updateTicks}|{fieldsJson}";
+            var payload = $"{config.ItemId}|{updateTicks}|{fieldsJson}|{subTablesJson}";
             var hash = SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(payload));
             return Convert.ToHexString(hash);
         }
@@ -94,6 +116,49 @@ namespace DTSoft.AppService.MicroApp
                 throw new ArgumentException("ModelName cannot be empty", nameof(modelName));
 
             return $"micro_app_{modelName.Trim().ToLowerInvariant()}";
+        }
+
+        private static string BuildMicroSubTableName(string modelName, string subTableName)
+        {
+            if (string.IsNullOrWhiteSpace(subTableName))
+                throw new ArgumentException("Sub table name cannot be empty", nameof(subTableName));
+
+            return $"{BuildMicroTableName(modelName)}_{subTableName.Trim().ToLowerInvariant()}";
+        }
+
+        public async Task EnsureMicroConfigSubTablesColumnAsync()
+        {
+            var cacheKey = "MicroConfig:DynamicConfigColumnsEnsured";
+            if (_cache.TryGetValue(cacheKey, out bool ensured) && ensured)
+            {
+                return;
+            }
+
+            var tableExists = await CheckTableExistsAsync(MicroConfigTableName);
+            if (!tableExists)
+            {
+                return;
+            }
+
+            var columns = await GetTableColumnsWithInfoAsync(MicroConfigTableName);
+            if (!columns.ContainsKey(MicroConfigSubTablesColumnName))
+            {
+                var sql =
+                    $"ALTER TABLE {_provider.QuoteTableName(MicroConfigTableName)} ADD {_provider.QuoteColumnName(MicroConfigSubTablesColumnName)} {GetLargeTextDbType()} NULL";
+                await _context.Database.ExecuteSqlRawAsync(sql);
+            }
+
+            if (!columns.ContainsKey(MicroConfigShowSubTablesInListColumnName))
+            {
+                var sql =
+                    $"ALTER TABLE {_provider.QuoteTableName(MicroConfigTableName)} ADD {_provider.QuoteColumnName(MicroConfigShowSubTablesInListColumnName)} {_provider.MapFieldTypeToDbType("boolean")} NOT NULL DEFAULT {GetBooleanTrueLiteral()}";
+                await _context.Database.ExecuteSqlRawAsync(sql);
+            }
+
+            _cache.Set(cacheKey, true, new MemoryCacheEntryOptions
+            {
+                SlidingExpiration = TimeSpan.FromHours(6)
+            });
         }
 
         private async Task<bool> CheckTableExistsAsync(string tableName)
@@ -372,6 +437,95 @@ namespace DTSoft.AppService.MicroApp
                     await connection.CloseAsync();
                 }
             }
+        }
+
+        public async Task<Dictionary<string, object>> ExecuteMicroDetailWithSubTablesAsync(SysMicroAppConfig config, long id, string userAccount = "")
+        {
+            var mainRow = await ExecuteMicroDetailQueryAsync(config, id, userAccount);
+            if (mainRow.Count == 0)
+            {
+                return mainRow;
+            }
+
+            var subTables = ParseSubTables(config.SubTables);
+            if (subTables.Count == 0)
+            {
+                return mainRow;
+            }
+
+            var subTableRows = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+            foreach (var subTable in subTables)
+            {
+                subTableRows[subTable.TableName] = await ExecuteSubTableRowsQueryAsync(config, subTable, id);
+            }
+
+            mainRow["__subTables"] = subTableRows;
+            return mainRow;
+        }
+
+        public async Task<Dictionary<string, object>> ExecuteMicroInsertWithSubTablesAsync(
+            SysMicroAppConfig config,
+            Dictionary<string, object> dataDict,
+            Dictionary<string, List<Dictionary<string, object>>> subTableData,
+            string userAccount)
+        {
+            var mainRow = await ExecuteMicroInsertAsync(config, dataDict, userAccount);
+            var id = GetRowId(mainRow);
+            if (id.HasValue)
+            {
+                await ReplaceSubTableRowsAsync(config, id.Value, subTableData, userAccount);
+                return await ExecuteMicroDetailWithSubTablesAsync(config, id.Value, userAccount);
+            }
+
+            return mainRow;
+        }
+
+        public async Task<bool> ExecuteMicroUpdateWithSubTablesAsync(
+            SysMicroAppConfig config,
+            long id,
+            Dictionary<string, object> dataDict,
+            Dictionary<string, List<Dictionary<string, object>>> subTableData,
+            string userAccount)
+        {
+            var updated = await ExecuteMicroUpdateAsync(config, id, dataDict, userAccount);
+            if (!updated)
+            {
+                return false;
+            }
+
+            await ReplaceSubTableRowsAsync(config, id, subTableData, userAccount);
+            return true;
+        }
+
+        public async Task<bool> ExecuteMicroDeleteWithSubTablesAsync(SysMicroAppConfig config, long id, string userAccount)
+        {
+            var mainRow = await ExecuteMicroDetailQueryAsync(config, id, userAccount);
+            if (mainRow.Count == 0)
+            {
+                return false;
+            }
+
+            await DeleteSubTableRowsAsync(config, id);
+            return await ExecuteMicroDeleteAsync(config, id, userAccount);
+        }
+
+        public async Task<int> ExecuteMicroBatchDeleteWithSubTablesAsync(SysMicroAppConfig config, List<long> ids, string userAccount)
+        {
+            if (ids == null || ids.Count == 0)
+            {
+                return 0;
+            }
+
+            var deleted = 0;
+            foreach (var id in ids.Distinct())
+            {
+                if (await ExecuteMicroDeleteWithSubTablesAsync(config, id, userAccount))
+                {
+                    deleted++;
+                }
+            }
+
+            return deleted;
         }
 
         /// <summary>
@@ -803,6 +957,226 @@ namespace DTSoft.AppService.MicroApp
             }
         }
 
+        private async Task<List<Dictionary<string, object>>> ExecuteSubTableRowsQueryAsync(
+            SysMicroAppConfig config,
+            SubTableConfig subTable,
+            long parentId)
+        {
+            var tableName = BuildMicroSubTableName(config.ModelName, subTable.TableName);
+            var connection = _context.Database.GetDbConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                await connection.OpenAsync();
+            }
+
+            try
+            {
+                var sql =
+                    $"SELECT * FROM {_provider.QuoteTableName(tableName)} WHERE {_provider.QuoteColumnName(MicroTableSystemColumns.ParentId)} = {_provider.GetParameterPlaceholder(MicroTableSystemColumns.ParentId)} ORDER BY {_provider.QuoteColumnName(MicroTableSystemColumns.RowNo)} ASC, {_provider.QuoteColumnName(MicroTableSystemColumns.Id)} ASC";
+                await using var command = connection.CreateCommand();
+                command.CommandText = sql;
+
+                var param = command.CreateParameter();
+                param.ParameterName = _provider.GetParameterName(MicroTableSystemColumns.ParentId);
+                param.Value = parentId;
+                command.Parameters.Add(param);
+
+                await using var reader = await command.ExecuteReaderAsync();
+                var result = new List<Dictionary<string, object>>();
+                while (await reader.ReadAsync())
+                {
+                    var row = new Dictionary<string, object>();
+                    for (int i = 0; i < reader.FieldCount; i++)
+                    {
+                        var columnName = reader.GetName(i);
+                        var value = reader.IsDBNull(i) ? null : ConvertToBasicType(reader.GetValue(i));
+                        row[columnName] = value!;
+                    }
+                    result.Add(row);
+                }
+
+                return result;
+            }
+            finally
+            {
+                if (connection.State == ConnectionState.Open)
+                {
+                    await connection.CloseAsync();
+                }
+            }
+        }
+
+        private async Task ReplaceSubTableRowsAsync(
+            SysMicroAppConfig config,
+            long parentId,
+            Dictionary<string, List<Dictionary<string, object>>> subTableData,
+            string userAccount)
+        {
+            var subTables = ParseSubTables(config.SubTables);
+            if (subTables.Count == 0)
+            {
+                return;
+            }
+
+            var rowData = new Dictionary<string, List<Dictionary<string, object>>>(
+                subTableData ?? new Dictionary<string, List<Dictionary<string, object>>>(),
+                StringComparer.OrdinalIgnoreCase);
+
+            foreach (var subTable in subTables)
+            {
+                if (!rowData.TryGetValue(subTable.TableName, out var rows))
+                {
+                    continue;
+                }
+
+                await DeleteSubTableRowsAsync(config, parentId, subTable);
+                await InsertSubTableRowsAsync(config, parentId, subTable, rows, userAccount);
+            }
+        }
+
+        private async Task DeleteSubTableRowsAsync(SysMicroAppConfig config, long parentId)
+        {
+            foreach (var subTable in ParseSubTables(config.SubTables))
+            {
+                await DeleteSubTableRowsAsync(config, parentId, subTable);
+            }
+        }
+
+        private async Task DeleteSubTableRowsAsync(SysMicroAppConfig config, long parentId, SubTableConfig subTable)
+        {
+            var tableName = BuildMicroSubTableName(config.ModelName, subTable.TableName);
+            var connection = _context.Database.GetDbConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                await connection.OpenAsync();
+            }
+
+            try
+            {
+                var sql =
+                    $"DELETE FROM {_provider.QuoteTableName(tableName)} WHERE {_provider.QuoteColumnName(MicroTableSystemColumns.ParentId)} = {_provider.GetParameterPlaceholder(MicroTableSystemColumns.ParentId)}";
+                await using var command = connection.CreateCommand();
+                command.CommandText = sql;
+
+                var param = command.CreateParameter();
+                param.ParameterName = _provider.GetParameterName(MicroTableSystemColumns.ParentId);
+                param.Value = parentId;
+                command.Parameters.Add(param);
+
+                await command.ExecuteNonQueryAsync();
+            }
+            finally
+            {
+                if (connection.State == ConnectionState.Open)
+                {
+                    await connection.CloseAsync();
+                }
+            }
+        }
+
+        private async Task InsertSubTableRowsAsync(
+            SysMicroAppConfig config,
+            long parentId,
+            SubTableConfig subTable,
+            List<Dictionary<string, object>> rows,
+            string userAccount)
+        {
+            if (rows == null || rows.Count == 0)
+            {
+                return;
+            }
+
+            var tableName = BuildMicroSubTableName(config.ModelName, subTable.TableName);
+            var fields = (subTable.Fields ?? new List<FieldConfig>())
+                .Where(field => !string.IsNullOrWhiteSpace(field.FieldName) && !IsSystemColumn(field.FieldName))
+                .ToList();
+            var connection = _context.Database.GetDbConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                await connection.OpenAsync();
+            }
+
+            try
+            {
+                var now = TimeUtil.CstDateTime;
+                for (var rowIndex = 0; rowIndex < rows.Count; rowIndex++)
+                {
+                    var row = rows[rowIndex] ?? new Dictionary<string, object>();
+                    var columnNames = new List<string>
+                    {
+                        MicroTableSystemColumns.Id,
+                        MicroTableSystemColumns.ParentId,
+                        MicroTableSystemColumns.RowNo
+                    };
+                    var values = new List<object?>
+                    {
+                        YitterHelper.NewId(),
+                        parentId,
+                        rowIndex + 1
+                    };
+
+                    foreach (var field in fields)
+                    {
+                        columnNames.Add(field.FieldName);
+                        values.Add(row.TryGetValue(field.FieldName, out var value) ? ConvertToBasicType(value) : null);
+                    }
+
+                    columnNames.Add(MicroTableSystemColumns.CreatedTime);
+                    values.Add(now);
+                    columnNames.Add(MicroTableSystemColumns.UpdatedTime);
+                    values.Add(now);
+                    columnNames.Add(MicroTableSystemColumns.CreatedBy);
+                    values.Add(userAccount ?? string.Empty);
+                    columnNames.Add(MicroTableSystemColumns.UpdatedBy);
+                    values.Add(userAccount ?? string.Empty);
+
+                    var quotedColumns = columnNames.Select(columnName => _provider.QuoteColumnName(columnName)).ToList();
+                    var parameterNames = values.Select((_, index) => $"p{index}").ToList();
+                    var placeholders = parameterNames.Select(parameterName => _provider.GetParameterPlaceholder(parameterName)).ToList();
+                    var insertSql = _provider.BuildInsertSql(tableName, quotedColumns, placeholders);
+
+                    await using var command = connection.CreateCommand();
+                    command.CommandText = insertSql;
+                    for (var valueIndex = 0; valueIndex < values.Count; valueIndex++)
+                    {
+                        var param = command.CreateParameter();
+                        param.ParameterName = _provider.GetParameterName(parameterNames[valueIndex]);
+                        param.Value = values[valueIndex] ?? DBNull.Value;
+                        command.Parameters.Add(param);
+                    }
+
+                    await command.ExecuteNonQueryAsync();
+                }
+            }
+            finally
+            {
+                if (connection.State == ConnectionState.Open)
+                {
+                    await connection.CloseAsync();
+                }
+            }
+        }
+
+        private static long? GetRowId(Dictionary<string, object> row)
+        {
+            if (row.TryGetValue(MicroTableSystemColumns.Id, out var value) ||
+                row.TryGetValue("itemId", out value) ||
+                row.TryGetValue("id", out value) ||
+                row.TryGetValue("Id", out value))
+            {
+                try
+                {
+                    return Convert.ToInt64(value);
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+
+            return null;
+        }
+
         /// <summary>
         /// 构建微应用查询的 WHERE 条件和参数集合。
         /// </summary>
@@ -1153,7 +1527,83 @@ namespace DTSoft.AppService.MicroApp
                    columnName.Equals(MicroTableSystemColumns.CreatedTime, StringComparison.OrdinalIgnoreCase) ||
                    columnName.Equals(MicroTableSystemColumns.UpdatedTime, StringComparison.OrdinalIgnoreCase) ||
                    columnName.Equals(MicroTableSystemColumns.CreatedBy, StringComparison.OrdinalIgnoreCase) ||
-                   columnName.Equals(MicroTableSystemColumns.UpdatedBy, StringComparison.OrdinalIgnoreCase);
+                   columnName.Equals(MicroTableSystemColumns.UpdatedBy, StringComparison.OrdinalIgnoreCase) ||
+                   columnName.Equals(MicroTableSystemColumns.ParentId, StringComparison.OrdinalIgnoreCase) ||
+                   columnName.Equals(MicroTableSystemColumns.RowNo, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private string GetLargeTextDbType()
+        {
+            return _provider switch
+            {
+                SqlServerProvider _ => "NVARCHAR(MAX)",
+                OracleProvider _ => "NCLOB",
+                MySqlProvider _ => "LONGTEXT",
+                _ => "TEXT"
+            };
+        }
+
+        private string GetBooleanTrueLiteral()
+        {
+            return _provider switch
+            {
+                PostgreSqlProvider _ => "TRUE",
+                _ => "1"
+            };
+        }
+
+        private static List<SubTableConfig> ParseSubTables(string? subTables)
+        {
+            if (string.IsNullOrWhiteSpace(subTables))
+            {
+                return new List<SubTableConfig>();
+            }
+
+            try
+            {
+                return JsonSerializer.Deserialize<List<SubTableConfig>>(
+                           subTables,
+                           new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ??
+                       new List<SubTableConfig>();
+            }
+            catch
+            {
+                return new List<SubTableConfig>();
+            }
+        }
+
+        private static List<FieldConfig> BuildSubTableFields(SubTableConfig subTable)
+        {
+            var fields = new List<FieldConfig>
+            {
+                new()
+                {
+                    Label = "主表ID",
+                    FieldName = MicroTableSystemColumns.ParentId,
+                    FieldType = "number",
+                    Required = true,
+                    ShowInList = false,
+                    Editable = false,
+                    Validation = string.Empty,
+                    DefaultValue = string.Empty
+                },
+                new()
+                {
+                    Label = "行号",
+                    FieldName = MicroTableSystemColumns.RowNo,
+                    FieldType = "number",
+                    Required = false,
+                    ShowInList = false,
+                    Editable = false,
+                    Validation = string.Empty,
+                    DefaultValue = string.Empty
+                }
+            };
+
+            fields.AddRange((subTable.Fields ?? new List<FieldConfig>())
+                .Where(field => !string.IsNullOrWhiteSpace(field.FieldName) && !IsSystemColumn(field.FieldName)));
+
+            return fields;
         }
 
         private static bool SupportsColumnLength(FieldConfig field)

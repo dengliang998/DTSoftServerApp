@@ -19,6 +19,8 @@ namespace DTSoft.AppService.MicroApp
         /// <returns>分页的微应用配置列表</returns>
         public async Task<PagedResponse<MicroConfigResponse>> GetMicroAppConfigs(MicroConfigQueryParameter parameter)
         {
+            await _microTableService.EnsureMicroConfigSubTablesColumnAsync();
+
             var query = context.SysMicroAppConfig!.AsQueryable();
         
             // 模糊匹配配置名称、模型名称、微应用路径
@@ -70,12 +72,14 @@ namespace DTSoft.AppService.MicroApp
                     SupportBatchDelete = c.SupportBatchDelete,
                     SupportImport = c.SupportImport,
                     SupportExport = c.SupportExport,
+                    ShowSubTablesInList = c.ShowSubTablesInList,
                     DataScope = NormalizeDataScope(c.DataScope),
                     FormColumns = NormalizeFormColumns(c.FormColumns),
                     QueryColumns = NormalizeQueryColumns(c.QueryColumns),
                     MicroAppPath = c.ApiPrefix,
                     Fields = string.IsNullOrEmpty(c.Fields) ? new List<FieldConfig>() :
                             JsonSerializer.Deserialize<List<FieldConfig>>(c.Fields),
+                    SubTables = ParseSubTables(c.SubTables),
                     CreateTime = c.CreateTime,
                     UpdateTime = c.UpdateTime
                 }).ToList(),
@@ -92,6 +96,8 @@ namespace DTSoft.AppService.MicroApp
         /// <returns>微应用配置详情</returns>
         public MicroConfigResponse GetMicroConfigById(long id)
         {
+            _microTableService.EnsureMicroConfigSubTablesColumnAsync().GetAwaiter().GetResult();
+
             var config = context.SysMicroAppConfig!.FirstOrDefault(c => c.ItemId == id);
             if (config == null)
             {
@@ -111,12 +117,14 @@ namespace DTSoft.AppService.MicroApp
                 SupportBatchDelete = config.SupportBatchDelete,
                 SupportImport = config.SupportImport,
                 SupportExport = config.SupportExport,
+                ShowSubTablesInList = config.ShowSubTablesInList,
                 DataScope = NormalizeDataScope(config.DataScope),
                 FormColumns = NormalizeFormColumns(config.FormColumns),
                 QueryColumns = NormalizeQueryColumns(config.QueryColumns),
                 MicroAppPath = config.ApiPrefix,
                 Fields = string.IsNullOrEmpty(config.Fields) ? new List<FieldConfig>() :
                         JsonSerializer.Deserialize<List<FieldConfig>>(config.Fields),
+                SubTables = ParseSubTables(config.SubTables),
                 CreateTime = config.CreateTime,
                 UpdateTime = config.UpdateTime
             };
@@ -129,6 +137,8 @@ namespace DTSoft.AppService.MicroApp
         /// <returns>添加后的微应用配置</returns>
         public async Task<MicroConfigResponse> AddMicroAppConfig(MicroConfigAddParameter parameter)
         {
+            await _microTableService.EnsureMicroConfigSubTablesColumnAsync();
+
             // 验证模型名称是否已存在
             var existingConfig = context.SysMicroAppConfig!
                 .FirstOrDefault(c => c.ModelName == parameter.ModelName);
@@ -161,11 +171,13 @@ namespace DTSoft.AppService.MicroApp
                 SupportBatchDelete = parameter.SupportBatchDelete,
                 SupportImport = parameter.SupportImport,
                 SupportExport = parameter.SupportExport,
+                ShowSubTablesInList = parameter.ShowSubTablesInList,
                 DataScope = NormalizeDataScope(parameter.DataScope),
                 FormColumns = NormalizeFormColumns(parameter.FormColumns),
                 QueryColumns = NormalizeQueryColumns(parameter.QueryColumns),
                 ApiPrefix = string.IsNullOrWhiteSpace(parameter.MicroAppPath) ? parameter.ModelName : parameter.MicroAppPath,
                 Fields = JsonSerializer.Serialize(parameter.Fields),
+                SubTables = JsonSerializer.Serialize(NormalizeSubTables(parameter.SubTables)),
                 CreateTime = DateTime.Now,
                 UpdateTime = DateTime.Now
             };
@@ -193,11 +205,13 @@ namespace DTSoft.AppService.MicroApp
                 SupportBatchDelete = microConfig.SupportBatchDelete,
                 SupportImport = microConfig.SupportImport,
                 SupportExport = microConfig.SupportExport,
+                ShowSubTablesInList = microConfig.ShowSubTablesInList,
                 DataScope = NormalizeDataScope(microConfig.DataScope),
                 FormColumns = NormalizeFormColumns(microConfig.FormColumns),
                 QueryColumns = NormalizeQueryColumns(microConfig.QueryColumns),
                 MicroAppPath = microConfig.ApiPrefix,
                 Fields = parameter.Fields,
+                SubTables = NormalizeSubTables(parameter.SubTables),
                 CreateTime = microConfig.CreateTime,
                 UpdateTime = microConfig.UpdateTime
             };
@@ -210,6 +224,8 @@ namespace DTSoft.AppService.MicroApp
         /// <returns>更新后的微应用配置</returns>
         public async Task<MicroConfigResponse> UpdateMicroAppConfig(MicroConfigUpdateParameter parameter)
         {
+            await _microTableService.EnsureMicroConfigSubTablesColumnAsync();
+
             // 查找要更新的配置
             var existingConfig = context.SysMicroAppConfig!
                 .FirstOrDefault(c => c.ItemId == parameter.ItemId);
@@ -244,11 +260,13 @@ namespace DTSoft.AppService.MicroApp
             existingConfig.SupportBatchDelete = parameter.SupportBatchDelete;
             existingConfig.SupportImport = parameter.SupportImport;
             existingConfig.SupportExport = parameter.SupportExport;
+            existingConfig.ShowSubTablesInList = parameter.ShowSubTablesInList;
             existingConfig.DataScope = NormalizeDataScope(parameter.DataScope);
             existingConfig.FormColumns = NormalizeFormColumns(parameter.FormColumns);
             existingConfig.QueryColumns = NormalizeQueryColumns(parameter.QueryColumns);
             existingConfig.ApiPrefix = targetMicroAppPath;
             existingConfig.Fields = JsonSerializer.Serialize(parameter.Fields);
+            existingConfig.SubTables = JsonSerializer.Serialize(NormalizeSubTables(parameter.SubTables));
             existingConfig.UpdateTime = DateTime.Now;
 
             // 保存更改
@@ -273,11 +291,13 @@ namespace DTSoft.AppService.MicroApp
                 SupportBatchDelete = existingConfig.SupportBatchDelete,
                 SupportImport = existingConfig.SupportImport,
                 SupportExport = existingConfig.SupportExport,
+                ShowSubTablesInList = existingConfig.ShowSubTablesInList,
                 DataScope = NormalizeDataScope(existingConfig.DataScope),
                 FormColumns = NormalizeFormColumns(existingConfig.FormColumns),
                 QueryColumns = NormalizeQueryColumns(existingConfig.QueryColumns),
                 MicroAppPath = existingConfig.ApiPrefix,
                 Fields = parameter.Fields,
+                SubTables = NormalizeSubTables(parameter.SubTables),
                 CreateTime = existingConfig.CreateTime,
                 UpdateTime = existingConfig.UpdateTime
             };
@@ -290,6 +310,8 @@ namespace DTSoft.AppService.MicroApp
         /// <returns>是否删除成功</returns>
         public async Task<bool> DeleteMicroAppConfig(MicroConfigDeleteParameter parameter)
         {
+            await _microTableService.EnsureMicroConfigSubTablesColumnAsync();
+
             // 查找要删除的配置
             var existingConfig = context.SysMicroAppConfig!
                 .FirstOrDefault(c => c.ItemId == parameter.ItemId);
@@ -345,6 +367,62 @@ namespace DTSoft.AppService.MicroApp
         private static int NormalizeQueryColumns(int? queryColumns)
         {
             return queryColumns is >= 1 and <= 4 ? queryColumns.Value : 1;
+        }
+
+        private static List<SubTableConfig> ParseSubTables(string? subTables)
+        {
+            if (string.IsNullOrWhiteSpace(subTables))
+            {
+                return new List<SubTableConfig>();
+            }
+
+            try
+            {
+                return JsonSerializer.Deserialize<List<SubTableConfig>>(
+                           subTables,
+                           new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ??
+                       new List<SubTableConfig>();
+            }
+            catch
+            {
+                return new List<SubTableConfig>();
+            }
+        }
+
+        private static List<SubTableConfig> NormalizeSubTables(List<SubTableConfig>? subTables)
+        {
+            return subTables?
+                       .Where(subTable => !string.IsNullOrWhiteSpace(subTable.TableName))
+                       .Select((subTable, index) => new SubTableConfig
+                       {
+                           Label = string.IsNullOrWhiteSpace(subTable.Label) ? subTable.TableName : subTable.Label,
+                           TableName = subTable.TableName.Trim(),
+                           MinRows = Math.Max(0, subTable.MinRows ?? 0),
+                           MaxRows = subTable.MaxRows is > 0 ? subTable.MaxRows : null,
+                           SortOrder = subTable.SortOrder ?? index + 1,
+                           EnableLookup = subTable.EnableLookup == true,
+                           LookupDataSourceCode = subTable.EnableLookup == true ? subTable.LookupDataSourceCode : string.Empty,
+                           LookupParams = subTable.EnableLookup == true ? subTable.LookupParams : string.Empty,
+                           LookupPageSize = subTable.EnableLookup == true && subTable.LookupPageSize is >= 5 and <= 200
+                               ? subTable.LookupPageSize
+                               : null,
+                           LookupColumns = subTable.EnableLookup == true
+                               ? subTable.LookupColumns?.Where(column =>
+                                       !string.IsNullOrWhiteSpace(column.Field) &&
+                                       !string.IsNullOrWhiteSpace(column.Label))
+                                   .ToList() ?? new List<LookupColumnConfig>()
+                               : new List<LookupColumnConfig>(),
+                           LookupMappings = subTable.EnableLookup == true
+                               ? subTable.LookupMappings?.Where(mapping =>
+                                       !string.IsNullOrWhiteSpace(mapping.SourceField) &&
+                                       !string.IsNullOrWhiteSpace(mapping.TargetField))
+                                   .ToList() ?? new List<LookupMappingConfig>()
+                               : new List<LookupMappingConfig>(),
+                           Fields = subTable.Fields ?? new List<FieldConfig>()
+                       })
+                       .OrderBy(subTable => subTable.SortOrder ?? 0)
+                       .ToList() ??
+                   new List<SubTableConfig>();
         }
     }
 }

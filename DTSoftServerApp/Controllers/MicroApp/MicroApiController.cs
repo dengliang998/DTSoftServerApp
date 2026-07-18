@@ -22,6 +22,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
         private readonly SysDbContext _context;
         private readonly MicroTableService _microTableService;
         private readonly IDtSoftCache _dtSoftCache;
+        private const string RuntimeSubTablesKey = "__subTables";
 
         public MicroApiController(SysDbContext context, MicroTableService microTableService, IDtSoftCache dtSoftCache)
         {
@@ -33,6 +34,8 @@ namespace DTSoftServerApp.Controllers.MicroApp
         private async Task<SysMicroAppConfig?> GetActiveConfigAsync(string modelName)
         {
             if (string.IsNullOrWhiteSpace(modelName)) return null;
+
+            await _microTableService.EnsureMicroConfigSubTablesColumnAsync();
 
             var cacheKey = MicroConfigCacheKeys.ActiveConfig(modelName);
             var cachedJson = await _dtSoftCache.GetAsync<string>(cacheKey);
@@ -158,7 +161,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 await _microTableService.EnsureTableExistsAsync(config);
 
                 // 构建动态查询详情
-                var result = await _microTableService.ExecuteMicroDetailQueryAsync(
+                var result = await _microTableService.ExecuteMicroDetailWithSubTablesAsync(
                     config,
                     id,
                     DtSoftHelper.GetLoginUserAccount(User));
@@ -217,7 +220,9 @@ namespace DTSoftServerApp.Controllers.MicroApp
 
                 // 将数据转换为字典，并处理JsonElement类型
                 var dataDict = ConvertObjectToDictionary(data);
+                var subTableData = ExtractSubTableData(dataDict);
                 var validationErrors = ValidateMicroData(config, dataDict);
+                validationErrors.AddRange(ValidateMicroSubTableData(config, subTableData));
                 if (validationErrors.Count > 0)
                 {
                     return Ok(new
@@ -228,9 +233,10 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 }
 
                 // 执行微应用数据插入
-                var result = await _microTableService.ExecuteMicroInsertAsync(
+                var result = await _microTableService.ExecuteMicroInsertWithSubTablesAsync(
                     config,
                     dataDict,
+                    subTableData,
                     DtSoftHelper.GetLoginUserAccount(User));
 
                 return Ok(new
@@ -288,7 +294,9 @@ namespace DTSoftServerApp.Controllers.MicroApp
 
                 // 将数据转换为字典，并处理JsonElement类型
                 var dataDict = ConvertObjectToDictionary(data);
+                var subTableData = ExtractSubTableData(dataDict);
                 var validationErrors = ValidateMicroData(config, dataDict);
+                validationErrors.AddRange(ValidateMicroSubTableData(config, subTableData));
                 if (validationErrors.Count > 0)
                 {
                     return Ok(new
@@ -299,10 +307,11 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 }
 
                 // 执行微应用数据更新
-                var result = await _microTableService.ExecuteMicroUpdateAsync(
+                var result = await _microTableService.ExecuteMicroUpdateWithSubTablesAsync(
                     config,
                     id,
                     dataDict,
+                    subTableData,
                     DtSoftHelper.GetLoginUserAccount(User));
 
                 if (!result)
@@ -366,7 +375,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 await _microTableService.EnsureTableExistsAsync(config);
 
                 // 执行微应用数据删除
-                var result = await _microTableService.ExecuteMicroDeleteAsync(
+                var result = await _microTableService.ExecuteMicroDeleteWithSubTablesAsync(
                     config,
                     id,
                     DtSoftHelper.GetLoginUserAccount(User));
@@ -438,7 +447,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
 
                 await _microTableService.EnsureTableExistsAsync(config);
 
-                var rowsAffected = await _microTableService.ExecuteMicroBatchDeleteAsync(
+                var rowsAffected = await _microTableService.ExecuteMicroBatchDeleteWithSubTablesAsync(
                     config,
                     parameter.Ids,
                     DtSoftHelper.GetLoginUserAccount(User));
@@ -588,6 +597,46 @@ namespace DTSoftServerApp.Controllers.MicroApp
             };
         }
 
+        private Dictionary<string, List<Dictionary<string, object>>> ExtractSubTableData(Dictionary<string, object> dataDict)
+        {
+            var result = new Dictionary<string, List<Dictionary<string, object>>>(StringComparer.OrdinalIgnoreCase);
+            if (!dataDict.TryGetValue(RuntimeSubTablesKey, out var rawSubTables))
+            {
+                return result;
+            }
+
+            dataDict.Remove(RuntimeSubTablesKey);
+
+            if (rawSubTables is JsonElement jsonElement)
+            {
+                rawSubTables = ConvertJsonValue(jsonElement);
+            }
+
+            if (rawSubTables is not Dictionary<string, object> subTableObject)
+            {
+                return result;
+            }
+
+            foreach (var kvp in subTableObject)
+            {
+                var rows = new List<Dictionary<string, object>>();
+                if (kvp.Value is object[] rowArray)
+                {
+                    foreach (var rowItem in rowArray)
+                    {
+                        if (rowItem is Dictionary<string, object> row)
+                        {
+                            rows.Add(row);
+                        }
+                    }
+                }
+
+                result[kvp.Key] = rows;
+            }
+
+            return result;
+        }
+
         /// <summary>
         /// 解析字段级查询条件 JSON，解析失败时返回空集合。
         /// </summary>
@@ -626,6 +675,64 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 ? new List<FieldConfig>()
                 : JsonSerializer.Deserialize<List<FieldConfig>>(config.Fields) ?? new List<FieldConfig>();
 
+            errors.AddRange(ValidateFields(fields, dataDict, string.Empty));
+            return errors;
+        }
+
+        private List<string> ValidateMicroSubTableData(
+            SysMicroAppConfig config,
+            Dictionary<string, List<Dictionary<string, object>>> subTableData)
+        {
+            var errors = new List<string>();
+            var subTables = ParseSubTables(config.SubTables);
+            if (subTables.Count == 0)
+            {
+                return errors;
+            }
+
+            var configuredNames = subTables
+                .Where(subTable => !string.IsNullOrWhiteSpace(subTable.TableName))
+                .Select(subTable => subTable.TableName)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var submittedName in subTableData.Keys)
+            {
+                if (!configuredNames.Contains(submittedName))
+                {
+                    errors.Add($"子表{submittedName}未配置");
+                }
+            }
+
+            foreach (var subTable in subTables)
+            {
+                subTableData.TryGetValue(subTable.TableName, out var rows);
+                rows ??= new List<Dictionary<string, object>>();
+
+                if (subTable.MinRows.HasValue && rows.Count < subTable.MinRows.Value)
+                {
+                    errors.Add($"{subTable.Label}不能少于{subTable.MinRows.Value}行");
+                }
+
+                if (subTable.MaxRows.HasValue && subTable.MaxRows.Value > 0 && rows.Count > subTable.MaxRows.Value)
+                {
+                    errors.Add($"{subTable.Label}不能超过{subTable.MaxRows.Value}行");
+                }
+
+                for (var rowIndex = 0; rowIndex < rows.Count; rowIndex++)
+                {
+                    errors.AddRange(ValidateFields(
+                        subTable.Fields,
+                        rows[rowIndex],
+                        $"{subTable.Label}第{rowIndex + 1}行"));
+                }
+            }
+
+            return errors;
+        }
+
+        private List<string> ValidateFields(List<FieldConfig> fields, Dictionary<string, object> dataDict, string prefix)
+        {
+            var errors = new List<string>();
             foreach (var field in fields)
             {
                 if (string.IsNullOrWhiteSpace(field.FieldName))
@@ -636,10 +743,11 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 dataDict.TryGetValue(field.FieldName, out var rawValue);
                 var value = rawValue is JsonElement jsonElement ? ConvertJsonValue(jsonElement) : rawValue;
                 var textValue = value?.ToString();
+                var fieldLabel = string.IsNullOrWhiteSpace(prefix) ? field.Label : $"{prefix}{field.Label}";
 
                 if (field.Required && string.IsNullOrWhiteSpace(textValue))
                 {
-                    errors.Add($"{field.Label}不能为空");
+                    errors.Add($"{fieldLabel}不能为空");
                     continue;
                 }
 
@@ -650,34 +758,54 @@ namespace DTSoftServerApp.Controllers.MicroApp
 
                 if (field.MinLength.HasValue && textValue.Length < field.MinLength.Value)
                 {
-                    errors.Add($"{field.Label}不能少于{field.MinLength.Value}个字符");
+                    errors.Add($"{fieldLabel}不能少于{field.MinLength.Value}个字符");
                 }
 
                 if (field.MaxLength.HasValue && textValue.Length > field.MaxLength.Value)
                 {
-                    errors.Add($"{field.Label}不能超过{field.MaxLength.Value}个字符");
+                    errors.Add($"{fieldLabel}不能超过{field.MaxLength.Value}个字符");
                 }
 
                 if (field.FieldType == "number" && decimal.TryParse(textValue, out var numberValue))
                 {
                     if (field.MinValue.HasValue && numberValue < field.MinValue.Value)
                     {
-                        errors.Add($"{field.Label}不能小于{field.MinValue.Value}");
+                        errors.Add($"{fieldLabel}不能小于{field.MinValue.Value}");
                     }
 
                     if (field.MaxValue.HasValue && numberValue > field.MaxValue.Value)
                     {
-                        errors.Add($"{field.Label}不能大于{field.MaxValue.Value}");
+                        errors.Add($"{fieldLabel}不能大于{field.MaxValue.Value}");
                     }
                 }
 
                 if (!string.IsNullOrWhiteSpace(field.Pattern) && !IsRegexMatch(textValue, field.Pattern))
                 {
-                    errors.Add($"{field.Label}格式不正确");
+                    errors.Add($"{fieldLabel}格式不正确");
                 }
             }
 
             return errors;
+        }
+
+        private static List<SubTableConfig> ParseSubTables(string? subTables)
+        {
+            if (string.IsNullOrWhiteSpace(subTables))
+            {
+                return new List<SubTableConfig>();
+            }
+
+            try
+            {
+                return JsonSerializer.Deserialize<List<SubTableConfig>>(
+                           subTables,
+                           new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ??
+                       new List<SubTableConfig>();
+            }
+            catch
+            {
+                return new List<SubTableConfig>();
+            }
         }
 
         /// <summary>

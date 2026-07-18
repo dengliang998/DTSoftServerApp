@@ -29,4 +29,14 @@ public static class MicroTableSystemColumns
     /// 更新人字段。
     /// </summary>
     public const string UpdatedBy = "updated_by";
+
+    /// <summary>
+    /// 子表关联主表数据 ID 字段。
+    /// </summary>
+    public const string ParentId = "ParentId";
+
+    /// <summary>
+    /// 子表行序号字段。
+    /// </summary>
+    public const string RowNo = "row_no";
 }
