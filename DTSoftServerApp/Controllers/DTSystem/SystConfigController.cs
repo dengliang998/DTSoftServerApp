@@ -31,6 +31,16 @@ public class SysConfigController : Controller
     }
 
     /// <summary>
+    /// 获取系统运行信息
+    /// </summary>
+    /// <returns></returns>
+    [HttpGet]
+    public IActionResult GetSystemRuntimeInfo()
+    {
+        return Ok(_sysconfig.GetSystemRuntimeInfo());
+    }
+
+    /// <summary>
     /// 设置系统信息
     /// </summary>
     /// <returns></returns>

@@ -4,6 +4,9 @@ using DTSoft.Core.DbContexts;
 using DTSoft.Core.Interfaces;
 using DTSoft.Models.Entities;
 using DTSoft.Models.Parameter.Attachment;
+using System.Diagnostics;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.EntityFrameworkCore;
@@ -83,6 +86,66 @@ public class SysConfigApp(SysDbContext dbContext, ConfigHelper configHelper, Att
         {
             data = new JsonObject();
         }
+
+        return new JsonObject
+        {
+            ["success"] = true,
+            ["StateCode"] = 0,
+            ["data"] = data
+        };
+    }
+
+    /// <summary>
+    /// 获取系统运行信息
+    /// </summary>
+    public JsonObject GetSystemRuntimeInfo()
+    {
+        var process = Process.GetCurrentProcess();
+        var now = DateTime.Now;
+        var entryAssembly = Assembly.GetEntryAssembly();
+        var assemblyName = entryAssembly?.GetName();
+        var dbConnection = dbContext.Database.GetDbConnection();
+
+        var data = new JsonObject
+        {
+            ["Application"] = new JsonObject
+            {
+                ["Name"] = assemblyName?.Name ?? AppDomain.CurrentDomain.FriendlyName,
+                ["Version"] = assemblyName?.Version?.ToString() ?? "-",
+                ["EnvironmentName"] = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production",
+                ["BaseDirectory"] = AppContext.BaseDirectory,
+                ["RootPath"] = configHelper.RootPath
+            },
+            ["Runtime"] = new JsonObject
+            {
+                ["FrameworkDescription"] = RuntimeInformation.FrameworkDescription,
+                ["RuntimeIdentifier"] = RuntimeInformation.RuntimeIdentifier,
+                ["OSDescription"] = RuntimeInformation.OSDescription,
+                ["OSArchitecture"] = RuntimeInformation.OSArchitecture.ToString(),
+                ["ProcessArchitecture"] = RuntimeInformation.ProcessArchitecture.ToString()
+            },
+            ["Server"] = new JsonObject
+            {
+                ["MachineName"] = Environment.MachineName,
+                ["ProcessorCount"] = Environment.ProcessorCount,
+                ["TimeZone"] = TimeZoneInfo.Local.DisplayName,
+                ["CurrentTime"] = now.ToString("yyyy-MM-dd HH:mm:ss"),
+                ["StartedAt"] = process.StartTime.ToString("yyyy-MM-dd HH:mm:ss"),
+                ["UptimeSeconds"] = Convert.ToInt64((now - process.StartTime).TotalSeconds)
+            },
+            ["Memory"] = new JsonObject
+            {
+                ["WorkingSetBytes"] = process.WorkingSet64,
+                ["PrivateMemoryBytes"] = process.PrivateMemorySize64,
+                ["GCTotalMemoryBytes"] = GC.GetTotalMemory(false)
+            },
+            ["Database"] = new JsonObject
+            {
+                ["ProviderName"] = dbContext.Database.ProviderName ?? "-",
+                ["DataSource"] = dbConnection.DataSource,
+                ["Database"] = dbConnection.Database
+            }
+        };
 
         return new JsonObject
         {
@@ -311,12 +374,13 @@ public class SysConfigApp(SysDbContext dbContext, ConfigHelper configHelper, Att
         var systemLog = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemManagement.ItemId, MenuName = "系统日志", MenuPath = "log/logaction", Icon = "List", MType = 0 };
         var appConfig = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemManagement.ItemId, MenuName = "微应用配置", MenuPath = "MicroApp/MicroApiConfig", Icon = "Coin", MType = 0 };
         var systemSettingsPage = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemManagement.ItemId, MenuName = "系统设置", MenuPath = "common/systemsettings", Icon = "Setting", MType = 0 };
+        var systemInfoPage = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemManagement.ItemId, MenuName = "系统信息", MenuPath = "common/systeminfo", Icon = "Monitor", MType = 0 };
         var onlineUsers = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemManagement.ItemId, MenuName = "在线用户", MenuPath = "common/onlineusers", Icon = "User", MType = 0 };
         var dictionaryManagement = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemManagement.ItemId, MenuName = "数据字典", MenuPath = "common/dictionaries", Icon = "Collection", MType = 0 };
         var menuMaintenance = new SysMenu { ItemId = YitterHelper.NewId(), Pid = menuManagement.ItemId, MenuName = "菜单维护", MenuPath = "common/menus", Icon = "Menu", MType = 0 };
         var apiKeyManagement = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemIntegration.ItemId, MenuName = "第三方集成", MenuPath = "apikey/management", Icon = "Key", MType = 0 };
         
-        menuList.AddRange([userManagement, userList, attachmentManagement, attachmentList, roleManagement, roleList, adminPanel, systemManagement, menuManagement, systemIntegration, apiKeyManagement, systemSettingsPage, systemLog, appConfig, onlineUsers, dictionaryManagement, menuMaintenance]);
+        menuList.AddRange([userManagement, userList, attachmentManagement, attachmentList, roleManagement, roleList, adminPanel, systemManagement, menuManagement, systemIntegration, apiKeyManagement, systemSettingsPage, systemInfoPage, systemLog, appConfig, onlineUsers, dictionaryManagement, menuMaintenance]);
         
         // 批量添加菜单
         dbContext.SysMenu.AddRange(menuList);
