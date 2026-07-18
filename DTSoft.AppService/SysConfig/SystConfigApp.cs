@@ -30,7 +30,8 @@ public class SysConfigApp(SysDbContext dbContext, ConfigHelper configHelper, Att
         {
             Models.Entities.SysConfig info = new()
             {
-                SystemName = systemInfo.SystemName
+                SystemName = systemInfo.SystemName,
+                ThemeConfig = NormalizeThemeConfigJson(systemInfo.ThemeConfig)
             };
             
             // 如果有上传文件，处理文件
@@ -40,12 +41,20 @@ public class SysConfigApp(SysDbContext dbContext, ConfigHelper configHelper, Att
                 var attachment = att.CreateFile(new BaseFileParameter() { Files = systemInfo.LoginImg, Path = filePath });
                 info.LoginImg = attachment.FileFullName;
             }
+
+            if (systemInfo.BrowserLogo != null)
+            {
+                string filePath = configHelper.RootPath;
+                var attachment = att.CreateFile(new BaseFileParameter() { Files = systemInfo.BrowserLogo, Path = filePath });
+                info.BrowserLogo = attachment.FileFullName;
+            }
             
             dbContext.SysConfig!.Add(info);
         }
         else
         {
             sysConfig.SystemName = systemInfo.SystemName;
+            sysConfig.ThemeConfig = NormalizeThemeConfigJson(systemInfo.ThemeConfig);
             
             // 如果有上传文件，处理文件
             if (systemInfo.LoginImg != null)
@@ -53,6 +62,13 @@ public class SysConfigApp(SysDbContext dbContext, ConfigHelper configHelper, Att
                 string filePath = configHelper.RootPath;
                 var attachment = att.CreateFile(new BaseFileParameter() { Files = systemInfo.LoginImg, Path = filePath });
                 sysConfig.LoginImg = attachment.FileFullName;
+            }
+
+            if (systemInfo.BrowserLogo != null)
+            {
+                string filePath = configHelper.RootPath;
+                var attachment = att.CreateFile(new BaseFileParameter() { Files = systemInfo.BrowserLogo, Path = filePath });
+                sysConfig.BrowserLogo = attachment.FileFullName;
             }
             
             dbContext.SysConfig!.Update(sysConfig);
@@ -162,34 +178,67 @@ public class SysConfigApp(SysDbContext dbContext, ConfigHelper configHelper, Att
             .OrderBy(p => p.ItemId)
             .FirstOrDefault();
 
-        // 读取文件并转为Base64
-        string? loginImgBase64 = null;
-        if (systemInfo != null && !string.IsNullOrEmpty(systemInfo.LoginImg))
-        {
-            var filePath = Path.Combine(configHelper.RootPath, systemInfo.LoginImg);
-            if (File.Exists(filePath))
-            {
-                var bytes = File.ReadAllBytes(filePath);
-                var ext = Path.GetExtension(systemInfo.LoginImg).TrimStart('.').ToLower();
-                var mimeType = ext switch
-                {
-                    "png" => "image/png",
-                    "gif" => "image/gif",
-                    "svg" => "image/svg+xml",
-                    "webp" => "image/webp",
-                    _ => "image/jpeg"
-                };
-                loginImgBase64 = $"data:{mimeType};base64,{Convert.ToBase64String(bytes)}";
-            }
-        }
-
         var obj = new JsonObject
         {
             ["systemName"] = systemInfo?.SystemName,
-            ["loginImg"] = loginImgBase64
+            ["loginImg"] = ReadImageAsDataUrl(systemInfo?.LoginImg),
+            ["browserLogo"] = ReadImageAsDataUrl(systemInfo?.BrowserLogo),
+            ["themeConfig"] = ParseThemeConfig(systemInfo?.ThemeConfig)
         };
 
         return obj.ToJsonString();
+    }
+
+    private string? ReadImageAsDataUrl(string? storedFileName)
+    {
+        if (string.IsNullOrWhiteSpace(storedFileName)) return null;
+
+        var filePath = Path.Combine(configHelper.RootPath, storedFileName);
+        if (!File.Exists(filePath)) return null;
+
+        var bytes = File.ReadAllBytes(filePath);
+        var ext = Path.GetExtension(storedFileName).TrimStart('.').ToLowerInvariant();
+        var mimeType = ext switch
+        {
+            "png" => "image/png",
+            "gif" => "image/gif",
+            "svg" => "image/svg+xml",
+            "webp" => "image/webp",
+            "ico" => "image/x-icon",
+            "jpg" => "image/jpeg",
+            "jpeg" => "image/jpeg",
+            _ => "image/png"
+        };
+
+        return $"data:{mimeType};base64,{Convert.ToBase64String(bytes)}";
+    }
+
+    private static string? NormalizeThemeConfigJson(string? themeConfig)
+    {
+        if (string.IsNullOrWhiteSpace(themeConfig)) return null;
+
+        try
+        {
+            return JsonNode.Parse(themeConfig)?.ToJsonString();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static JsonNode? ParseThemeConfig(string? themeConfig)
+    {
+        if (string.IsNullOrWhiteSpace(themeConfig)) return null;
+
+        try
+        {
+            return JsonNode.Parse(themeConfig);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     /// <summary>

@@ -12,4 +12,14 @@ public class Config
     /// 背景图片
     /// </summary>
     public IFormFile? LoginImg { get; set; }
+
+    /// <summary>
+    /// 浏览器标签页小logo
+    /// </summary>
+    public IFormFile? BrowserLogo { get; set; }
+
+    /// <summary>
+    /// 系统主题配置JSON
+    /// </summary>
+    public string? ThemeConfig { get; set; }
 }
