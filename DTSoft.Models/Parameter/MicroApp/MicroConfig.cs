@@ -425,6 +425,58 @@ namespace DTSoft.Models.Parameter.MicroApp
         /// ESB 参数 JSON。
         /// </summary>
         public string? EsbParams { get; set; }
+
+        /// <summary>
+        /// 开窗查询数据源编码。
+        /// </summary>
+        public string? LookupDataSourceCode { get; set; }
+
+        /// <summary>
+        /// 开窗查询参数 JSON。
+        /// </summary>
+        public string? LookupParams { get; set; }
+
+        /// <summary>
+        /// 开窗查询当前字段取值列。
+        /// </summary>
+        public string? LookupValueField { get; set; }
+
+        /// <summary>
+        /// 开窗查询分页大小。
+        /// </summary>
+        public int? LookupPageSize { get; set; }
+
+        /// <summary>
+        /// 开窗查询弹窗显示列。
+        /// </summary>
+        public List<LookupColumnConfig>? LookupColumns { get; set; }
+
+        /// <summary>
+        /// 开窗查询字段回填映射。
+        /// </summary>
+        public List<LookupMappingConfig>? LookupMappings { get; set; }
+    }
+
+    /// <summary>
+    /// 开窗查询显示列配置。
+    /// </summary>
+    public class LookupColumnConfig
+    {
+        public required string Field { get; set; }
+
+        public required string Label { get; set; }
+
+        public int? Width { get; set; }
+    }
+
+    /// <summary>
+    /// 开窗查询字段回填映射配置。
+    /// </summary>
+    public class LookupMappingConfig
+    {
+        public required string SourceField { get; set; }
+
+        public required string TargetField { get; set; }
     }
 
     /// <summary>

@@ -111,6 +111,7 @@ namespace DTSoft.Core.DbProviders
             "boolean" => "TINYINT(1)",
             "textarea" => "TEXT",
             "select" => "VARCHAR(200)",
+            "lookup" => "VARCHAR(500)",
             "attachment" => "TEXT",
             _ => "VARCHAR(500)",
         };
@@ -132,6 +133,7 @@ namespace DTSoft.Core.DbProviders
             "select" => $"VARCHAR({NormalizeColumnLength(field, 200, existingMaxLength)})",
             "radio" => $"VARCHAR({NormalizeColumnLength(field, 500, existingMaxLength)})",
             "checkbox" => $"VARCHAR({NormalizeColumnLength(field, 500, existingMaxLength)})",
+            "lookup" => $"VARCHAR({NormalizeColumnLength(field, 500, existingMaxLength)})",
             _ => MapFieldTypeToDbType(field.FieldType),
         };
 

@@ -829,7 +829,7 @@ namespace DTSoft.AppService.MicroApp
                 var textFields = fields
                     .Where(f => !string.IsNullOrWhiteSpace(f.FieldName) &&
                                 IsValidColumnName(f.FieldName) &&
-                                f.FieldType is "string" or "textarea" or "select" or "radio")
+                                f.FieldType is "string" or "textarea" or "select" or "radio" or "lookup")
                     .ToList();
 
                 if (textFields.Count > 0)
@@ -1158,7 +1158,7 @@ namespace DTSoft.AppService.MicroApp
 
         private static bool SupportsColumnLength(FieldConfig field)
         {
-            return field.FieldType is "string" or "select" or "radio" or "checkbox";
+            return field.FieldType is "string" or "select" or "radio" or "checkbox" or "lookup";
         }
 
         private static bool ShouldExpandColumnLength(FieldConfig field, int? existingMaxLength)

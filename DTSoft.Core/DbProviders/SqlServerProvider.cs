@@ -102,6 +102,7 @@ namespace DTSoft.Core.DbProviders
             "boolean" => "BIT",
             "textarea" => "NTEXT",
             "select" => "NVARCHAR(200)",
+            "lookup" => "NVARCHAR(500)",
             "attachment" => "NVARCHAR(MAX)",
             _ => "NVARCHAR(500)",
         };
@@ -123,6 +124,7 @@ namespace DTSoft.Core.DbProviders
             "select" => $"NVARCHAR({NormalizeColumnLength(field, 200, existingMaxLength)})",
             "radio" => $"NVARCHAR({NormalizeColumnLength(field, 500, existingMaxLength)})",
             "checkbox" => $"NVARCHAR({NormalizeColumnLength(field, 500, existingMaxLength)})",
+            "lookup" => $"NVARCHAR({NormalizeColumnLength(field, 500, existingMaxLength)})",
             _ => MapFieldTypeToDbType(field.FieldType),
         };
 

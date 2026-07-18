@@ -86,6 +86,10 @@ public class EsbExecuteRequest
     public required string Code { get; set; }
 
     public Dictionary<string, JsonNode?>? Parameters { get; set; }
+
+    public int? PageNum { get; set; }
+
+    public int? PageSize { get; set; }
 }
 
 /// <summary>
@@ -154,4 +158,18 @@ public class EsbDataSourceResponse
     public DateTime CreateTime { get; set; }
 
     public DateTime UpdateTime { get; set; }
+}
+
+/// <summary>
+/// ESB 分页执行结果。
+/// </summary>
+public class EsbPagedExecuteResponse
+{
+    public List<Dictionary<string, object?>> List { get; set; } = [];
+
+    public int Total { get; set; }
+
+    public int PageNum { get; set; }
+
+    public int PageSize { get; set; }
 }

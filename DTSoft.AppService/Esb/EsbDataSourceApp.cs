@@ -176,10 +176,20 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
             throw new Exception("ESB 数据源仅支持查询模式");
         }
 
-        return await ExecuteSqlQuery(entity, request.Parameters ?? new Dictionary<string, JsonNode?>(), userAccount);
+        return await ExecuteSqlQuery(
+            entity,
+            request.Parameters ?? new Dictionary<string, JsonNode?>(),
+            userAccount,
+            request.PageNum,
+            request.PageSize);
     }
 
-    private async Task<object> ExecuteSqlQuery(SysEsbDataSource entity, Dictionary<string, JsonNode?> inputParameters, string userAccount)
+    private async Task<object> ExecuteSqlQuery(
+        SysEsbDataSource entity,
+        Dictionary<string, JsonNode?> inputParameters,
+        string userAccount,
+        int? pageNum,
+        int? pageSize)
     {
         var sql = NormalizeSql(entity.SqlText);
         ValidateSafeQuerySql(sql);
@@ -234,7 +244,21 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
                 rows.Add(row);
             }
 
-            return ApplyResultMapping(rows, DeserializeResultMapping(entity.ResultMapping));
+            var mappedRows = ApplyResultMapping(rows, DeserializeResultMapping(entity.ResultMapping));
+            if (pageNum is > 0 && pageSize is > 0)
+            {
+                var normalizedPageNum = pageNum.Value;
+                var normalizedPageSize = Math.Clamp(pageSize.Value, 1, 200);
+                return new EsbPagedExecuteResponse
+                {
+                    List = mappedRows.Skip((normalizedPageNum - 1) * normalizedPageSize).Take(normalizedPageSize).ToList(),
+                    Total = mappedRows.Count,
+                    PageNum = normalizedPageNum,
+                    PageSize = normalizedPageSize
+                };
+            }
+
+            return mappedRows;
         }
         finally
         {
