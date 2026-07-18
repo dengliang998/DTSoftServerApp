@@ -59,30 +59,7 @@ namespace DTSoft.AppService.MicroApp
             // 转换为响应对象
             var result = new PagedResponse<MicroConfigResponse>
             {
-                Data = configList.Select(c => new MicroConfigResponse
-                {
-                    ItemId = c.ItemId,
-                    ConfigName = c.ConfigName,
-                    ModelName = c.ModelName,
-                    ConfigDesc = c.ConfigDesc,
-                    Status = c.Status,
-                    SupportCreate = c.SupportCreate,
-                    SupportUpdate = c.SupportUpdate,
-                    SupportDelete = c.SupportDelete,
-                    SupportBatchDelete = c.SupportBatchDelete,
-                    SupportImport = c.SupportImport,
-                    SupportExport = c.SupportExport,
-                    ShowSubTablesInList = c.ShowSubTablesInList,
-                    DataScope = NormalizeDataScope(c.DataScope),
-                    FormColumns = NormalizeFormColumns(c.FormColumns),
-                    QueryColumns = NormalizeQueryColumns(c.QueryColumns),
-                    MicroAppPath = c.ApiPrefix,
-                    Fields = string.IsNullOrEmpty(c.Fields) ? new List<FieldConfig>() :
-                            JsonSerializer.Deserialize<List<FieldConfig>>(c.Fields),
-                    SubTables = ParseSubTables(c.SubTables),
-                    CreateTime = c.CreateTime,
-                    UpdateTime = c.UpdateTime
-                }).ToList(),
+                Data = configList.Select(config => MicroConfigSchema.ToResponse(config)).ToList(),
                 Total = total
             };
         
@@ -104,30 +81,7 @@ namespace DTSoft.AppService.MicroApp
                 throw new Exception("未找到指定的微应用配置");
             }
 
-            return new MicroConfigResponse
-            {
-                ItemId = config.ItemId,
-                ConfigName = config.ConfigName,
-                ModelName = config.ModelName,
-                ConfigDesc = config.ConfigDesc,
-                Status = config.Status,
-                SupportCreate = config.SupportCreate,
-                SupportUpdate = config.SupportUpdate,
-                SupportDelete = config.SupportDelete,
-                SupportBatchDelete = config.SupportBatchDelete,
-                SupportImport = config.SupportImport,
-                SupportExport = config.SupportExport,
-                ShowSubTablesInList = config.ShowSubTablesInList,
-                DataScope = NormalizeDataScope(config.DataScope),
-                FormColumns = NormalizeFormColumns(config.FormColumns),
-                QueryColumns = NormalizeQueryColumns(config.QueryColumns),
-                MicroAppPath = config.ApiPrefix,
-                Fields = string.IsNullOrEmpty(config.Fields) ? new List<FieldConfig>() :
-                        JsonSerializer.Deserialize<List<FieldConfig>>(config.Fields),
-                SubTables = ParseSubTables(config.SubTables),
-                CreateTime = config.CreateTime,
-                UpdateTime = config.UpdateTime
-            };
+            return MicroConfigSchema.ToResponse(config);
         }
 
         /// <summary>
@@ -157,6 +111,8 @@ namespace DTSoft.AppService.MicroApp
                 }
             }
 
+            var normalizedSubTables = MicroConfigSchema.NormalizeSubTables(parameter.SubTables);
+
             // 创建微应用配置对象
             var microConfig = new SysMicroAppConfig()
             {
@@ -172,12 +128,12 @@ namespace DTSoft.AppService.MicroApp
                 SupportImport = parameter.SupportImport,
                 SupportExport = parameter.SupportExport,
                 ShowSubTablesInList = parameter.ShowSubTablesInList,
-                DataScope = NormalizeDataScope(parameter.DataScope),
-                FormColumns = NormalizeFormColumns(parameter.FormColumns),
-                QueryColumns = NormalizeQueryColumns(parameter.QueryColumns),
+                DataScope = MicroConfigSchema.NormalizeDataScope(parameter.DataScope),
+                FormColumns = MicroConfigSchema.NormalizeFormColumns(parameter.FormColumns),
+                QueryColumns = MicroConfigSchema.NormalizeQueryColumns(parameter.QueryColumns),
                 ApiPrefix = string.IsNullOrWhiteSpace(parameter.MicroAppPath) ? parameter.ModelName : parameter.MicroAppPath,
                 Fields = JsonSerializer.Serialize(parameter.Fields),
-                SubTables = JsonSerializer.Serialize(NormalizeSubTables(parameter.SubTables)),
+                SubTables = JsonSerializer.Serialize(normalizedSubTables),
                 CreateTime = DateTime.Now,
                 UpdateTime = DateTime.Now
             };
@@ -192,29 +148,10 @@ namespace DTSoft.AppService.MicroApp
             await _microTableService.EnsureTableExistsAsync(microConfig);
         
             // 返回添加后的配置信息
-            return new MicroConfigResponse
-            {
-                ItemId = microConfig.ItemId,
-                ConfigName = microConfig.ConfigName,
-                ModelName = microConfig.ModelName,
-                ConfigDesc = microConfig.ConfigDesc,
-                Status = microConfig.Status,
-                SupportCreate = microConfig.SupportCreate,
-                SupportUpdate = microConfig.SupportUpdate,
-                SupportDelete = microConfig.SupportDelete,
-                SupportBatchDelete = microConfig.SupportBatchDelete,
-                SupportImport = microConfig.SupportImport,
-                SupportExport = microConfig.SupportExport,
-                ShowSubTablesInList = microConfig.ShowSubTablesInList,
-                DataScope = NormalizeDataScope(microConfig.DataScope),
-                FormColumns = NormalizeFormColumns(microConfig.FormColumns),
-                QueryColumns = NormalizeQueryColumns(microConfig.QueryColumns),
-                MicroAppPath = microConfig.ApiPrefix,
-                Fields = parameter.Fields,
-                SubTables = NormalizeSubTables(parameter.SubTables),
-                CreateTime = microConfig.CreateTime,
-                UpdateTime = microConfig.UpdateTime
-            };
+            return MicroConfigSchema.ToResponse(
+                microConfig,
+                parameter.Fields,
+                normalizedSubTables);
         }
 
         /// <summary>
@@ -250,6 +187,8 @@ namespace DTSoft.AppService.MicroApp
                 throw new Exception("微应用路径已存在，请使用其他路径");
             }
 
+            var normalizedSubTables = MicroConfigSchema.NormalizeSubTables(parameter.SubTables);
+
             // 更新配置信息
             existingConfig.ConfigName = parameter.ConfigName;
             existingConfig.ConfigDesc = parameter.ConfigDesc;
@@ -261,12 +200,12 @@ namespace DTSoft.AppService.MicroApp
             existingConfig.SupportImport = parameter.SupportImport;
             existingConfig.SupportExport = parameter.SupportExport;
             existingConfig.ShowSubTablesInList = parameter.ShowSubTablesInList;
-            existingConfig.DataScope = NormalizeDataScope(parameter.DataScope);
-            existingConfig.FormColumns = NormalizeFormColumns(parameter.FormColumns);
-            existingConfig.QueryColumns = NormalizeQueryColumns(parameter.QueryColumns);
+            existingConfig.DataScope = MicroConfigSchema.NormalizeDataScope(parameter.DataScope);
+            existingConfig.FormColumns = MicroConfigSchema.NormalizeFormColumns(parameter.FormColumns);
+            existingConfig.QueryColumns = MicroConfigSchema.NormalizeQueryColumns(parameter.QueryColumns);
             existingConfig.ApiPrefix = targetMicroAppPath;
             existingConfig.Fields = JsonSerializer.Serialize(parameter.Fields);
-            existingConfig.SubTables = JsonSerializer.Serialize(NormalizeSubTables(parameter.SubTables));
+            existingConfig.SubTables = JsonSerializer.Serialize(normalizedSubTables);
             existingConfig.UpdateTime = DateTime.Now;
 
             // 保存更改
@@ -278,29 +217,10 @@ namespace DTSoft.AppService.MicroApp
             await _microTableService.EnsureTableExistsAsync(existingConfig);
 
             // 返回更新后的配置信息
-            return new MicroConfigResponse
-            {
-                ItemId = existingConfig.ItemId,
-                ConfigName = existingConfig.ConfigName,
-                ModelName = existingConfig.ModelName,
-                ConfigDesc = existingConfig.ConfigDesc,
-                Status = existingConfig.Status,
-                SupportCreate = existingConfig.SupportCreate,
-                SupportUpdate = existingConfig.SupportUpdate,
-                SupportDelete = existingConfig.SupportDelete,
-                SupportBatchDelete = existingConfig.SupportBatchDelete,
-                SupportImport = existingConfig.SupportImport,
-                SupportExport = existingConfig.SupportExport,
-                ShowSubTablesInList = existingConfig.ShowSubTablesInList,
-                DataScope = NormalizeDataScope(existingConfig.DataScope),
-                FormColumns = NormalizeFormColumns(existingConfig.FormColumns),
-                QueryColumns = NormalizeQueryColumns(existingConfig.QueryColumns),
-                MicroAppPath = existingConfig.ApiPrefix,
-                Fields = parameter.Fields,
-                SubTables = NormalizeSubTables(parameter.SubTables),
-                CreateTime = existingConfig.CreateTime,
-                UpdateTime = existingConfig.UpdateTime
-            };
+            return MicroConfigSchema.ToResponse(
+                existingConfig,
+                parameter.Fields,
+                normalizedSubTables);
         }
 
         /// <summary>
@@ -334,95 +254,5 @@ namespace DTSoft.AppService.MicroApp
             return true;
         }
 
-        /// <summary>
-        /// 标准化微应用数据权限范围，非法或空值默认返回全部数据。
-        /// </summary>
-        /// <param name="dataScope">原始数据权限范围。</param>
-        /// <returns>标准化后的数据权限范围。</returns>
-        private static string NormalizeDataScope(string? dataScope)
-        {
-            return dataScope?.Trim().ToLowerInvariant() switch
-            {
-                "self" => "self",
-                "department" => "department",
-                _ => "all"
-            };
-        }
-
-        /// <summary>
-        /// 标准化微应用数据表单每行列数，非法值默认返回 1 列。
-        /// </summary>
-        /// <param name="formColumns">原始每行列数。</param>
-        /// <returns>标准化后的每行列数。</returns>
-        private static int NormalizeFormColumns(int? formColumns)
-        {
-            return formColumns is >= 1 and <= 4 ? formColumns.Value : 1;
-        }
-
-        /// <summary>
-        /// 标准化微应用搜索字段每行列数，非法值默认返回 1 列。
-        /// </summary>
-        /// <param name="queryColumns">原始搜索字段每行列数。</param>
-        /// <returns>标准化后的搜索字段每行列数。</returns>
-        private static int NormalizeQueryColumns(int? queryColumns)
-        {
-            return queryColumns is >= 1 and <= 4 ? queryColumns.Value : 1;
-        }
-
-        private static List<SubTableConfig> ParseSubTables(string? subTables)
-        {
-            if (string.IsNullOrWhiteSpace(subTables))
-            {
-                return new List<SubTableConfig>();
-            }
-
-            try
-            {
-                return JsonSerializer.Deserialize<List<SubTableConfig>>(
-                           subTables,
-                           new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ??
-                       new List<SubTableConfig>();
-            }
-            catch
-            {
-                return new List<SubTableConfig>();
-            }
-        }
-
-        private static List<SubTableConfig> NormalizeSubTables(List<SubTableConfig>? subTables)
-        {
-            return subTables?
-                       .Where(subTable => !string.IsNullOrWhiteSpace(subTable.TableName))
-                       .Select((subTable, index) => new SubTableConfig
-                       {
-                           Label = string.IsNullOrWhiteSpace(subTable.Label) ? subTable.TableName : subTable.Label,
-                           TableName = subTable.TableName.Trim(),
-                           MinRows = Math.Max(0, subTable.MinRows ?? 0),
-                           MaxRows = subTable.MaxRows is > 0 ? subTable.MaxRows : null,
-                           SortOrder = subTable.SortOrder ?? index + 1,
-                           EnableLookup = subTable.EnableLookup == true,
-                           LookupDataSourceCode = subTable.EnableLookup == true ? subTable.LookupDataSourceCode : string.Empty,
-                           LookupParams = subTable.EnableLookup == true ? subTable.LookupParams : string.Empty,
-                           LookupPageSize = subTable.EnableLookup == true && subTable.LookupPageSize is >= 5 and <= 200
-                               ? subTable.LookupPageSize
-                               : null,
-                           LookupColumns = subTable.EnableLookup == true
-                               ? subTable.LookupColumns?.Where(column =>
-                                       !string.IsNullOrWhiteSpace(column.Field) &&
-                                       !string.IsNullOrWhiteSpace(column.Label))
-                                   .ToList() ?? new List<LookupColumnConfig>()
-                               : new List<LookupColumnConfig>(),
-                           LookupMappings = subTable.EnableLookup == true
-                               ? subTable.LookupMappings?.Where(mapping =>
-                                       !string.IsNullOrWhiteSpace(mapping.SourceField) &&
-                                       !string.IsNullOrWhiteSpace(mapping.TargetField))
-                                   .ToList() ?? new List<LookupMappingConfig>()
-                               : new List<LookupMappingConfig>(),
-                           Fields = subTable.Fields ?? new List<FieldConfig>()
-                       })
-                       .OrderBy(subTable => subTable.SortOrder ?? 0)
-                       .ToList() ??
-                   new List<SubTableConfig>();
-        }
     }
 }

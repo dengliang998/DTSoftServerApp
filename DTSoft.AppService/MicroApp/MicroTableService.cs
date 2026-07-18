@@ -62,7 +62,7 @@ namespace DTSoft.AppService.MicroApp
                 var fields = string.IsNullOrEmpty(config.Fields)
                     ? new List<FieldConfig>()
                     : JsonSerializer.Deserialize<List<FieldConfig>>(config.Fields)!;
-                var subTables = ParseSubTables(config.SubTables);
+                var subTables = MicroConfigSchema.ParseSubTables(config.SubTables);
 
                 var tableExists = await CheckTableExistsAsync(tableName);
                 if (!tableExists)
@@ -447,7 +447,7 @@ namespace DTSoft.AppService.MicroApp
                 return mainRow;
             }
 
-            var subTables = ParseSubTables(config.SubTables);
+            var subTables = MicroConfigSchema.ParseSubTables(config.SubTables);
             if (subTables.Count == 0)
             {
                 return mainRow;
@@ -628,27 +628,27 @@ namespace DTSoft.AppService.MicroApp
                         var valuePlaceholders = new List<string>();
                         
                         // Id字段 - 生成雪花ID
-                        var idParam = $"@p{paramIndex++}";
-                        valuePlaceholders.Add(idParam);
+                        var idParam = $"p{paramIndex++}";
+                        valuePlaceholders.Add(_provider.GetParameterPlaceholder(idParam));
                         allParamValues.Add(YitterHelper.NewId());
                         
                         // 数据字段
                         foreach (var columnName in columnNames.Skip(1).Take(columnNames.Count - 5))
                         {
-                            var paramPlaceholder = $"@p{paramIndex++}";
-                            valuePlaceholders.Add(paramPlaceholder);
+                            var paramName = $"p{paramIndex++}";
+                            valuePlaceholders.Add(_provider.GetParameterPlaceholder(paramName));
                             allParamValues.Add(dataRow.ContainsKey(columnName) ? ConvertToBasicType(dataRow[columnName]) : null);
                         }
                         
                         // 系统字段
-                        var createdTimeParam = $"@p{paramIndex++}";
-                        var updatedTimeParam = $"@p{paramIndex++}";
-                        var createdByParam = $"@p{paramIndex++}";
-                        var updatedByParam = $"@p{paramIndex++}";
-                        valuePlaceholders.Add(createdTimeParam);
-                        valuePlaceholders.Add(updatedTimeParam);
-                        valuePlaceholders.Add(createdByParam);
-                        valuePlaceholders.Add(updatedByParam);
+                        var createdTimeParam = $"p{paramIndex++}";
+                        var updatedTimeParam = $"p{paramIndex++}";
+                        var createdByParam = $"p{paramIndex++}";
+                        var updatedByParam = $"p{paramIndex++}";
+                        valuePlaceholders.Add(_provider.GetParameterPlaceholder(createdTimeParam));
+                        valuePlaceholders.Add(_provider.GetParameterPlaceholder(updatedTimeParam));
+                        valuePlaceholders.Add(_provider.GetParameterPlaceholder(createdByParam));
+                        valuePlaceholders.Add(_provider.GetParameterPlaceholder(updatedByParam));
                         allParamValues.Add(now);
                         allParamValues.Add(now);
                         allParamValues.Add(userAccount ?? string.Empty);
@@ -678,7 +678,7 @@ namespace DTSoft.AppService.MicroApp
                     for (int i = 0; i < allParamValues.Count; i++)
                     {
                         var param = command.CreateParameter();
-                        param.ParameterName = $"@p{i}";
+                        param.ParameterName = _provider.GetParameterName($"p{i}");
                         param.Value = allParamValues[i] ?? DBNull.Value;
                         command.Parameters.Add(param);
                     }
@@ -1012,7 +1012,7 @@ namespace DTSoft.AppService.MicroApp
             Dictionary<string, List<Dictionary<string, object>>> subTableData,
             string userAccount)
         {
-            var subTables = ParseSubTables(config.SubTables);
+            var subTables = MicroConfigSchema.ParseSubTables(config.SubTables);
             if (subTables.Count == 0)
             {
                 return;
@@ -1036,7 +1036,7 @@ namespace DTSoft.AppService.MicroApp
 
         private async Task DeleteSubTableRowsAsync(SysMicroAppConfig config, long parentId)
         {
-            foreach (var subTable in ParseSubTables(config.SubTables))
+            foreach (var subTable in MicroConfigSchema.ParseSubTables(config.SubTables))
             {
                 await DeleteSubTableRowsAsync(config, parentId, subTable);
             }
@@ -1550,26 +1550,6 @@ namespace DTSoft.AppService.MicroApp
                 PostgreSqlProvider _ => "TRUE",
                 _ => "1"
             };
-        }
-
-        private static List<SubTableConfig> ParseSubTables(string? subTables)
-        {
-            if (string.IsNullOrWhiteSpace(subTables))
-            {
-                return new List<SubTableConfig>();
-            }
-
-            try
-            {
-                return JsonSerializer.Deserialize<List<SubTableConfig>>(
-                           subTables,
-                           new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ??
-                       new List<SubTableConfig>();
-            }
-            catch
-            {
-                return new List<SubTableConfig>();
-            }
         }
 
         private static List<FieldConfig> BuildSubTableFields(SubTableConfig subTable)

@@ -684,7 +684,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
             Dictionary<string, List<Dictionary<string, object>>> subTableData)
         {
             var errors = new List<string>();
-            var subTables = ParseSubTables(config.SubTables);
+            var subTables = MicroConfigSchema.ParseSubTables(config.SubTables);
             if (subTables.Count == 0)
             {
                 return errors;
@@ -786,26 +786,6 @@ namespace DTSoftServerApp.Controllers.MicroApp
             }
 
             return errors;
-        }
-
-        private static List<SubTableConfig> ParseSubTables(string? subTables)
-        {
-            if (string.IsNullOrWhiteSpace(subTables))
-            {
-                return new List<SubTableConfig>();
-            }
-
-            try
-            {
-                return JsonSerializer.Deserialize<List<SubTableConfig>>(
-                           subTables,
-                           new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ??
-                       new List<SubTableConfig>();
-            }
-            catch
-            {
-                return new List<SubTableConfig>();
-            }
         }
 
         /// <summary>
