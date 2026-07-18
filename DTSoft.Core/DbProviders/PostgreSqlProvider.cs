@@ -76,7 +76,12 @@ namespace DTSoft.Core.DbProviders
                 SELECT
                     COLUMN_NAME AS ColumnName,
                     IS_NULLABLE AS IsNullable,
-                    CHARACTER_MAXIMUM_LENGTH AS MaxLength
+                    CHARACTER_MAXIMUM_LENGTH AS MaxLength,
+                    CASE
+                        WHEN IDENTITY_GENERATION IS NOT NULL OR COLUMN_DEFAULT LIKE 'nextval%'
+                        THEN 1
+                        ELSE 0
+                    END AS IsIdentity
                 FROM information_schema.columns
                 WHERE table_schema = current_schema() AND table_name = '{EscapeStringValue(tableName)}'
             ";

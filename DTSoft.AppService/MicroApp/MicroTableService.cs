@@ -164,30 +164,31 @@ namespace DTSoft.AppService.MicroApp
                 }
             }
 
-                var existingColumns = await GetTableColumnsWithInfoAsync(tableName);
-                foreach (var field in fields)
-                {
-                    var columnName = field.FieldName;
-                    if (!existingColumns.TryGetValue(columnName, out var existingColumnInfo))
+            var existingColumns = await GetTableColumnsWithInfoAsync(tableName);
+            ValidateSnowflakeIdColumn(tableName, existingColumns);
+            foreach (var field in fields)
+            {
+                var columnName = field.FieldName;
+                if (!existingColumns.TryGetValue(columnName, out var existingColumnInfo))
                 {
                     var addColumnSql = _provider.BuildAddColumnSql(tableName, field);
                     await _context.Database.ExecuteSqlRawAsync(addColumnSql);
-                    }
-                    else
-                    {
-                        var nullabilityChanged =
-                            existingColumnInfo.IsNullable && field.Required ||
-                            !existingColumnInfo.IsNullable && !field.Required;
-                        var shouldExpandLength = ShouldExpandColumnLength(field, existingColumnInfo.MaxLength);
+                }
+                else
+                {
+                    var nullabilityChanged =
+                        existingColumnInfo.IsNullable && field.Required ||
+                        !existingColumnInfo.IsNullable && !field.Required;
+                    var shouldExpandLength = ShouldExpandColumnLength(field, existingColumnInfo.MaxLength);
 
-                        if (nullabilityChanged || shouldExpandLength)
-                        {
-                            var alterColumnSql = _provider.BuildAlterColumnSql(tableName, field, existingColumnInfo.MaxLength);
-                            await _context.Database.ExecuteSqlRawAsync(alterColumnSql);
-                        }
+                    if (nullabilityChanged || shouldExpandLength)
+                    {
+                        var alterColumnSql = _provider.BuildAlterColumnSql(tableName, field, existingColumnInfo.MaxLength);
+                        await _context.Database.ExecuteSqlRawAsync(alterColumnSql);
                     }
                 }
             }
+        }
 
         private async Task<Dictionary<string, ColumnInfo>> GetTableColumnsWithInfoAsync(string tableName)
         {
@@ -213,7 +214,7 @@ namespace DTSoft.AppService.MicroApp
                 {
                     var columnName = reader["ColumnName"].ToString();
                     var isNullableText = reader["IsNullable"].ToString();
-                    var isNullable = isNullableText?.ToLower() is "yes" or "true" or "1";
+                    var isNullable = isNullableText?.ToLowerInvariant() is "yes" or "true" or "1" or "y";
 
                     if (!string.IsNullOrEmpty(columnName))
                     {
@@ -227,7 +228,8 @@ namespace DTSoft.AppService.MicroApp
                         {
                             Name = columnName,
                             IsNullable = isNullable,
-                            MaxLength = maxLength
+                            MaxLength = maxLength,
+                            IsIdentity = ReadBooleanColumn(reader, "IsIdentity")
                         };
                     }
                 }
@@ -385,6 +387,7 @@ namespace DTSoft.AppService.MicroApp
                 return 0;
 
             var tableName = BuildMicroTableName(config.ModelName);
+            await ValidateSnowflakeIdColumnAsync(tableName);
             var now = TimeUtil.CstDateTime;
             
             // 从第一条数据中提取列名（所有数据应该有相同的列）
@@ -556,6 +559,7 @@ namespace DTSoft.AppService.MicroApp
         public async Task<Dictionary<string, object>> ExecuteMicroInsertAsync(SysMicroAppConfig config, Dictionary<string, object> dataDict, string userAccount)
         {
             var tableName = BuildMicroTableName(config.ModelName);
+            await ValidateSnowflakeIdColumnAsync(tableName);
             var columns = new List<string>();
             var parameters = new List<string>();
             var paramValues = new List<object?>();
@@ -1178,11 +1182,68 @@ namespace DTSoft.AppService.MicroApp
             return true;
         }
 
+        private async Task ValidateSnowflakeIdColumnAsync(string tableName)
+        {
+            var columns = await GetTableColumnsWithInfoAsync(tableName);
+            ValidateSnowflakeIdColumn(tableName, columns);
+        }
+
+        private static void ValidateSnowflakeIdColumn(string tableName, Dictionary<string, ColumnInfo> columns)
+        {
+            if (!columns.TryGetValue(MicroTableSystemColumns.Id, out var idColumn))
+            {
+                throw new InvalidOperationException($"微应用表 {tableName} 缺少 {MicroTableSystemColumns.Id} 主键列，请重新初始化表结构后重试。");
+            }
+
+            if (idColumn.IsIdentity)
+            {
+                throw new InvalidOperationException($"微应用表 {tableName} 的 {MicroTableSystemColumns.Id} 是自增列，当前微应用使用雪花ID，不需要数据库自增。请将 {MicroTableSystemColumns.Id} 调整为 BIGINT 非自增主键，或在确认无历史数据后重新初始化该微应用表。");
+            }
+        }
+
+        private static bool ReadBooleanColumn(IDataRecord reader, string columnName)
+        {
+            var ordinal = GetColumnOrdinal(reader, columnName);
+            if (ordinal < 0 || reader.IsDBNull(ordinal))
+            {
+                return false;
+            }
+
+            var value = reader.GetValue(ordinal);
+            return value switch
+            {
+                bool boolValue => boolValue,
+                byte byteValue => byteValue != 0,
+                short shortValue => shortValue != 0,
+                int intValue => intValue != 0,
+                long longValue => longValue != 0,
+                decimal decimalValue => decimalValue != 0,
+                string stringValue => stringValue.Equals("YES", StringComparison.OrdinalIgnoreCase)
+                    || stringValue.Equals("TRUE", StringComparison.OrdinalIgnoreCase)
+                    || stringValue == "1",
+                _ => false
+            };
+        }
+
+        private static int GetColumnOrdinal(IDataRecord reader, string columnName)
+        {
+            for (var i = 0; i < reader.FieldCount; i++)
+            {
+                if (reader.GetName(i).Equals(columnName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
         private class ColumnInfo
         {
             public required string Name { get; set; }
             public bool IsNullable { get; init; }
             public int? MaxLength { get; init; }
+            public bool IsIdentity { get; init; }
         }
 
         private record QueryParameter(string Name, object? Value);

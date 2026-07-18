@@ -1,4 +1,5 @@
 using DTSoft.AppService.Esb;
+using DTSoft.Core.Common;
 using DTSoft.Models.Parameter.Esb;
 
 namespace DTSoftServerApp.Controllers.Esb;
@@ -275,7 +276,7 @@ public class EsbController(EsbDataSourceApp esbDataSourceApp, EsbServiceConnecti
         {
             if (request == null) return Ok(new { success = false, msg = "请求参数不能为空" });
 
-            var result = await esbDataSourceApp.Execute(request);
+            var result = await esbDataSourceApp.Execute(request, DtSoftHelper.GetLoginUserAccount(User));
             return Ok(new { success = true, msg = "执行成功", data = result });
         }
         catch (Exception ex)

@@ -20,6 +20,7 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
 {
     private const string SourceTypeSql = "sql";
     private const string ExecuteModeQuery = "query";
+    private static readonly Regex VariablePattern = new(@"\$\{\s*(currentUser|loginUser|user)\.(account|userAcc|name|displayName|email)\s*\}", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex SqlParameterPattern = new(@"(?<!@)@([a-zA-Z][a-zA-Z0-9_]*)", RegexOptions.Compiled);
     private static readonly Regex UnsafeSqlKeywordPattern = new(
         @"\b(insert|update|delete|merge|drop|alter|create|truncate|exec|execute|grant|revoke|into|call|copy|replace|load|set|use|backup|restore)\b",
@@ -156,7 +157,7 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
         await context.SaveChangesAsync();
     }
 
-    public async Task<object> Execute(EsbExecuteRequest request)
+    public async Task<object> Execute(EsbExecuteRequest request, string userAccount)
     {
         if (string.IsNullOrWhiteSpace(request.Code)) throw new Exception("数据源编码不能为空");
 
@@ -175,16 +176,17 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
             throw new Exception("ESB 数据源仅支持查询模式");
         }
 
-        return await ExecuteSqlQuery(entity, request.Parameters ?? new Dictionary<string, JsonNode?>());
+        return await ExecuteSqlQuery(entity, request.Parameters ?? new Dictionary<string, JsonNode?>(), userAccount);
     }
 
-    private async Task<object> ExecuteSqlQuery(SysEsbDataSource entity, Dictionary<string, JsonNode?> inputParameters)
+    private async Task<object> ExecuteSqlQuery(SysEsbDataSource entity, Dictionary<string, JsonNode?> inputParameters, string userAccount)
     {
         var sql = NormalizeSql(entity.SqlText);
         ValidateSafeQuerySql(sql);
 
         var declaredParameters = DeserializeParameters(entity.ParameterConfig);
         ValidateSqlParameters(sql, declaredParameters);
+        var variableContext = await BuildVariableContext(userAccount);
 
         var serviceConnection = await connectionApp.GetEnabledConnection(entity.ConnectionId);
         var dbType = serviceConnection == null
@@ -213,7 +215,7 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
             {
                 var parameter = command.CreateParameter();
                 parameter.ParameterName = $"{parameterPrefix}{parameterConfig.Name}";
-                parameter.Value = ResolveParameterValue(parameterConfig, inputParameters);
+                parameter.Value = ResolveParameterValue(parameterConfig, inputParameters, variableContext);
                 command.Parameters.Add(parameter);
             }
 
@@ -232,7 +234,7 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
                 rows.Add(row);
             }
 
-            return rows;
+            return ApplyResultMapping(rows, DeserializeResultMapping(entity.ResultMapping));
         }
         finally
         {
@@ -248,7 +250,45 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
         }
     }
 
-    private static object ResolveParameterValue(EsbParameterConfig config, Dictionary<string, JsonNode?> inputParameters)
+    private async Task<Dictionary<string, string>> BuildVariableContext(string userAccount)
+    {
+        var normalizedAccount = userAccount.Trim();
+        var user = await context.SysUser!
+            .AsNoTracking()
+            .Where(item => item.Account == normalizedAccount)
+            .Select(item => new
+            {
+                item.Account,
+                item.DisplayName,
+                item.Email
+            })
+            .FirstOrDefaultAsync();
+
+        var account = user?.Account ?? normalizedAccount;
+        var displayName = user?.DisplayName ?? string.Empty;
+        var email = user?.Email ?? string.Empty;
+
+        return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["currentUser.account"] = account,
+            ["currentUser.userAcc"] = account,
+            ["currentUser.name"] = displayName,
+            ["currentUser.displayName"] = displayName,
+            ["currentUser.email"] = email,
+            ["loginUser.account"] = account,
+            ["loginUser.userAcc"] = account,
+            ["loginUser.name"] = displayName,
+            ["loginUser.displayName"] = displayName,
+            ["loginUser.email"] = email,
+            ["user.account"] = account,
+            ["user.userAcc"] = account,
+            ["user.name"] = displayName,
+            ["user.displayName"] = displayName,
+            ["user.email"] = email
+        };
+    }
+
+    private static object ResolveParameterValue(EsbParameterConfig config, Dictionary<string, JsonNode?> inputParameters, Dictionary<string, string> variableContext)
     {
         inputParameters.TryGetValue(config.Name, out var valueNode);
         valueNode ??= config.DefaultValue;
@@ -259,7 +299,7 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
             return DBNull.Value;
         }
 
-        var text = ReadJsonNodeAsString(valueNode);
+        var text = ResolveVariables(ReadJsonNodeAsString(valueNode), variableContext);
         if (config.Required && string.IsNullOrWhiteSpace(text)) throw new Exception($"参数 {config.Name} 不能为空");
 
         return NormalizeParameterType(config.Type) switch
@@ -271,6 +311,48 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
             "datetime" => DateTime.TryParse(text, out var dateTime) ? dateTime : throw new Exception($"参数 {config.Name} 必须是日期时间"),
             _ => text
         };
+    }
+
+    private static string ResolveVariables(string value, Dictionary<string, string> variableContext)
+    {
+        if (string.IsNullOrEmpty(value)) return value;
+
+        return VariablePattern.Replace(value, match =>
+        {
+            var key = $"{match.Groups[1].Value}.{match.Groups[2].Value}";
+            return variableContext.TryGetValue(key, out var resolved) ? resolved : string.Empty;
+        });
+    }
+
+    private static List<Dictionary<string, object?>> ApplyResultMapping(List<Dictionary<string, object?>> rows, EsbResultMapping? mapping)
+    {
+        var labelField = NormalizeMappingField(mapping?.LabelField);
+        var valueField = NormalizeMappingField(mapping?.ValueField);
+
+        if (labelField == null && valueField == null)
+        {
+            return rows;
+        }
+
+        foreach (var row in rows)
+        {
+            if (labelField != null)
+            {
+                row["Label"] = row.TryGetValue(labelField, out var label) ? label : null;
+            }
+
+            if (valueField != null)
+            {
+                row["Value"] = row.TryGetValue(valueField, out var value) ? value : null;
+            }
+        }
+
+        return rows;
+    }
+
+    private static string? NormalizeMappingField(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
     private async Task ValidateConnection(EsbDataSourceAddParameter parameter)

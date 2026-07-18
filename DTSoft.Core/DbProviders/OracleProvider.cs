@@ -85,11 +85,13 @@ namespace DTSoft.Core.DbProviders
             
             return $@"
                 SELECT
-                    COLUMN_NAME AS ColumnName,
-                    NULLABLE AS IsNullable,
-                    CHAR_LENGTH AS MaxLength
-                FROM user_tab_columns
-                WHERE table_name = '{EscapeStringValue(tableName.ToUpper())}'
+                    c.COLUMN_NAME AS ColumnName,
+                    c.NULLABLE AS IsNullable,
+                    c.CHAR_LENGTH AS MaxLength,
+                    CASE WHEN i.COLUMN_NAME IS NOT NULL THEN 1 ELSE 0 END AS IsIdentity
+                FROM user_tab_columns c
+                LEFT JOIN user_tab_identity_cols i ON i.TABLE_NAME = c.TABLE_NAME AND i.COLUMN_NAME = c.COLUMN_NAME
+                WHERE c.table_name = '{EscapeStringValue(tableName.ToUpper())}'
             ";
         }
 

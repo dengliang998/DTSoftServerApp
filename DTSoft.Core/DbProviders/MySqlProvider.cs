@@ -96,7 +96,8 @@ namespace DTSoft.Core.DbProviders
                 SELECT
                     COLUMN_NAME AS ColumnName,
                     IS_NULLABLE AS IsNullable,
-                    CHARACTER_MAXIMUM_LENGTH AS MaxLength
+                    CHARACTER_MAXIMUM_LENGTH AS MaxLength,
+                    CASE WHEN EXTRA LIKE '%auto_increment%' THEN 1 ELSE 0 END AS IsIdentity
                 FROM information_schema.columns
                 WHERE table_schema = '{EscapeStringValue(dbName)}' AND table_name = '{EscapeStringValue(tableName)}'
             ";
@@ -273,7 +274,7 @@ namespace DTSoft.Core.DbProviders
         {
             var cols = string.Join(", ", columns);
             var pars = string.Join(", ", parameterNames);
-            return $"INSERT INTO {QuoteTableName(tableName)} ({cols}) VALUES ({pars}); SELECT LAST_INSERT_ID();";
+            return $"INSERT INTO {QuoteTableName(tableName)} ({cols}) VALUES ({pars})";
         }
 
         public string BuildGetNewIdSql(string tableName)

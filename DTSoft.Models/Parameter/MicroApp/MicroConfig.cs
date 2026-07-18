@@ -422,16 +422,6 @@ namespace DTSoft.Models.Parameter.MicroApp
         public string? EsbDataSourceCode { get; set; }
 
         /// <summary>
-        /// ESB 选项显示字段。
-        /// </summary>
-        public string? EsbLabelField { get; set; }
-
-        /// <summary>
-        /// ESB 选项值字段。
-        /// </summary>
-        public string? EsbValueField { get; set; }
-
-        /// <summary>
         /// ESB 参数 JSON。
         /// </summary>
         public string? EsbParams { get; set; }

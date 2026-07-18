@@ -85,11 +85,12 @@ namespace DTSoft.Core.DbProviders
             
             return $@"
                 SELECT
-                    COLUMN_NAME AS ColumnName,
-                    IS_NULLABLE AS IsNullable,
-                    CHARACTER_MAXIMUM_LENGTH AS MaxLength
-                FROM INFORMATION_SCHEMA.COLUMNS
-                WHERE TABLE_NAME = '{EscapeStringValue(tableName)}'
+                    c.COLUMN_NAME AS ColumnName,
+                    c.IS_NULLABLE AS IsNullable,
+                    c.CHARACTER_MAXIMUM_LENGTH AS MaxLength,
+                    COLUMNPROPERTY(OBJECT_ID(c.TABLE_SCHEMA + '.' + c.TABLE_NAME), c.COLUMN_NAME, 'IsIdentity') AS IsIdentity
+                FROM INFORMATION_SCHEMA.COLUMNS c
+                WHERE c.TABLE_NAME = '{EscapeStringValue(tableName)}'
             ";
         }
 
@@ -248,7 +249,7 @@ namespace DTSoft.Core.DbProviders
         {
             var cols = string.Join(", ", columns);
             var pars = string.Join(", ", parameterNames);
-            return $"INSERT INTO {QuoteTableName(tableName)} ({cols}) VALUES ({pars}); SELECT SCOPE_IDENTITY();";
+            return $"INSERT INTO {QuoteTableName(tableName)} ({cols}) VALUES ({pars})";
         }
 
         public string BuildGetNewIdSql(string tableName)
