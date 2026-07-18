@@ -407,7 +407,7 @@ namespace DTSoft.Models.Parameter.MicroApp
         public List<OptionItem>? Options { get; set; }
 
         /// <summary>
-        /// 选项来源，manual-手动维护，dictionary-数据字典
+        /// 选项来源，manual-手动维护，dictionary-数据字典，esb-ESB数据源
         /// </summary>
         public string? OptionSource { get; set; }
 
@@ -415,6 +415,26 @@ namespace DTSoft.Models.Parameter.MicroApp
         /// 字典编码，当选项来源为数据字典时使用
         /// </summary>
         public string? DictCode { get; set; }
+
+        /// <summary>
+        /// ESB 数据源编码，当选项来源为 ESB 时使用。
+        /// </summary>
+        public string? EsbDataSourceCode { get; set; }
+
+        /// <summary>
+        /// ESB 选项显示字段。
+        /// </summary>
+        public string? EsbLabelField { get; set; }
+
+        /// <summary>
+        /// ESB 选项值字段。
+        /// </summary>
+        public string? EsbValueField { get; set; }
+
+        /// <summary>
+        /// ESB 参数 JSON。
+        /// </summary>
+        public string? EsbParams { get; set; }
     }
 
     /// <summary>

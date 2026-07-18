@@ -27,6 +27,8 @@ public class SysDbContext(
     public virtual DbSet<SysApiKey>? SysApiKey { get; set; }
     public virtual DbSet<SysDictionaryType>? SysDictionaryType { get; set; }
     public virtual DbSet<SysDictionaryData>? SysDictionaryData { get; set; }
+    public virtual DbSet<SysEsbServiceConnection>? SysEsbServiceConnection { get; set; }
+    public virtual DbSet<SysEsbDataSource>? SysEsbDataSource { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -50,6 +52,8 @@ public class SysDbContext(
         modelBuilder.Entity<SysApiKey>().Property(p => p.ItemId).ValueGeneratedNever();
         modelBuilder.Entity<SysDictionaryType>().Property(p => p.ItemId).ValueGeneratedNever();
         modelBuilder.Entity<SysDictionaryData>().Property(p => p.ItemId).ValueGeneratedNever();
+        modelBuilder.Entity<SysEsbServiceConnection>().Property(p => p.ItemId).ValueGeneratedNever();
+        modelBuilder.Entity<SysEsbDataSource>().Property(p => p.ItemId).ValueGeneratedNever();
 
         //配置外键字段长度
         modelBuilder.Entity<SysRoleMember>().Property(p => p.UserAcc).HasMaxLength(50);
@@ -70,6 +74,8 @@ public class SysDbContext(
         modelBuilder.Entity<SysUserSupervisor>().HasIndex(p => p.UserAcc).IsUnique();
         modelBuilder.Entity<SysDictionaryType>().HasIndex(p => p.DictCode).IsUnique();
         modelBuilder.Entity<SysDictionaryData>().HasIndex(p => new { p.DictCode, p.ItemValue }).IsUnique();
+        modelBuilder.Entity<SysEsbServiceConnection>().HasIndex(p => p.Code).IsUnique();
+        modelBuilder.Entity<SysEsbDataSource>().HasIndex(p => p.Code).IsUnique();
 
         //建立主外键关系
         //SYS_RoleMember--SYS_Role

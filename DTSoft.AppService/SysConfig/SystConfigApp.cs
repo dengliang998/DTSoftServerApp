@@ -423,9 +423,11 @@ public class SysConfigApp(SysDbContext dbContext, ConfigHelper configHelper, Att
         var menuMaintenance = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemManagement.ItemId, MenuName = "菜单维护", MenuPath = "common/menus", Icon = "Menu", Order = 70, MType = 0 };
 
         var appConfig = new SysMenu { ItemId = YitterHelper.NewId(), Pid = applicationIntegration.ItemId, MenuName = "微应用配置", MenuPath = "MicroApp/MicroApiConfig", Icon = "Coin", Order = 10, MType = 0 };
-        var apiKeyManagement = new SysMenu { ItemId = YitterHelper.NewId(), Pid = applicationIntegration.ItemId, MenuName = "第三方集成", MenuPath = "apikey/management", Icon = "Key", Order = 20, MType = 0 };
+        var esbServiceConnections = new SysMenu { ItemId = YitterHelper.NewId(), Pid = applicationIntegration.ItemId, MenuName = "ESB 服务连接", MenuPath = "common/esb-connections", Icon = "Link", Order = 20, MType = 0 };
+        var esbDataSources = new SysMenu { ItemId = YitterHelper.NewId(), Pid = applicationIntegration.ItemId, MenuName = "ESB 数据源", MenuPath = "common/esb", Icon = "Connection", Order = 30, MType = 0 };
+        var apiKeyManagement = new SysMenu { ItemId = YitterHelper.NewId(), Pid = applicationIntegration.ItemId, MenuName = "第三方集成", MenuPath = "apikey/management", Icon = "Key", Order = 40, MType = 0 };
         
-        menuList.AddRange([organization, organizationList, roleList, systemManagement, systemSettingsPage, systemInfoPage, onlineUsers, systemLog, dictionaryManagement, attachmentList, menuMaintenance, applicationIntegration, appConfig, apiKeyManagement]);
+        menuList.AddRange([organization, organizationList, roleList, systemManagement, systemSettingsPage, systemInfoPage, onlineUsers, systemLog, dictionaryManagement, attachmentList, menuMaintenance, applicationIntegration, appConfig, esbServiceConnections, esbDataSources, apiKeyManagement]);
         
         // 批量添加菜单
         dbContext.SysMenu.AddRange(menuList);
