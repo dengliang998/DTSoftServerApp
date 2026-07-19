@@ -8,8 +8,11 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.OpenApi;
 using Serilog;
 using Scalar.AspNetCore;
+using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
+var entryAssembly = Assembly.GetEntryAssembly();
+var applicationVersion = entryAssembly?.GetName().Version?.ToString() ?? "-";
 
 // =========================================
 // 服务配置区域
@@ -159,32 +162,34 @@ try
     // 控制器路由
     app.MapControllers();
 
-    // 注册应用程序启动完成回调，输出炫酷的服务启动成功信息
+    // 注册应用程序启动完成回调，输出服务启动摘要
     app.Lifetime.ApplicationStarted.Register(() =>
     {
-        var asciiArt = @"
-=====================================================
-             DTSoft Server Starting Up
-                    v10.10.001
-=====================================================
-";
+        var listeningUrls = app.Urls.Count > 0 ? string.Join(", ", app.Urls) : "未绑定";
+        var apiDocUrls = scalarEnabled
+            ? string.Join(", ", app.Urls.Select(url => $"{url.TrimEnd('/')}/apidoc"))
+            : "未启用";
+        var versionText = applicationVersion == "-" ? "-" : $"v{applicationVersion}";
+        var startedAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
-        Log.Information(asciiArt);
-        Log.Information("");
-        Log.Information("╔═══════════════════════════════════════════════════╗");
-        Log.Information($"║           DTSoft Server 启动成功!                 ║");
-        Log.Information("╠═══════════════════════════════════════════════════╣");
-        Log.Information($"║ API 监听地址：{string.Join(", ", app.Urls),-35} ║");
-        Log.Information($"║ 运行环境：{app.Environment.EnvironmentName,-40}║");
-        Log.Information($"║ 启动时间：{DateTime.Now:yyyy-MM-dd HH:mm:ss}                     ║");
-        Log.Information("╚═══════════════════════════════════════════════════╝");
-
-        if (scalarEnabled)
-        {
-            Log.Information($"║ API 文档地址：{string.Join(", ", app.Urls)}/apidoc              ║");
-        }
-        Log.Information("");
-        Log.Information("✓ 服务已就绪，等待请求...");
+        Log.Information(
+            """
+            
+            =====================================================
+              DTSoft Server is ready
+            -----------------------------------------------------
+              Version     : {Version}
+              Environment : {Environment}
+              URLs        : {Urls}
+              API Docs    : {ApiDocs}
+              Started At  : {StartedAt}
+            =====================================================
+            """,
+            versionText,
+            app.Environment.EnvironmentName,
+            listeningUrls,
+            apiDocUrls,
+            startedAt);
     });
 
     // 启动服务
