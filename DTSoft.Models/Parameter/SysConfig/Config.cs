@@ -14,6 +14,11 @@ public class Config
     public IFormFile? LoginImg { get; set; }
 
     /// <summary>
+    /// 登录是否启用验证码
+    /// </summary>
+    public bool? LoginCaptchaEnabled { get; set; } = true;
+
+    /// <summary>
     /// 浏览器标签页小logo
     /// </summary>
     public IFormFile? BrowserLogo { get; set; }

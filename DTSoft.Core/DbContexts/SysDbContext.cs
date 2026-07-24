@@ -40,6 +40,7 @@ public class SysDbContext(
         modelBuilder.Entity<SysMenu>().Property(p => p.ItemId).ValueGeneratedNever();
         modelBuilder.Entity<SysAttachments>().Property(p => p.ItemId).ValueGeneratedNever();
         modelBuilder.Entity<SysConfig>().Property(p => p.ItemId).ValueGeneratedNever();
+        modelBuilder.Entity<SysConfig>().Property(p => p.LoginCaptchaEnabled).HasDefaultValue(true);
         modelBuilder.Entity<SysActionLog>().Property(p => p.ItemId).ValueGeneratedNever();
         modelBuilder.Entity<SysResultLog>().Property(p => p.ItemId).ValueGeneratedNever();
         modelBuilder.Entity<SysRoleMember>().Property(p => p.ItemId).ValueGeneratedNever();

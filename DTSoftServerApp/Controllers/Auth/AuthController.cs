@@ -1,3 +1,4 @@
+using DTSoft.AppService.SysConfig;
 using DTSoft.Core.Common;
 using DTSoft.Core.DbContexts;
 using DTSoft.Core.Interfaces;
@@ -19,6 +20,7 @@ namespace DTSoftServerApp.Controllers.Auth
         UserCacheHelper userCacheHelper,
         OnlineUserService onlineUserService,
         CaptchaService captchaService,
+        SysConfigApp sysConfigApp,
         AuthEncryptionService authEncryptionService,
         ILogQueueService logQueueService) : ControllerBase
     {
@@ -71,16 +73,19 @@ namespace DTSoftServerApp.Controllers.Auth
                 RequestType = "API-Login"
             };
 
-            var (captchaValid, captchaMessage) = await captchaService.ValidateAsync(request.CaptchaId, request.CaptchaCode);
-            if (!captchaValid)
+            if (sysConfigApp.IsLoginCaptchaEnabled())
             {
-                log.Result = captchaMessage;
-                logQueueService.Enqueue(log);
+                var (captchaValid, captchaMessage) = await captchaService.ValidateAsync(request.CaptchaId, request.CaptchaCode);
+                if (!captchaValid)
+                {
+                    log.Result = captchaMessage;
+                    logQueueService.Enqueue(log);
 
-                return BadRequest(new {
-                    Code = 400,
-                    Message = captchaMessage
-                });
+                    return BadRequest(new {
+                        Code = 400,
+                        Message = captchaMessage
+                    });
+                }
             }
 
             var (credentialsValid, username, password, credentialsMessage) = TryDecryptCredentials(request);

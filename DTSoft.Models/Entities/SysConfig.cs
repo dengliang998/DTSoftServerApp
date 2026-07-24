@@ -18,6 +18,11 @@ public class SysConfig
     public string? LoginImg { get; set; }
 
     /// <summary>
+    /// 登录是否启用验证码
+    /// </summary>
+    public bool? LoginCaptchaEnabled { get; set; } = true;
+
+    /// <summary>
     /// 系统名称
     /// </summary>
     public string? SystemName { get; set; }

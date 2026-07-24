@@ -31,6 +31,7 @@ public class SysConfigApp(SysDbContext dbContext, ConfigHelper configHelper, Att
             Models.Entities.SysConfig info = new()
             {
                 SystemName = systemInfo.SystemName,
+                LoginCaptchaEnabled = systemInfo.LoginCaptchaEnabled ?? true,
                 ThemeConfig = NormalizeThemeConfigJson(systemInfo.ThemeConfig)
             };
             
@@ -54,6 +55,7 @@ public class SysConfigApp(SysDbContext dbContext, ConfigHelper configHelper, Att
         else
         {
             sysConfig.SystemName = systemInfo.SystemName;
+            sysConfig.LoginCaptchaEnabled = systemInfo.LoginCaptchaEnabled ?? true;
             sysConfig.ThemeConfig = NormalizeThemeConfigJson(systemInfo.ThemeConfig);
             
             // 如果有上传文件，处理文件
@@ -181,12 +183,33 @@ public class SysConfigApp(SysDbContext dbContext, ConfigHelper configHelper, Att
         var obj = new JsonObject
         {
             ["systemName"] = systemInfo?.SystemName,
+            ["loginCaptchaEnabled"] = systemInfo?.LoginCaptchaEnabled ?? true,
             ["loginImg"] = ReadImageAsDataUrl(systemInfo?.LoginImg),
             ["browserLogo"] = ReadImageAsDataUrl(systemInfo?.BrowserLogo),
             ["themeConfig"] = ParseThemeConfig(systemInfo?.ThemeConfig)
         };
 
         return obj.ToJsonString();
+    }
+
+    /// <summary>
+    /// 获取登录验证码开关状态
+    /// </summary>
+    public bool IsLoginCaptchaEnabled()
+    {
+        var dataJson = dtSoftCache.GetOrCreateAsync(SysConfigCacheKey, TimeSpan.FromMinutes(5), BuildSysConfigDataJson)
+            .GetAwaiter()
+            .GetResult();
+
+        try
+        {
+            var data = JsonNode.Parse(dataJson) as JsonObject;
+            return data?["loginCaptchaEnabled"]?.GetValue<bool>() ?? true;
+        }
+        catch
+        {
+            return true;
+        }
     }
 
     private string? ReadImageAsDataUrl(string? storedFileName)
