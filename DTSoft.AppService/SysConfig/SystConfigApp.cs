@@ -931,11 +931,14 @@ public class SysConfigApp(SysDbContext dbContext, ConfigHelper configHelper, Att
         var menuList = new List<SysMenu>();
         
         // 一级菜单
-        var organization = new SysMenu { ItemId = YitterHelper.NewId(), Pid = 0, MenuName = "组织权限", Icon = "UserFilled", Order = 10, MType = 0 };
-        var systemManagement = new SysMenu { ItemId = YitterHelper.NewId(), Pid = 0, MenuName = "系统管理", Icon = "Setting", Order = 20, MType = 0 };
-        var applicationIntegration = new SysMenu { ItemId = YitterHelper.NewId(), Pid = 0, MenuName = "应用集成", Icon = "Connection", Order = 30, MType = 0 };
+        var platform = new SysMenu { ItemId = YitterHelper.NewId(), Pid = 0, MenuName = "开发平台", Icon = "Platform", Order = 10, MType = 0 };
+        var organization = new SysMenu { ItemId = YitterHelper.NewId(), Pid = 0, MenuName = "组织权限", Icon = "UserFilled", Order = 20, MType = 0 };
+        var systemManagement = new SysMenu { ItemId = YitterHelper.NewId(), Pid = 0, MenuName = "系统管理", Icon = "Setting", Order = 30, MType = 0 };
+        var applicationIntegration = new SysMenu { ItemId = YitterHelper.NewId(), Pid = 0, MenuName = "应用集成", Icon = "Connection", Order = 40, MType = 0 };
         
         // 二级菜单
+        var platformHome = new SysMenu { ItemId = YitterHelper.NewId(), Pid = platform.ItemId, MenuName = "首页", MenuPath = "welcome", Icon = "House", Order = 10, MType = 0 };
+
         var organizationList = new SysMenu { ItemId = YitterHelper.NewId(), Pid = organization.ItemId, MenuName = "组织架构", MenuPath = "user/organization", Icon = "User", Order = 10, MType = 0 };
         var roleList = new SysMenu { ItemId = YitterHelper.NewId(), Pid = organization.ItemId, MenuName = "角色管理", MenuPath = "role/rolesmenu", Icon = "UserFilled", Order = 20, MType = 0 };
 
@@ -952,7 +955,7 @@ public class SysConfigApp(SysDbContext dbContext, ConfigHelper configHelper, Att
         var esbDataSources = new SysMenu { ItemId = YitterHelper.NewId(), Pid = applicationIntegration.ItemId, MenuName = "ESB 数据源", MenuPath = "common/esb", Icon = "Connection", Order = 30, MType = 0 };
         var apiKeyManagement = new SysMenu { ItemId = YitterHelper.NewId(), Pid = applicationIntegration.ItemId, MenuName = "第三方集成", MenuPath = "apikey/management", Icon = "Key", Order = 40, MType = 0 };
         
-        menuList.AddRange([organization, organizationList, roleList, systemManagement, systemSettingsPage, systemInfoPage, onlineUsers, systemLog, dictionaryManagement, attachmentList, menuMaintenance, applicationIntegration, appConfig, esbServiceConnections, esbDataSources, apiKeyManagement]);
+        menuList.AddRange([platform, platformHome, organization, organizationList, roleList, systemManagement, systemSettingsPage, systemInfoPage, onlineUsers, systemLog, dictionaryManagement, attachmentList, menuMaintenance, applicationIntegration, appConfig, esbServiceConnections, esbDataSources, apiKeyManagement]);
         
         // 批量添加菜单
         dbContext.SysMenu.AddRange(menuList);

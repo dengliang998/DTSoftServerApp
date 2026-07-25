@@ -129,8 +129,8 @@ public abstract class DtMenu
         // 检查是否为 Everyone 角色（公共权限）
         var result = menus.Where(b =>
             (b.UserAcc.Equals(userAcc, StringComparison.OrdinalIgnoreCase) || b.RoleId.Equals(everyoneRoleId))
-            && b.Pid != 0 && b.MenuPath!.Equals(fullMenu));
+            && !string.IsNullOrWhiteSpace(b.MenuPath)
+            && b.MenuPath.Equals(fullMenu));
         return result.Any();
     }
 }
-
