@@ -2,8 +2,10 @@ using DTSoft.AppService.Attachment;
 using DTSoft.Core.Common;
 using DTSoft.Core.DbContexts;
 using DTSoft.Core.Interfaces;
+using DTSoft.Core.Licensing;
 using DTSoft.Models.Entities;
 using DTSoft.Models.Parameter.Attachment;
+using System.Data;
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -14,7 +16,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DTSoft.AppService.SysConfig;
 
-public class SysConfigApp(SysDbContext dbContext, ConfigHelper configHelper, AttachmentApp att, IDtSoftCache dtSoftCache)
+public class SysConfigApp(
+    SysDbContext dbContext,
+    ConfigHelper configHelper,
+    AttachmentApp att,
+    IDtSoftCache dtSoftCache,
+    LicenseService licenseService)
 {
     private const string SysConfigCacheKey = "SysConfig:Info";
     private const long LoginImgMaxSize = 1024 * 1024;
@@ -214,6 +221,7 @@ public class SysConfigApp(SysDbContext dbContext, ConfigHelper configHelper, Att
         var entryAssembly = Assembly.GetEntryAssembly();
         var assemblyName = entryAssembly?.GetName();
         var dbConnection = dbContext.Database.GetDbConnection();
+        var databaseProviderName = dbContext.Database.ProviderName;
 
         var data = new JsonObject
         {
@@ -251,10 +259,12 @@ public class SysConfigApp(SysDbContext dbContext, ConfigHelper configHelper, Att
             ["Resource"] = BuildResourceInfo(process, now),
             ["Database"] = new JsonObject
             {
-                ["ProviderName"] = dbContext.Database.ProviderName ?? "-",
+                ["ProviderName"] = databaseProviderName ?? "-",
                 ["DataSource"] = dbConnection.DataSource,
-                ["Database"] = dbConnection.Database
-            }
+                ["Database"] = dbConnection.Database,
+                ["Version"] = GetDatabaseVersion(dbConnection, databaseProviderName)
+            },
+            ["License"] = BuildLicenseInfo()
         };
 
         return new JsonObject
@@ -263,6 +273,130 @@ public class SysConfigApp(SysDbContext dbContext, ConfigHelper configHelper, Att
             ["StateCode"] = 0,
             ["data"] = data
         };
+    }
+
+    private JsonObject BuildLicenseInfo()
+    {
+        if (!licenseService.IsValid)
+        {
+            return new JsonObject
+            {
+                ["IsValid"] = false,
+                ["Status"] = "授权异常",
+                ["Message"] = licenseService.ErrorMessage ?? "许可文件无效。"
+            };
+        }
+
+        var license = licenseService.Current;
+        var isTemporary = license.HasType(LicenseType.Temporary);
+        var maxConcurrentUsers = license.MaxConcurrentUsers;
+
+        return new JsonObject
+        {
+            ["IsValid"] = true,
+            ["Status"] = "已授权",
+            ["LicenseId"] = license.LicenseId,
+            ["Customer"] = license.Customer,
+            ["LicenseType"] = isTemporary ? "Temporary" : "Official",
+            ["LicenseTypeName"] = isTemporary ? "临时授权" : "正式授权",
+            ["ExpireAt"] = license.ExpireAt?.ToString("yyyy-MM-dd"),
+            ["ExpireAtText"] = license.ExpireAt.HasValue ? license.ExpireAt.Value.ToString("yyyy-MM-dd") : "不限时间",
+            ["MaxConcurrentUsers"] = JsonValue.Create(maxConcurrentUsers),
+            ["MaxConcurrentUsersText"] = isTemporary
+                ? "不控制"
+                : maxConcurrentUsers == -1 ? "不限制" : maxConcurrentUsers?.ToString() ?? "-"
+        };
+    }
+
+    private static string GetDatabaseVersion(System.Data.Common.DbConnection dbConnection, string? providerName)
+    {
+        var shouldClose = false;
+
+        try
+        {
+            if (dbConnection.State != ConnectionState.Open)
+            {
+                dbConnection.Open();
+                shouldClose = true;
+            }
+
+            var query = GetDatabaseVersionQuery(providerName);
+            if (!string.IsNullOrWhiteSpace(query))
+            {
+                using var command = dbConnection.CreateCommand();
+                command.CommandText = query;
+                command.CommandTimeout = 5;
+
+                var version = Convert.ToString(command.ExecuteScalar());
+                if (!string.IsNullOrWhiteSpace(version))
+                {
+                    return version.Trim();
+                }
+            }
+
+            return GetDatabaseServerVersion(dbConnection);
+        }
+        catch
+        {
+            return GetDatabaseServerVersion(dbConnection);
+        }
+        finally
+        {
+            if (shouldClose)
+            {
+                dbConnection.Close();
+            }
+        }
+    }
+
+    private static string GetDatabaseServerVersion(System.Data.Common.DbConnection dbConnection)
+    {
+        try
+        {
+            return string.IsNullOrWhiteSpace(dbConnection.ServerVersion) ? "-" : dbConnection.ServerVersion;
+        }
+        catch
+        {
+            return "-";
+        }
+    }
+
+    private static string? GetDatabaseVersionQuery(string? providerName)
+    {
+        if (string.IsNullOrWhiteSpace(providerName)) return null;
+
+        if (providerName.Contains("SqlServer", StringComparison.OrdinalIgnoreCase))
+        {
+            return """
+                   SELECT CONCAT(
+                       CAST(SERVERPROPERTY('ProductVersion') AS nvarchar(128)),
+                       ' (', CAST(SERVERPROPERTY('ProductLevel') AS nvarchar(128)),
+                       ', ', CAST(SERVERPROPERTY('Edition') AS nvarchar(256)), ')')
+                   """;
+        }
+
+        if (providerName.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) ||
+            providerName.Contains("PostgreSql", StringComparison.OrdinalIgnoreCase))
+        {
+            return "SELECT version()";
+        }
+
+        if (providerName.Contains("MySql", StringComparison.OrdinalIgnoreCase))
+        {
+            return "SELECT VERSION()";
+        }
+
+        if (providerName.Contains("Oracle", StringComparison.OrdinalIgnoreCase))
+        {
+            return "SELECT banner FROM v$version WHERE banner LIKE 'Oracle Database%'";
+        }
+
+        if (providerName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+        {
+            return "SELECT sqlite_version()";
+        }
+
+        return null;
     }
 
     private static JsonObject BuildResourceInfo(Process process, DateTime now)
