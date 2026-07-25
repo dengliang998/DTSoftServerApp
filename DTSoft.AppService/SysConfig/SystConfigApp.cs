@@ -19,6 +19,10 @@ public class SysConfigApp(SysDbContext dbContext, ConfigHelper configHelper, Att
     private const string SysConfigCacheKey = "SysConfig:Info";
     private const long LoginImgMaxSize = 1024 * 1024;
     private const long BrowserLogoMaxSize = 256 * 1024;
+    private static readonly object ResourceSampleLock = new();
+    private static DateTime _lastCpuSampleAt = DateTime.MinValue;
+    private static TimeSpan _lastTotalProcessorTime = TimeSpan.Zero;
+    private static CpuSample? _lastSystemCpuSample;
     private static readonly HashSet<string> LoginImgContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         "image/jpeg",
@@ -244,6 +248,7 @@ public class SysConfigApp(SysDbContext dbContext, ConfigHelper configHelper, Att
                 ["PrivateMemoryBytes"] = process.PrivateMemorySize64,
                 ["GCTotalMemoryBytes"] = GC.GetTotalMemory(false)
             },
+            ["Resource"] = BuildResourceInfo(process, now),
             ["Database"] = new JsonObject
             {
                 ["ProviderName"] = dbContext.Database.ProviderName ?? "-",
@@ -259,6 +264,416 @@ public class SysConfigApp(SysDbContext dbContext, ConfigHelper configHelper, Att
             ["data"] = data
         };
     }
+
+    private static JsonObject BuildResourceInfo(Process process, DateTime now)
+    {
+        var processCpuUsagePercent = CalculateProcessCpuUsagePercent(process, now);
+        var systemCpuUsagePercent = CalculateSystemCpuUsagePercent();
+        var memoryInfo = TryReadSystemMemoryInfo();
+        var gcTotalAvailableMemoryBytes = GC.GetGCMemoryInfo().TotalAvailableMemoryBytes;
+        var fallbackTotalMemoryBytes = gcTotalAvailableMemoryBytes > 0 ? (ulong)gcTotalAvailableMemoryBytes : (ulong?)null;
+        var processMemoryUsagePercent = GetProcessMemoryUsagePercent(process, memoryInfo?.TotalBytes ?? fallbackTotalMemoryBytes);
+        double? systemMemoryUsagePercent = memoryInfo is { TotalBytes: > 0, AvailableBytes: not null }
+            ? (double)(memoryInfo.TotalBytes - memoryInfo.AvailableBytes.Value) / memoryInfo.TotalBytes * 100
+            : null;
+
+        return new JsonObject
+        {
+            ["CpuUsagePercent"] = JsonValue.Create(RoundPercent(systemCpuUsagePercent)),
+            ["MemoryUsagePercent"] = JsonValue.Create(RoundPercent(systemMemoryUsagePercent)),
+            ["ServerCpuUsagePercent"] = JsonValue.Create(RoundPercent(systemCpuUsagePercent)),
+            ["ServerMemoryUsagePercent"] = JsonValue.Create(RoundPercent(systemMemoryUsagePercent)),
+            ["ProcessCpuUsagePercent"] = JsonValue.Create(RoundPercent(processCpuUsagePercent)),
+            ["ProcessMemoryUsagePercent"] = JsonValue.Create(RoundPercent(processMemoryUsagePercent)),
+            ["TotalMemoryBytes"] = JsonValue.Create(ToNullableInt64(memoryInfo?.TotalBytes ?? fallbackTotalMemoryBytes)),
+            ["AvailableMemoryBytes"] = JsonValue.Create(ToNullableInt64(memoryInfo?.AvailableBytes)),
+            ["CollectedAt"] = now.ToString("yyyy-MM-dd HH:mm:ss")
+        };
+    }
+
+    private static double? CalculateProcessCpuUsagePercent(Process process, DateTime now)
+    {
+        var currentTotalProcessorTime = process.TotalProcessorTime;
+        var processorCount = Math.Max(Environment.ProcessorCount, 1);
+
+        lock (ResourceSampleLock)
+        {
+            if (_lastCpuSampleAt == DateTime.MinValue)
+            {
+                _lastCpuSampleAt = now;
+                _lastTotalProcessorTime = currentTotalProcessorTime;
+
+                var elapsedSinceStart = now - process.StartTime;
+                if (elapsedSinceStart.TotalMilliseconds <= 0) return 0;
+
+                return currentTotalProcessorTime.TotalMilliseconds / elapsedSinceStart.TotalMilliseconds / processorCount * 100;
+            }
+
+            var elapsed = now - _lastCpuSampleAt;
+            var cpuDelta = currentTotalProcessorTime - _lastTotalProcessorTime;
+
+            _lastCpuSampleAt = now;
+            _lastTotalProcessorTime = currentTotalProcessorTime;
+
+            if (elapsed.TotalMilliseconds <= 0 || cpuDelta.TotalMilliseconds < 0) return 0;
+
+            return cpuDelta.TotalMilliseconds / elapsed.TotalMilliseconds / processorCount * 100;
+        }
+    }
+
+    private static double? CalculateSystemCpuUsagePercent()
+    {
+        var firstSample = TryReadSystemCpuSample();
+        if (firstSample is null) return null;
+
+        lock (ResourceSampleLock)
+        {
+            if (_lastSystemCpuSample is null)
+            {
+                Thread.Sleep(100);
+                var secondSample = TryReadSystemCpuSample();
+                if (secondSample is null) return null;
+
+                _lastSystemCpuSample = secondSample.Value;
+                return CalculateCpuPercent(firstSample.Value, secondSample.Value);
+            }
+
+            var previousSample = _lastSystemCpuSample.Value;
+            _lastSystemCpuSample = firstSample.Value;
+            return CalculateCpuPercent(previousSample, firstSample.Value);
+        }
+    }
+
+    private static CpuSample? TryReadSystemCpuSample()
+    {
+        if (OperatingSystem.IsWindows()) return TryReadWindowsCpuSample();
+        if (OperatingSystem.IsLinux()) return TryReadLinuxCpuSample();
+        if (OperatingSystem.IsMacOS()) return TryReadMacOSCpuSample();
+
+        return null;
+    }
+
+    private static CpuSample? TryReadWindowsCpuSample()
+    {
+        try
+        {
+            return GetSystemTimes(out var idleTime, out var kernelTime, out var userTime)
+                ? new CpuSample(idleTime.ToUInt64(), kernelTime.ToUInt64() + userTime.ToUInt64())
+                : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static CpuSample? TryReadLinuxCpuSample()
+    {
+        try
+        {
+            var firstLine = File.ReadLines("/proc/stat").FirstOrDefault();
+            if (string.IsNullOrWhiteSpace(firstLine) || !firstLine.StartsWith("cpu ")) return null;
+
+            var values = firstLine.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Skip(1)
+                .Select(value => ulong.TryParse(value, out var number) ? number : 0)
+                .ToArray();
+            if (values.Length < 4) return null;
+
+            var idle = values[3] + (values.Length > 4 ? values[4] : 0);
+            var total = values.Aggregate<ulong, ulong>(0, (sum, value) => sum + value);
+
+            return new CpuSample(idle, total);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static double? CalculateCpuPercent(CpuSample previousSample, CpuSample currentSample)
+    {
+        if (currentSample.Total < previousSample.Total || currentSample.Idle < previousSample.Idle) return null;
+
+        var idleDelta = currentSample.Idle - previousSample.Idle;
+        var totalDelta = currentSample.Total - previousSample.Total;
+        if (totalDelta == 0 || idleDelta > totalDelta) return null;
+
+        return (double)(totalDelta - idleDelta) / totalDelta * 100;
+    }
+
+    private static SystemMemoryInfo? TryReadSystemMemoryInfo()
+    {
+        if (OperatingSystem.IsLinux()) return TryReadLinuxMemoryInfo();
+        if (OperatingSystem.IsWindows()) return TryReadWindowsMemoryInfo();
+        if (OperatingSystem.IsMacOS()) return TryReadMacOSMemoryInfo();
+
+        return null;
+    }
+
+    private static SystemMemoryInfo? TryReadLinuxMemoryInfo()
+    {
+        try
+        {
+            ulong? totalKb = null;
+            ulong? availableKb = null;
+
+            foreach (var line in File.ReadLines("/proc/meminfo"))
+            {
+                if (line.StartsWith("MemTotal:", StringComparison.Ordinal))
+                {
+                    totalKb = ParseLinuxMemoryKb(line);
+                }
+                else if (line.StartsWith("MemAvailable:", StringComparison.Ordinal))
+                {
+                    availableKb = ParseLinuxMemoryKb(line);
+                }
+
+                if (totalKb is not null && availableKb is not null) break;
+            }
+
+            return totalKb is > 0 && availableKb is not null
+                ? new SystemMemoryInfo(totalKb.Value * 1024, availableKb.Value * 1024)
+                : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static ulong? ParseLinuxMemoryKb(string line)
+    {
+        var value = line.Split(' ', StringSplitOptions.RemoveEmptyEntries).ElementAtOrDefault(1);
+        return ulong.TryParse(value, out var number) ? number : null;
+    }
+
+    private static SystemMemoryInfo? TryReadWindowsMemoryInfo()
+    {
+        try
+        {
+            var memoryStatus = new MemoryStatusEx
+            {
+                dwLength = (uint)Marshal.SizeOf<MemoryStatusEx>()
+            };
+
+            return GlobalMemoryStatusEx(ref memoryStatus)
+                ? new SystemMemoryInfo(memoryStatus.ullTotalPhys, memoryStatus.ullAvailPhys)
+                : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static CpuSample? TryReadMacOSCpuSample()
+    {
+        IntPtr processorInfo = IntPtr.Zero;
+        uint processorInfoCount = 0;
+
+        try
+        {
+            var result = HostProcessorInfo(
+                MachHostSelf(),
+                ProcessorCpuLoadInfo,
+                out var processorCount,
+                out processorInfo,
+                out processorInfoCount);
+            if (
+                result != 0 ||
+                processorInfo == IntPtr.Zero ||
+                processorInfoCount == 0 ||
+                processorInfoCount > int.MaxValue ||
+                processorCount == 0)
+            {
+                return null;
+            }
+
+            var cpuInfo = new int[(int)processorInfoCount];
+            Marshal.Copy(processorInfo, cpuInfo, 0, cpuInfo.Length);
+
+            ulong idle = 0;
+            ulong total = 0;
+            for (var index = 0; index + CpuStateMax <= cpuInfo.Length; index += CpuStateMax)
+            {
+                var user = ToUInt64(cpuInfo[index + CpuStateUser]);
+                var system = ToUInt64(cpuInfo[index + CpuStateSystem]);
+                var idleTicks = ToUInt64(cpuInfo[index + CpuStateIdle]);
+                var nice = ToUInt64(cpuInfo[index + CpuStateNice]);
+
+                idle += idleTicks;
+                total += user + system + idleTicks + nice;
+            }
+
+            return total > 0 ? new CpuSample(idle, total) : null;
+        }
+        catch
+        {
+            return null;
+        }
+        finally
+        {
+            if (processorInfo != IntPtr.Zero)
+            {
+                _ = VmDeallocate(MachTaskSelf(), processorInfo, new UIntPtr((ulong)processorInfoCount * sizeof(int)));
+            }
+        }
+    }
+
+    private static SystemMemoryInfo? TryReadMacOSMemoryInfo()
+    {
+        try
+        {
+            var totalMemoryBytes = TryReadMacOSTotalMemoryBytes();
+            if (totalMemoryBytes is not > 0) return null;
+
+            var host = MachHostSelf();
+            if (HostPageSize(host, out var pageSize) != 0 || pageSize == 0)
+            {
+                return new SystemMemoryInfo(totalMemoryBytes.Value, null);
+            }
+
+            var vmStats = new int[MacOSHostVmInfoCount];
+            var vmStatsCount = (uint)vmStats.Length;
+            if (HostStatistics(host, HostVmInfo, vmStats, ref vmStatsCount) != 0 || vmStatsCount < 4)
+            {
+                return new SystemMemoryInfo(totalMemoryBytes.Value, null);
+            }
+
+            var freeCount = ToUInt64(vmStats[0]);
+            var inactiveCount = ToUInt64(vmStats[2]);
+            var speculativeCount = vmStatsCount > 14 ? ToUInt64(vmStats[14]) : 0;
+            var availableBytes = (freeCount + inactiveCount + speculativeCount) * pageSize;
+
+            return new SystemMemoryInfo(totalMemoryBytes.Value, availableBytes);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static ulong? TryReadMacOSTotalMemoryBytes()
+    {
+        try
+        {
+            ulong totalMemoryBytes;
+            var size = new UIntPtr((uint)sizeof(ulong));
+            var result = SysctlByName("hw.memsize", out totalMemoryBytes, ref size, IntPtr.Zero, UIntPtr.Zero);
+
+            return result == 0 ? totalMemoryBytes : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static double? GetProcessMemoryUsagePercent(Process process, ulong? totalMemoryBytes)
+    {
+        if (totalMemoryBytes > 0)
+        {
+            return (double)process.WorkingSet64 / totalMemoryBytes.Value * 100;
+        }
+
+        return null;
+    }
+
+    private static double? RoundPercent(double? value)
+    {
+        if (value is null || double.IsNaN(value.Value) || double.IsInfinity(value.Value)) return null;
+
+        return Math.Round(Math.Clamp(value.Value, 0, 100), 1);
+    }
+
+    private static long? ToNullableInt64(ulong? value)
+    {
+        if (value is null) return null;
+
+        return value.Value > long.MaxValue ? long.MaxValue : (long)value.Value;
+    }
+
+    private static ulong ToUInt64(int value)
+    {
+        return value < 0 ? 0 : (ulong)value;
+    }
+
+    private readonly record struct CpuSample(ulong Idle, ulong Total);
+
+    private sealed record SystemMemoryInfo(ulong TotalBytes, ulong? AvailableBytes);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct FileTime
+    {
+        public uint dwLowDateTime;
+        public uint dwHighDateTime;
+
+        public readonly ulong ToUInt64()
+        {
+            return ((ulong)dwHighDateTime << 32) | dwLowDateTime;
+        }
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MemoryStatusEx
+    {
+        public uint dwLength;
+        public uint dwMemoryLoad;
+        public ulong ullTotalPhys;
+        public ulong ullAvailPhys;
+        public ulong ullTotalPageFile;
+        public ulong ullAvailPageFile;
+        public ulong ullTotalVirtual;
+        public ulong ullAvailVirtual;
+        public ulong ullAvailExtendedVirtual;
+    }
+
+    private const int ProcessorCpuLoadInfo = 2;
+    private const int CpuStateUser = 0;
+    private const int CpuStateSystem = 1;
+    private const int CpuStateIdle = 2;
+    private const int CpuStateNice = 3;
+    private const int CpuStateMax = 4;
+    private const int HostVmInfo = 2;
+    private const int MacOSHostVmInfoCount = 64;
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool GetSystemTimes(out FileTime idleTime, out FileTime kernelTime, out FileTime userTime);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool GlobalMemoryStatusEx(ref MemoryStatusEx memoryStatus);
+
+    [DllImport("/usr/lib/libSystem.dylib", EntryPoint = "mach_host_self")]
+    private static extern IntPtr MachHostSelf();
+
+    [DllImport("/usr/lib/libSystem.dylib", EntryPoint = "mach_task_self_")]
+    private static extern IntPtr MachTaskSelf();
+
+    [DllImport("/usr/lib/libSystem.dylib", EntryPoint = "host_processor_info")]
+    private static extern int HostProcessorInfo(
+        IntPtr host,
+        int flavor,
+        out uint processorCount,
+        out IntPtr processorInfo,
+        out uint processorInfoCount);
+
+    [DllImport("/usr/lib/libSystem.dylib", EntryPoint = "vm_deallocate")]
+    private static extern int VmDeallocate(IntPtr targetTask, IntPtr address, UIntPtr size);
+
+    [DllImport("/usr/lib/libSystem.dylib", EntryPoint = "host_page_size")]
+    private static extern int HostPageSize(IntPtr host, out uint pageSize);
+
+    [DllImport("/usr/lib/libSystem.dylib", EntryPoint = "host_statistics")]
+    private static extern int HostStatistics(IntPtr host, int flavor, [Out] int[] hostInfo, ref uint hostInfoCount);
+
+    [DllImport("/usr/lib/libSystem.dylib", EntryPoint = "sysctlbyname")]
+    private static extern int SysctlByName(
+        [MarshalAs(UnmanagedType.LPStr)] string name,
+        out ulong oldValue,
+        ref UIntPtr oldLength,
+        IntPtr newValue,
+        UIntPtr newLength);
 
     private string BuildSysConfigDataJson()
     {
