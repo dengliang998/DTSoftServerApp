@@ -2,6 +2,7 @@ using DTSoft.AppService.SysConfig;
 using DTSoft.Core.Common;
 using DTSoft.Core.DbContexts;
 using DTSoft.Core.Interfaces;
+using DTSoft.Core.Licensing;
 using DTSoft.Models.Entities;
 using DTSoftServerApp.Services;
 using Microsoft.EntityFrameworkCore;
@@ -22,7 +23,8 @@ namespace DTSoftServerApp.Controllers.Auth
         CaptchaService captchaService,
         SysConfigApp sysConfigApp,
         AuthEncryptionService authEncryptionService,
-        ILogQueueService logQueueService) : ControllerBase
+        ILogQueueService logQueueService,
+        LicenseService licenseService) : ControllerBase
     {
         /// <summary>
         /// 获取登录验证码
@@ -106,8 +108,22 @@ namespace DTSoftServerApp.Controllers.Auth
             var user = await ValidateUser(username, password);
             if (user != null)
             {
+                var maxConcurrentUsers = licenseService.HasConcurrentUserLimit
+                    ? licenseService.Current.MaxConcurrentUsers
+                    : null;
+                if (!await onlineUserService.TryMarkActiveAsync(user.Account, maxConcurrentUsers))
+                {
+                    log.Result = "超过许可证允许的最大并发用户数";
+                    logQueueService.Enqueue(log);
+
+                    return StatusCode(StatusCodes.Status403Forbidden, new
+                    {
+                        Code = 403,
+                        Message = "当前在线用户数已达到许可证允许的上限"
+                    });
+                }
+
                 var (token, expires) = jwtService.GenerateToken(username, user.Account!); // 用户ID来自数据库
-                await onlineUserService.MarkActiveAsync(user.Account);
 
                 log.Result = "登录成功";
                 logQueueService.Enqueue(log);

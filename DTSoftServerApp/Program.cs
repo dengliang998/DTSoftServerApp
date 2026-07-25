@@ -1,5 +1,6 @@
 using DTSoft.AppService.SysConfig;
 using DTSoft.Core.Common;
+using DTSoft.Core.Licensing;
 using DTSoftServerApp.Extensions;
 using DTSoftServerApp.Middleware;
 using DTSoftServerApp.Plugins;
@@ -74,6 +75,44 @@ try
     builder.Services.AddHostedService(sp => sp.GetRequiredService<LogQueueService>());
 
     var app = builder.Build();
+
+    // 许可证固定从程序根目录读取，替换许可证后重启生效。
+    var licenseService = app.Services.GetRequiredService<LicenseService>();
+    licenseService.ValidateOnStartup();
+    if (licenseService.IsValid)
+    {
+        var license = licenseService.Current;
+        var licenseTypes = license.HasType(LicenseType.Temporary) ? "临时授权" : "正式授权";
+        Log.Information("许可证验证成功：{LicenseId}，客户：{Customer}，授权类型：{LicenseTypes}",
+            license.LicenseId,
+            license.Customer,
+            licenseTypes);
+
+        if (license.HasType(LicenseType.Temporary))
+        {
+            Log.Information("临时授权有效期至：{ExpireAt}",
+                license.ExpireAt?.ToString("yyyy-MM-dd"));
+        }
+        else
+        {
+            if (license.ExpireAt.HasValue)
+            {
+                Log.Information("正式授权有效期至：{ExpireAt}，最大并发用户数：{MaxConcurrentUsers}",
+                    license.ExpireAt.Value.ToString("yyyy-MM-dd"),
+                    license.MaxConcurrentUsers == -1 ? "不限制" : license.MaxConcurrentUsers?.ToString());
+            }
+            else
+            {
+                Log.Information("正式授权最大并发用户数：{MaxConcurrentUsers}",
+                    license.MaxConcurrentUsers == -1 ? "不限制" : license.MaxConcurrentUsers?.ToString());
+            }
+        }
+    }
+    else
+    {
+        Log.Warning("许可证验证失败，服务将继续启动，接口调用会返回授权异常：{Message}",
+            licenseService.ErrorMessage);
+    }
 
     if (pluginLoadResult.Plugins.Count > 0)
     {

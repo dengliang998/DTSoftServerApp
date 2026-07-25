@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using DTSoftServerApp.Services;
 using System.Text.RegularExpressions;
+using DTSoft.Core.Licensing;
 
 namespace DTSoftServerApp.Middleware
 {
@@ -22,7 +23,11 @@ namespace DTSoftServerApp.Middleware
             "(eyJ[a-zA-Z0-9_\\-]{10,}\\.[a-zA-Z0-9_\\-]{10,}\\.[a-zA-Z0-9_\\-]{10,})",
             RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-        public async Task InvokeAsync(HttpContext context, DtSoftHelper dtSoftHelper, OnlineUserService onlineUserService)
+        public async Task InvokeAsync(
+            HttpContext context,
+            DtSoftHelper dtSoftHelper,
+            OnlineUserService onlineUserService,
+            LicenseService licenseService)
         {
             // 检查是否为API请求，如果不是则跳过中间件处理
             var requestPath = context.Request.Path.HasValue ? context.Request.Path.Value : string.Empty;
@@ -31,6 +36,11 @@ namespace DTSoftServerApp.Middleware
             if (!IsApiRequest(requestPath))
             {
                 await next(context);
+                return;
+            }
+
+            if (!await TryEnsureLicenseUsableAsync(context, licenseService))
+            {
                 return;
             }
 
@@ -144,6 +154,31 @@ namespace DTSoftServerApp.Middleware
             return !extensions.Any(ext => path.ToLower().EndsWith(ext)) &&
                    // 只处理API请求（路径中包含 /api 或以 /api 开头）
                    path.StartsWith("/api", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static async Task<bool> TryEnsureLicenseUsableAsync(
+            HttpContext context,
+            LicenseService licenseService)
+        {
+            try
+            {
+                licenseService.EnsureCurrentLicenseUsable();
+                return true;
+            }
+            catch (InvalidOperationException ex)
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                context.Response.ContentType = "application/json";
+                var response = new JsonObject
+                {
+                    ["Code"] = 403,
+                    ["Message"] = ex.Message.StartsWith("授权异常", StringComparison.Ordinal)
+                        ? ex.Message
+                        : $"授权异常：{ex.Message}"
+                };
+                await context.Response.WriteAsync(response.ToString());
+                return false;
+            }
         }
 
         private static string GetClientIp(HttpContext context)

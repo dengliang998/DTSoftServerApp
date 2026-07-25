@@ -15,6 +15,7 @@ using DTSoft.Core.DbProviders;
 using DTSoft.Plugin.Abstractions;
 using DTSoft.Core.Interfaces;
 using DTSoft.Core.DbContexts;
+using DTSoft.Core.Licensing;
 using DTSoftServerApp.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
@@ -41,6 +42,7 @@ namespace DTSoftServerApp.Extensions
             services.AddScoped<ConfigHelper>();
             services.AddScoped<UserCacheHelper>();
             services.AddScoped<OnlineUserService>();
+            services.AddSingleton<LicenseService>();
 
             return services;
         }

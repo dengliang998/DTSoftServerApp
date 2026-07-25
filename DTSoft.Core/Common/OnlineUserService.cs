@@ -52,6 +52,50 @@ public class OnlineUserService(IDtSoftCache dtSoftCache, UserCacheHelper userCac
         }
     }
 
+    public async Task<bool> TryMarkActiveAsync(string? account, int? maxConcurrentUsers)
+    {
+        if (string.IsNullOrWhiteSpace(account))
+            return false;
+
+        var normalizedAccount = account.Trim();
+        var user = await userCacheHelper.GetUserByAccountAsync(normalizedAccount);
+        if (user == null || user.Disable)
+            return false;
+
+        var now = TimeUtil.CstDateTime;
+        var displayName = string.IsNullOrWhiteSpace(user.DisplayName)
+            ? normalizedAccount
+            : user.DisplayName!;
+
+        await SyncLock.WaitAsync();
+        try
+        {
+            var onlineUsers = await GetOnlineUserIndexAsync();
+            RemoveExpiredUsers(onlineUsers, now);
+
+            if (!onlineUsers.ContainsKey(normalizedAccount) &&
+                maxConcurrentUsers.HasValue &&
+                onlineUsers.Count >= maxConcurrentUsers.Value)
+            {
+                return false;
+            }
+
+            onlineUsers[normalizedAccount] = new OnlineUserInfo
+            {
+                Account = user.Account ?? normalizedAccount,
+                DisplayName = displayName,
+                LastActiveTime = now
+            };
+
+            await dtSoftCache.SetAsync(OnlineUsersCacheKey, onlineUsers, CacheDuration);
+            return true;
+        }
+        finally
+        {
+            SyncLock.Release();
+        }
+    }
+
     public async Task<List<OnlineUserInfo>> GetOnlineUsersAsync()
     {
         var now = TimeUtil.CstDateTime;
