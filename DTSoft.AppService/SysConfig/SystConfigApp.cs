@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace DTSoft.AppService.SysConfig;
@@ -16,12 +17,63 @@ namespace DTSoft.AppService.SysConfig;
 public class SysConfigApp(SysDbContext dbContext, ConfigHelper configHelper, AttachmentApp att, IDtSoftCache dtSoftCache)
 {
     private const string SysConfigCacheKey = "SysConfig:Info";
+    private const long LoginImgMaxSize = 1024 * 1024;
+    private const long BrowserLogoMaxSize = 256 * 1024;
+    private static readonly HashSet<string> LoginImgContentTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "image/jpeg",
+        "image/png",
+        "image/webp"
+    };
+    private static readonly HashSet<string> LoginImgExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".webp"
+    };
+    private static readonly HashSet<string> BrowserLogoContentTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/svg+xml",
+        "image/x-icon",
+        "image/vnd.microsoft.icon"
+    };
+    private static readonly HashSet<string> BrowserLogoExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".webp",
+        ".svg",
+        ".ico"
+    };
 
     /// <summary>
     /// 设置系统信息
     /// </summary>
     public async Task<JsonObject> SetSysConfig(Models.Parameter.SysConfig.Config systemInfo)
     {
+        var loginImgValidation = ValidateUploadImage(
+            systemInfo.LoginImg,
+            LoginImgMaxSize,
+            "1MB",
+            LoginImgContentTypes,
+            LoginImgExtensions,
+            "登录背景图");
+        if (loginImgValidation is not null) return loginImgValidation;
+
+        var browserLogoValidation = ValidateUploadImage(
+            systemInfo.BrowserLogo,
+            BrowserLogoMaxSize,
+            "256KB",
+            BrowserLogoContentTypes,
+            BrowserLogoExtensions,
+            "Tab 小 Logo");
+        if (browserLogoValidation is not null) return browserLogoValidation;
+
         Models.Entities.SysConfig? sysConfig = dbContext.SysConfig!
             .OrderBy(p => p.ItemId)
             .FirstOrDefault();
@@ -84,6 +136,41 @@ public class SysConfigApp(SysDbContext dbContext, ConfigHelper configHelper, Att
             ["success"] = true,
             ["StateCode"] = 0
         };
+    }
+
+    private static JsonObject? ValidateUploadImage(
+        IFormFile? file,
+        long maxSize,
+        string maxSizeText,
+        HashSet<string> allowedContentTypes,
+        HashSet<string> allowedExtensions,
+        string label)
+    {
+        if (file is null) return null;
+
+        var extension = Path.GetExtension(file.FileName);
+        var contentType = file.ContentType ?? string.Empty;
+        if (!allowedContentTypes.Contains(contentType) || !allowedExtensions.Contains(extension))
+        {
+            return new JsonObject
+            {
+                ["success"] = false,
+                ["StateCode"] = 400,
+                ["Msg"] = $"{label}格式不支持"
+            };
+        }
+
+        if (file.Length > maxSize)
+        {
+            return new JsonObject
+            {
+                ["success"] = false,
+                ["StateCode"] = 400,
+                ["Msg"] = $"{label}不能超过 {maxSizeText}"
+            };
+        }
+
+        return null;
     }
 
     /// <summary>
