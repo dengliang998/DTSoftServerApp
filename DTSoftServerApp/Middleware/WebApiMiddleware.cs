@@ -39,15 +39,17 @@ namespace DTSoftServerApp.Middleware
                 return;
             }
 
-            if (!await TryEnsureLicenseUsableAsync(context, licenseService))
-            {
-                return;
-            }
-
             // 记录请求开始时间
             var startTime = DateTime.Now;
             var requestMethod = context.Request.Method;
             var clientIp = GetClientIp(context);
+
+            var licenseErrorResponse = await TryEnsureLicenseUsableAsync(context, licenseService);
+            if (licenseErrorResponse is not null)
+            {
+                LogNonSuccessResponse(null, requestPath, requestMethod, clientIp, licenseErrorResponse, startTime, context);
+                return;
+            }
 
             // 读取请求体内容（仅对POST、PUT等方法）
             string requestBody = "";
@@ -136,6 +138,7 @@ namespace DTSoftServerApp.Middleware
             requestBody = RedactSensitiveContent(requestBody);
             responseContent = RedactSensitiveContent(responseContent);
             LogRequestAsync(userAccount, requestPath, requestMethod, clientIp, requestBody, responseContent, startTime, context);
+            LogNonSuccessResponse(userAccount, requestPath, requestMethod, clientIp, responseContent, startTime, context);
         }
 
         private static bool IsApiRequest(string path)
@@ -156,14 +159,14 @@ namespace DTSoftServerApp.Middleware
                    path.StartsWith("/api", StringComparison.OrdinalIgnoreCase);
         }
 
-        private static async Task<bool> TryEnsureLicenseUsableAsync(
+        private static async Task<string?> TryEnsureLicenseUsableAsync(
             HttpContext context,
             LicenseService licenseService)
         {
             try
             {
                 licenseService.EnsureCurrentLicenseUsable();
-                return true;
+                return null;
             }
             catch (InvalidOperationException ex)
             {
@@ -176,8 +179,9 @@ namespace DTSoftServerApp.Middleware
                         ? ex.Message
                         : $"授权异常：{ex.Message}"
                 };
-                await context.Response.WriteAsync(response.ToString());
-                return false;
+                var responseContent = response.ToJsonString();
+                await context.Response.WriteAsync(responseContent);
+                return responseContent;
             }
         }
 
@@ -401,6 +405,27 @@ namespace DTSoftServerApp.Middleware
 
             // 将日志添加到队列，由后台服务批量写入
             logQueueService.Enqueue(logEntry);
+        }
+
+        private void LogNonSuccessResponse(string? userAccount, string requestPath, string requestMethod,
+            string clientIp, string responseContent, DateTime startTime, HttpContext context)
+        {
+            var statusCode = context.Response.StatusCode;
+            if (statusCode == StatusCodes.Status200OK)
+            {
+                return;
+            }
+
+            var elapsedMilliseconds = Convert.ToInt64((DateTime.Now - startTime).TotalMilliseconds);
+            logger.LogError(
+                "接口错误：{StatusCode} {RequestMethod} {RequestPath}, 用户：{UserAccount}, IP：{ClientIP}, 耗时：{ElapsedMilliseconds}ms, 响应：{ResponseContent}",
+                statusCode,
+                requestMethod,
+                requestPath,
+                userAccount ?? "Anonymous",
+                clientIp,
+                elapsedMilliseconds,
+                string.IsNullOrWhiteSpace(responseContent) ? "-" : responseContent);
         }
 
         private sealed class TeeStream : Stream
