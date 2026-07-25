@@ -28,13 +28,26 @@ Log.Logger = new LoggerConfiguration()
 
 try
 {
-    Log.Information("🚀 DTSoft Server 正在启动...");
-    
+    Log.Information(
+        """
+        =====================================================
+        [STARTUP] DTSoft Server starting
+        -----------------------------------------------------
+          Version      : {Version}
+          Environment  : {Environment}
+          Content Root : {ContentRoot}
+        =====================================================
+        """,
+        applicationVersion == "-" ? "-" : $"v{applicationVersion}",
+        builder.Environment.EnvironmentName,
+        builder.Environment.ContentRootPath);
+
     // 使用 Serilog 作为日志提供者
     builder.Host.UseSerilog();
-    
+
     // 初始化 Yitter IdGenerator
     YitterHelper.Initialize(1);
+    Log.Information("[STARTUP] Yitter IdGenerator initialized. WorkerId: {WorkerId}", 1);
     Encrypt.ConfigurePasswordHashing(
         builder.Configuration.GetValue<int?>(AppConfigurationKeys.Security.PasswordHashing.Iterations)
         ?? builder.Configuration.GetValue<int?>(AppConfigurationKeys.Security.PasswordHashing.LegacyIterations));
@@ -68,7 +81,7 @@ try
     builder.Services.AddInfrastructure(builder.Configuration); // 基础设施服务
     var pluginLoadResult = builder.Services.AddDynamicWebApiPlugins(builder.Configuration);
     DynamicWebApiPluginLoader.RegisterApplicationParts(mvcBuilder, pluginLoadResult);
-    
+
     // 添加日志队列服务（单例模式，后台运行）
     builder.Services.AddSingleton<LogQueueService>();
     builder.Services.AddSingleton<ILogQueueService>(sp => sp.GetRequiredService<LogQueueService>());
@@ -83,54 +96,65 @@ try
     {
         var license = licenseService.Current;
         var licenseTypes = license.HasType(LicenseType.Temporary) ? "临时授权" : "正式授权";
-        Log.Information("许可证验证成功：{LicenseId}，客户：{Customer}，授权类型：{LicenseTypes}",
-            license.LicenseId,
-            license.Customer,
-            licenseTypes);
+        var expireAt = license.ExpireAt?.ToString("yyyy-MM-dd") ?? "不限时间";
+        var maxConcurrentUsers = license.HasType(LicenseType.Temporary)
+            ? "不控制"
+            : license.MaxConcurrentUsers == -1 ? "不限制" : license.MaxConcurrentUsers?.ToString() ?? "-";
 
-        if (license.HasType(LicenseType.Temporary))
-        {
-            Log.Information("临时授权有效期至：{ExpireAt}",
-                license.ExpireAt?.ToString("yyyy-MM-dd"));
-        }
-        else
-        {
-            if (license.ExpireAt.HasValue)
-            {
-                Log.Information("正式授权有效期至：{ExpireAt}，最大并发用户数：{MaxConcurrentUsers}",
-                    license.ExpireAt.Value.ToString("yyyy-MM-dd"),
-                    license.MaxConcurrentUsers == -1 ? "不限制" : license.MaxConcurrentUsers?.ToString());
-            }
-            else
-            {
-                Log.Information("正式授权最大并发用户数：{MaxConcurrentUsers}",
-                    license.MaxConcurrentUsers == -1 ? "不限制" : license.MaxConcurrentUsers?.ToString());
-            }
-        }
+        Log.Information(
+            """
+            [LICENSE]
+              Status      : Valid
+              Customer    : {Customer}
+              Type        : {LicenseTypes}
+              Expire At   : {ExpireAt}
+              Max Users   : {MaxConcurrentUsers}
+            """,
+            license.Customer,
+            licenseTypes,
+            expireAt,
+            maxConcurrentUsers);
     }
     else
     {
-        Log.Warning("许可证验证失败，服务将继续启动，接口调用会返回授权异常：{Message}",
+        Log.Warning(
+            """
+            [LICENSE]
+              Status  : Invalid
+              Message : {Message}
+              Effect  : 服务继续启动，接口调用会返回授权异常
+            """,
             licenseService.ErrorMessage);
     }
 
     if (pluginLoadResult.Plugins.Count > 0)
     {
-        Log.Information("已加载动态 WebAPI 插件：{Count}", pluginLoadResult.Plugins.Count);
-        foreach (var plugin in pluginLoadResult.Plugins)
-        {
-            Log.Information(
-                "插件：{PluginName} | 程序集：{AssemblyName} | 控制器：{ControllerCount} | 模块：{ModuleCount}",
-                plugin.PluginName ?? plugin.AssemblyName,
-                plugin.AssemblyName,
-                plugin.ControllerTypes.Count,
-                plugin.ModuleTypes.Count);
-        }
+        var pluginLines = string.Join(
+            Environment.NewLine,
+            pluginLoadResult.Plugins.Select(plugin =>
+                $"  - {plugin.PluginName ?? plugin.AssemblyName} | Assembly: {plugin.AssemblyName} | Controllers: {plugin.ControllerTypes.Count} | Modules: {plugin.ModuleTypes.Count}"));
+
+        Log.Information(
+            """
+            [PLUGINS]
+              Loaded : {Count}
+            {PluginLines}
+            """,
+            pluginLoadResult.Plugins.Count,
+            pluginLines);
+    }
+    else
+    {
+        Log.Information(
+            """
+            [PLUGINS]
+              Loaded : 0
+            """);
     }
 
     foreach (var failure in pluginLoadResult.Failures)
     {
-        Log.Warning("插件加载失败：{FilePath} | {Message} | {ExceptionType}",
+        Log.Warning("[PLUGINS] Load failed: {FilePath} | {Message} | {ExceptionType}",
             failure.FilePath,
             failure.Message,
             failure.ExceptionType);
@@ -151,11 +175,23 @@ try
         var result = sysConfigApp.InitializationSystem();
         if (!(bool)result["success"]!)
         {
-            Log.Error($"❌ 系统初始化失败：{result["Msg"]}");
+            Log.Error(
+                """
+                [SYSTEM INIT]
+                  Status  : Failed
+                  Message : {Message}
+                """,
+                result["Msg"]);
         }
         else
         {
-            Log.Information($"✅ 系统初始化完成：{result["Msg"] ?? "系统初始化成功！"}");
+            Log.Information(
+                """
+                [SYSTEM INIT]
+                  Status  : Completed
+                  Message : {Message}
+                """,
+                result["Msg"] ?? "系统初始化成功！");
         }
     }
 
@@ -215,7 +251,7 @@ try
             """
             
             =====================================================
-              DTSoft Server is ready
+            [READY] DTSoft Server is ready
             -----------------------------------------------------
               Version     : {Version}
               Environment : {Environment}
@@ -236,7 +272,7 @@ try
 }
 catch (Exception ex)
 {
-    Log.Fatal(ex, "❌ 应用程序启动失败");
+    Log.Fatal(ex, "[STARTUP] 应用程序启动失败");
 }
 finally
 {

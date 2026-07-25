@@ -22,8 +22,6 @@ public static class YitterHelper
 
         // 保存参数（务必全局唯一实例，否则可能产生重复 ID）
         YitIdHelper.SetIdGenerator(options);
-        
-        Console.WriteLine($"✅ Yitter IdGenerator 初始化成功 (WorkerId={workerId})");
     }
 
     /// <summary>
