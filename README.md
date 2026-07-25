@@ -25,15 +25,49 @@ DTSoft Server App 是一个基于 ASP.NET Core 的后台服务项目，提供组
 └── DTSoftServerApp.slnx      # 解决方案文件
 ```
 
-主要模块：
+## 核心能力
 
-- `Auth`：账号密码登录、JWT Token 签发
-- `ApiKeyAuth`：API Key 创建、管理和换取 Token
-- `User` / `Department` / `Role` / `Menu`：组织、用户、角色、菜单权限管理
-- `File`：附件上传、下载、列表和删除
-- `SysConfig`：系统配置和系统初始化
-- `Log`：操作日志查询
-- `DynamicApp` / `DynamicApi`：动态应用配置和动态表 CRUD / 导入导出接口
+### 认证与访问控制
+
+- `Auth` 提供登录加密公钥、验证码、账号密码登录和 JWT Token 签发。
+- 登录密码使用前端 RSA-OAEP-SHA256 加密传输，后端按配置进行密码哈希校验。
+- `ApiKeyAuth` 支持 API Key 创建、管理和换取 Token，适合外部系统集成。
+- Web API 中间件负责 Token 校验、账号状态检查和操作日志采集。
+
+### 组织、用户与权限
+
+- `User` / `Department` 提供组织、用户、头像、直属主管、在线用户和密码维护能力。
+- `Role` 提供角色维护、角色成员维护。
+- `Menu` 提供菜单树、菜单授权、菜单权限检查和动态菜单入口配置。
+- 权限链路以菜单和角色授权为核心，前端菜单展示和后端权限检查共用同一套配置基础。
+
+### 系统配置与运行管理
+
+- `SysConfig` 维护系统名称、登录背景图、浏览器 Tab 小 Logo、登录验证码开关和后台主题配置。
+- 系统配置会写入缓存，减少登录页和前端初始化时的重复读取。
+- 系统初始化可在启动时创建数据库结构、管理员账号、基础角色、菜单和授权。
+- 系统运行信息接口可返回应用版本、运行时、服务器、内存和数据库连接状态。
+
+### 附件、日志与基础服务
+
+- `File` 提供附件上传、下载、列表、删除和静态文件访问。
+- `Log` 提供操作日志查询，配合中间件记录业务请求。
+- 数据库访问由 EF Core 承载，支持 `MySql`、`SqlServer`、`Oracle`、`PostgreSql` Provider。
+- 缓存可使用内存缓存或 Redis，文件存储路径通过配置控制。
+
+### 动态应用
+
+- `DynamicApp` / `DynamicApi` 提供动态业务模型配置和运行时 CRUD 接口。
+- 支持按配置生成列表、查询、详情、表单、导入、导出等接口能力。
+- 动态表访问通过统一服务层处理数据库连接、字段配置、查询条件和数据写入。
+
+### 动态 WebAPI 插件
+
+- 宿主启动时可扫描 `UserDll` 插件目录，加载外部 DLL 中的 Web API Controller。
+- 插件可通过 `DTSoft.Plugin.Abstractions` 获取 `IPluginContext`，访问当前用户、请求上下文、配置、数据库和宿主开放的应用服务。
+- 插件可实现 `IDynamicWebApiPlugin` 注册自己的服务，也可实现 `IPluginEntityModelConfiguration` 注册插件实体模型。
+- 插件路由由插件 Controller 自行声明，典型路径如 `/api/plugin/user/Demo/Me`。
+- 插件适合交付后扩展专用业务接口，详细开发方式见 [docs/DynamicWebApiPlugins.md](docs/DynamicWebApiPlugins.md)。
 
 ## 快速开始
 
@@ -61,6 +95,7 @@ DTSoft Server App 是一个基于 ASP.NET Core 的后台服务项目，提供组
 | `Cache:Provider` | 缓存实现：`Memory` 或 `Redis` |
 | `Cache:Redis:Host` / `Cache:Redis:Port` / `Cache:Redis:Password` | Redis 连接配置 |
 | `Storage:RootPath` / `Storage:Attachments:Directory` / `Storage:Users:Directory` | 文件和附件存储路径 |
+| `DynamicWebApi:Enabled` / `DynamicWebApi:PluginDirectory` | 是否启用动态 WebAPI 插件，以及插件 DLL 扫描目录 |
 
 建议在本地或部署环境通过环境变量覆盖敏感配置，不要把真实数据库密码、Redis 密码和生产 JWT 密钥提交到仓库。例如：
 
@@ -159,6 +194,22 @@ Authorization: Bearer <token>
 - Auth、API Key、动态配置等部分接口使用 JSON body
 
 更完整的接口参数以 `/apidoc` 为准。直属主管相关接口说明见 [DTSoftServerApp/Docs/User.Supervisor.API.md](DTSoftServerApp/DTSoftServerApp/Docs/User.Supervisor.API.md)。
+
+## 系统配置与上传限制
+
+系统配置接口位于 `SysConfig` 模块：
+
+- `GET /api/SysConfig/GetSystemInfo`：获取系统名称、登录背景图、登录验证码开关、Tab 小 Logo 和主题配置。
+- `POST /api/SysConfig/SetSystemInfo`：使用 `multipart/form-data` 保存系统配置。
+
+为保证登录页加载速度并避免前端缓存超限，系统配置上传会做服务端校验：
+
+| 字段 | 用途 | 大小限制 | 支持格式 |
+| --- | --- | --- | --- |
+| `LoginImg` | 登录页背景图 | `1MB` | `JPG`、`PNG`、`WebP` |
+| `BrowserLogo` | 浏览器 Tab 小 Logo | `256KB` | `JPG`、`PNG`、`WebP`、`ICO`、`SVG` |
+
+校验失败时接口返回 `success=false`，并通过 `Msg` 返回具体原因。前端系统设置页也有同样的上传限制，但服务端校验仍然是最终约束。
 
 ## 日志与文件
 
