@@ -1,4 +1,4 @@
-namespace DTSoft.Models.Parameter.ApiKey;
+namespace DTSoft.Models.Parameter.Integration;
 
 /// <summary>
 /// API密钥响应DTO

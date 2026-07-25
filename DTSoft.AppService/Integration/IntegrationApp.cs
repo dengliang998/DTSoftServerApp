@@ -2,17 +2,17 @@ using DTSoft.Core.Common;
 using DTSoft.Core.DbContexts;
 using DTSoft.Core.Interfaces;
 using DTSoft.Models.Entities;
-using DTSoft.Models.Parameter.ApiKey;
+using DTSoft.Models.Parameter.Integration;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
 using System.Text.Json;
 
-namespace DTSoft.AppService.ApiKey;
+namespace DTSoft.AppService.Integration;
 
 /// <summary>
-/// API密钥管理服务
+/// 集成API管理服务
 /// </summary>
-public class ApiKeyApp(SysDbContext dbContext, IDtSoftCache dtSoftCache)
+public class IntegrationApp(SysDbContext dbContext, IDtSoftCache dtSoftCache)
 {
     private static string ApiKeyCacheKey(string keyName) => $"ApiKey:{keyName.Trim().ToLowerInvariant()}";
 

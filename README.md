@@ -31,7 +31,7 @@ DTSoft Server App 是一个基于 ASP.NET Core 的后台服务项目，提供组
 
 - `Auth` 提供登录加密公钥、验证码、账号密码登录和 JWT Token 签发。
 - 登录密码使用前端 RSA-OAEP-SHA256 加密传输，后端按配置进行密码哈希校验。
-- `ApiKeyAuth` 支持 API Key 创建、管理和换取 Token，适合外部系统集成。
+- `Integration ApiKeys` 支持 API Key 创建、管理和换取 Token，适合外部系统集成。
 - Web API 中间件负责 Token 校验、账号状态检查和操作日志采集。
 
 ### 组织、用户与权限
@@ -187,13 +187,37 @@ Authorization: Bearer <token>
 
 - 大部分业务控制器路由格式为：`/api/{Controller}/{Action}`
 - 登录接口为：`POST /api/Auth/login`
-- API Key 登录接口为：`POST /api/ApiKeyAuth/login`
+- API Key 登录接口为：`POST /api/integration/api-keys/login`
+- API Key SSO Token 接口为：`POST /api/integration/api-keys/sso-token`
 - 动态 CRUD 接口格式为：`/api/{modelName}`、`/api/{modelName}/{id}`、`/api/{modelName}/import`、`/api/{modelName}/export`
 - JSON 序列化保留 PascalCase，不使用默认 camelCase
 - 用户、角色、部门、菜单、附件等部分接口使用 `FromForm`
 - Auth、API Key、动态配置等部分接口使用 JSON body
 
 更完整的接口参数以 `/apidoc` 为准。直属主管相关接口说明见 [DTSoftServerApp/Docs/User.Supervisor.API.md](DTSoftServerApp/DTSoftServerApp/Docs/User.Supervisor.API.md)。
+
+### API Key SSO
+
+外部系统可使用 API Key 为指定平台账号换取 SSO Token，再跳转到前端 SSO 入口完成单点登录。
+
+```http
+POST /api/integration/api-keys/sso-token
+Content-Type: application/json
+
+{
+  "KeyName": "<API Key 名称>",
+  "SecretKey": "<API Key 明文密钥>",
+  "UserAccount": "<要登录的平台账号>"
+}
+```
+
+成功响应中 `Data.Token` 为 JWT，`Data.UserAccount` 为本次登录账号。外部系统跳转前端：
+
+```text
+/#/sso?token=<Data.Token>&redirect=/home
+```
+
+`token` 需要做 URL 编码，`redirect` 仅支持站内路径。建议外部系统在服务端换取 Token，避免在浏览器暴露 `SecretKey`。
 
 ## 系统配置与上传限制
 

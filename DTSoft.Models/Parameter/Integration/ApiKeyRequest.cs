@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace DTSoft.Models.Parameter.ApiKey;
+namespace DTSoft.Models.Parameter.Integration;
 
 /// <summary>
 /// API密钥登录请求参数

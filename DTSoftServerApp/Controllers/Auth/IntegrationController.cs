@@ -1,25 +1,23 @@
-using DTSoft.AppService.ApiKey;
+using DTSoft.AppService.Integration;
 using DTSoft.Core.Common;
 using DTSoft.Core.DbContexts;
-using DTSoft.Core.Interfaces;
 using DTSoft.Models.Entities;
-using DTSoft.Models.Parameter.ApiKey;
+using DTSoft.Models.Parameter.Integration;
 using DTSoftServerApp.Services;
-using System.Security.Claims;
 
-namespace DTSoftServerApp.Controllers.Auth
+namespace DTSoftServerApp.Controllers.Integration
 {
     /// <summary>
-    /// API密钥认证接口
+    /// 集成API密钥接口
     /// </summary>
     [ApiController]
-    [Tags("API密钥认证")]
-    [Route("api/[controller]")]
-    public class ApiKeyAuthController(
+    [Tags("集成API密钥")]
+    [Route("api/integration/api-keys")]
+    public class IntegrationController(
         JwtService jwtService,
         SysDbContext dbContext,
         UserCacheHelper userCacheHelper,
-        ApiKeyApp apiKeyApp) : ControllerBase
+        IntegrationApp integrationApp) : ControllerBase
     {
         /// <summary>
         /// API密钥获取Token接口
@@ -27,7 +25,27 @@ namespace DTSoftServerApp.Controllers.Auth
         /// <param name="request">API密钥登录请求</param>
         /// <returns>Token信息</returns>
         [HttpPost("login")]
-        public async Task<IActionResult> ApiKeyLogin([FromBody] ApiKeyLoginRequest request)
+        public async Task<IActionResult> Login([FromBody] ApiKeyLoginRequest request)
+        {
+            return await IssueApiKeyToken(request, "IntegrationApiKeyLogin", "API-IntegrationApiKeyLogin", "获取Token成功");
+        }
+
+        /// <summary>
+        /// API密钥获取SSO Token接口
+        /// </summary>
+        /// <param name="request">API密钥登录请求</param>
+        /// <returns>SSO Token信息</returns>
+        [HttpPost("sso-token")]
+        public async Task<IActionResult> IssueSsoToken([FromBody] ApiKeyLoginRequest request)
+        {
+            return await IssueApiKeyToken(request, "IntegrationApiKeySsoToken", "API-IntegrationApiKeySsoToken", "获取SSO Token成功");
+        }
+
+        private async Task<IActionResult> IssueApiKeyToken(
+            ApiKeyLoginRequest request,
+            string actionName,
+            string requestType,
+            string successMessage)
         {
             // 记录日志
             var log = new SysActionLog
@@ -35,16 +53,16 @@ namespace DTSoftServerApp.Controllers.Auth
                 ItemId = YitterHelper.NewId(),
                 LogDate = DateTime.Now.ToCstTime(),
                 UserAcc = request.UserAccount,
-                ActionName = "ApiKeyLogin",
+                ActionName = actionName,
                 ClientIP = HttpContext.Connection.RemoteIpAddress?.ToString(),
                 Param = $"KeyName: {request.KeyName}",
-                RequestType = "API-ApiKeyLogin"
+                RequestType = requestType
             };
 
             try
             {
                 // 验证API密钥
-                var (valid, message, apiKey) = await apiKeyApp.ValidateApiKey(request.KeyName, request.SecretKey);
+                var (valid, message, _) = await integrationApp.ValidateApiKey(request.KeyName, request.SecretKey);
                 if (!valid)
                 {
                     log.Result = message;
@@ -76,17 +94,18 @@ namespace DTSoftServerApp.Controllers.Auth
                 // 生成Token
                 var (token, expires) = jwtService.GenerateToken(request.UserAccount, user.Account!);
 
-                log.Result = "获取Token成功";
+                log.Result = successMessage;
                 dbContext.SysActionLog!.Add(log);
                 await dbContext.SaveChangesAsync();
 
                 return Ok(new
                 {
                     Code = 200,
-                    Message = "获取Token成功",
+                    Message = successMessage,
                     Data = new
                     {
                         Token = token,
+                        UserAccount = user.Account,
                         Expires = expires,
                         jwtService.ExpiresInHours,
                         jwtService.ExpiresInSeconds
@@ -119,7 +138,7 @@ namespace DTSoftServerApp.Controllers.Auth
             // 从JWT中获取当前登录用户
             var currentUser = DtSoftHelper.GetLoginUserAccount(User);
 
-            var (success, message, data) = await apiKeyApp.CreateApiKey(request, currentUser);
+            var (success, message, data) = await integrationApp.CreateApiKey(request, currentUser);
 
             if (!success)
             {
@@ -147,7 +166,7 @@ namespace DTSoftServerApp.Controllers.Auth
         [Authorize]
         public async Task<IActionResult> UpdateApiKey([FromBody] ApiKeyUpdateRequest request)
         {
-            var (success, message) = await apiKeyApp.UpdateApiKey(request);
+            var (success, message) = await integrationApp.UpdateApiKey(request);
 
             if (!success)
             {
@@ -174,7 +193,7 @@ namespace DTSoftServerApp.Controllers.Auth
         [Authorize]
         public async Task<IActionResult> DeleteApiKey([FromBody] ApiKeyDeleteRequest request)
         {
-            var (success, message) = await apiKeyApp.DeleteApiKey(request);
+            var (success, message) = await integrationApp.DeleteApiKey(request);
 
             if (!success)
             {
@@ -201,7 +220,7 @@ namespace DTSoftServerApp.Controllers.Auth
         [Authorize]
         public async Task<IActionResult> GetApiKeyList([FromBody] ApiKeyQueryRequest request)
         {
-            var list = await apiKeyApp.GetApiKeyList(request);
+            var list = await integrationApp.GetApiKeyList(request);
 
             return Ok(new
             {

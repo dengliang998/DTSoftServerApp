@@ -1,5 +1,5 @@
 using DTSoft.AppService.Attachment;
-using DTSoft.AppService.ApiKey;
+using DTSoft.AppService.Integration;
 using DTSoft.AppService.Dictionary;
 using DTSoft.AppService.Esb;
 using DTSoft.AppService.Ou;
@@ -60,7 +60,7 @@ namespace DTSoftServerApp.Extensions
             services.AddScoped<MicroConfigApp>();
             services.AddScoped<MicroTableService>();
             services.AddScoped<OuApp>();
-            services.AddScoped<ApiKeyApp>();
+            services.AddScoped<IntegrationApp>();
             services.AddScoped<DictionaryApp>();
             services.AddScoped<EsbServiceConnectionApp>();
             services.AddScoped<EsbDataSourceApp>();
