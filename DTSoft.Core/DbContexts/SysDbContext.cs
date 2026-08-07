@@ -29,6 +29,8 @@ public class SysDbContext(
     public virtual DbSet<SysDictionaryData>? SysDictionaryData { get; set; }
     public virtual DbSet<SysEsbServiceConnection>? SysEsbServiceConnection { get; set; }
     public virtual DbSet<SysEsbDataSource>? SysEsbDataSource { get; set; }
+    public virtual DbSet<SysLanguage>? SysLanguage { get; set; }
+    public virtual DbSet<SysLanguageResource>? SysLanguageResource { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -55,6 +57,8 @@ public class SysDbContext(
         modelBuilder.Entity<SysDictionaryData>().Property(p => p.ItemId).ValueGeneratedNever();
         modelBuilder.Entity<SysEsbServiceConnection>().Property(p => p.ItemId).ValueGeneratedNever();
         modelBuilder.Entity<SysEsbDataSource>().Property(p => p.ItemId).ValueGeneratedNever();
+        modelBuilder.Entity<SysLanguage>().Property(p => p.ItemId).ValueGeneratedNever();
+        modelBuilder.Entity<SysLanguageResource>().Property(p => p.ItemId).ValueGeneratedNever();
 
         //配置外键字段长度
         modelBuilder.Entity<SysRoleMember>().Property(p => p.UserAcc).HasMaxLength(50);
@@ -77,6 +81,15 @@ public class SysDbContext(
         modelBuilder.Entity<SysDictionaryData>().HasIndex(p => new { p.DictCode, p.ItemValue }).IsUnique();
         modelBuilder.Entity<SysEsbServiceConnection>().HasIndex(p => p.Code).IsUnique();
         modelBuilder.Entity<SysEsbDataSource>().HasIndex(p => p.Code).IsUnique();
+        modelBuilder.Entity<SysLanguage>().Property(p => p.LanguageCode).HasMaxLength(20);
+        modelBuilder.Entity<SysLanguage>().Property(p => p.LanguageName).HasMaxLength(100);
+        modelBuilder.Entity<SysLanguage>().Property(p => p.NativeName).HasMaxLength(100);
+        modelBuilder.Entity<SysLanguage>().HasIndex(p => p.LanguageCode).IsUnique();
+        modelBuilder.Entity<SysLanguageResource>().Property(p => p.ResourceKey).HasMaxLength(200);
+        modelBuilder.Entity<SysLanguageResource>().Property(p => p.Module).HasMaxLength(100);
+        modelBuilder.Entity<SysLanguageResource>().Property(p => p.Description).HasMaxLength(500);
+        modelBuilder.Entity<SysLanguageResource>().HasIndex(p => p.ResourceKey).IsUnique();
+        modelBuilder.Entity<SysMenu>().Property(p => p.I18nKey).HasMaxLength(200);
 
         //建立主外键关系
         //SYS_RoleMember--SYS_Role

@@ -93,6 +93,7 @@ public class MenuApp(SysDbContext dbContext, IDtSoftCache dtSoftCache, DtSoftHel
                     ItemId = a.ItemId,
                     Pid = a.Pid,
                     MenuName = a.MenuName,
+                    I18nKey = a.I18nKey,
                     MenuPath = a.MenuPath,
                     Order = a.Order,
                     UserAcc = x.UserAcc ?? "",
@@ -154,6 +155,7 @@ public class MenuApp(SysDbContext dbContext, IDtSoftCache dtSoftCache, DtSoftHel
             data.Add(item);
             item["id"] = rows.ItemId;
             item["MenuName"] = rows.MenuName;
+            item["I18nKey"] = rows.I18nKey;
             //判断是否是管理员
             if (obj.RoleId.Equals(1))
             {
@@ -184,6 +186,7 @@ public class MenuApp(SysDbContext dbContext, IDtSoftCache dtSoftCache, DtSoftHel
             data.Add(item);
             item["id"] = rows.ItemId;
             item["MenuName"] = rows.MenuName;
+            item["I18nKey"] = rows.I18nKey;
             //判断是否是管理员
             if (obj.RoleId.Equals(1))
             {
@@ -411,6 +414,7 @@ public class MenuApp(SysDbContext dbContext, IDtSoftCache dtSoftCache, DtSoftHel
             ItemId = YitterHelper.NewId(),
             Pid = obj.Pid,
             MenuName = obj.MenuName,
+            I18nKey = obj.I18nKey,
             MenuPath = obj.Type.Equals(MenuType.Internal) ? obj.MenuPath : $"JumpPage?PageCode={obj.MenuPath}",
             Order = obj.Order,
             Icon = obj.Icon,
@@ -478,6 +482,7 @@ public class MenuApp(SysDbContext dbContext, IDtSoftCache dtSoftCache, DtSoftHel
     
         // 更新菜单信息
         menu.MenuName = obj.MenuName;
+        menu.I18nKey = obj.I18nKey;
         menu.Order = obj.Order;
         menu.MenuPath = obj.MenuPath;
         menu.Icon = obj.Icon;

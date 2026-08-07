@@ -14,6 +14,11 @@ public static class AppConfigurationKeys
         public const string LegacyEnabled = "ScalarEnabled";
     }
 
+    public static class Localization
+    {
+        public const string DefaultLanguage = "Localization:DefaultLanguage";
+    }
+
     public static class Authentication
     {
         public static class Jwt

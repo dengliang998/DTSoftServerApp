@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Mime;
+using DTSoft.AppService.Localization;
 
 namespace DTSoftServerApp.Middleware
 {
@@ -40,7 +41,9 @@ namespace DTSoftServerApp.Middleware
             var environment = context.RequestServices.GetRequiredService<IHostEnvironment>();
             
             // 根据异常类型返回对应的 HTTP 状态码和错误信息
-            var (httpStatusCode, message) = MapExceptionToResponse(exception);
+            var localizer = context.RequestServices.GetRequiredService<IAppLocalizer>();
+            var (httpStatusCode, messageKey) = MapExceptionToResponse(exception);
+            var message = localizer[messageKey];
             
             var response = new
             {
@@ -65,36 +68,36 @@ namespace DTSoftServerApp.Middleware
         /// <summary>
         /// 将异常类型映射到 HTTP 状态码和消息
         /// </summary>
-        private static (int statusCode, string message) MapExceptionToResponse(Exception exception)
+        private static (int statusCode, string messageKey) MapExceptionToResponse(Exception exception)
         {
             return exception switch
             {
                 // 400 Bad Request - 客户端请求错误
-                ArgumentNullException => (StatusCodes.Status400BadRequest, "必需参数缺失"),
-                ArgumentException => (StatusCodes.Status400BadRequest, "参数格式不正确"),
+                ArgumentNullException => (StatusCodes.Status400BadRequest, "validation.argumentMissing"),
+                ArgumentException => (StatusCodes.Status400BadRequest, "validation.argumentInvalid"),
                 
                 // 401 Unauthorized - 认证失败
-                UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "未授权访问，请登录"),
+                UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "auth.unauthorized"),
                 
                 // 403 Forbidden - 权限不足
-                System.Security.SecurityException => (StatusCodes.Status403Forbidden, "权限不足，无法执行此操作"),
+                System.Security.SecurityException => (StatusCodes.Status403Forbidden, "auth.forbidden"),
                 
                 // 404 Not Found - 资源不存在
-                KeyNotFoundException => (StatusCodes.Status404NotFound, "请求的资源不存在"),
+                KeyNotFoundException => (StatusCodes.Status404NotFound, "resource.notFound"),
                 
                 // 409 Conflict - 资源冲突
                 InvalidOperationException when exception.Message.Contains("已存在") => 
-                    (StatusCodes.Status409Conflict, "资源已存在，无法重复创建"),
+                    (StatusCodes.Status409Conflict, "resource.conflict"),
                 
                 // 408 Request Timeout - 请求超时
-                TimeoutException => (StatusCodes.Status408RequestTimeout, "请求超时，请稍后重试"),
+                TimeoutException => (StatusCodes.Status408RequestTimeout, "request.timeout"),
                 
                 // 423 Locked - 资源被锁定
                 InvalidOperationException when exception.Message.Contains("锁定") => 
-                    (StatusCodes.Status423Locked, "资源已被锁定"),
+                    (StatusCodes.Status423Locked, "resource.locked"),
                 
                 // 500 Internal Server Error - 服务器内部错误
-                _ => (StatusCodes.Status500InternalServerError, "系统内部错误，请稍后重试")
+                _ => (StatusCodes.Status500InternalServerError, "system.error")
             };
         }
     }

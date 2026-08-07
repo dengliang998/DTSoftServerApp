@@ -44,6 +44,7 @@ public abstract class DtMenu
             item["id"] = rows.ItemId;
             item["pid"] = rows.Pid;
             item["MenuName"] = rows.MenuName;
+            item["I18nKey"] = rows.I18nKey;
             item["path"] = rows.MenuPath;
             item["order"] = rows.Order;
             item["Icon"] = rows.Icon;
@@ -95,6 +96,7 @@ public abstract class DtMenu
             citem["id"] = crows.ItemId;
             citem["pid"] = crows.Pid;
             citem["MenuName"] = crows.MenuName;
+            citem["I18nKey"] = crows.I18nKey;
             citem["path"] = crows.MenuPath;
             citem["order"] = crows.Order;
             citem["Icon"] = crows.Icon;

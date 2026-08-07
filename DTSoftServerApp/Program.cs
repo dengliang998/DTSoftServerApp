@@ -222,6 +222,7 @@ try
     });
 
     // 全局异常处理（必须在最前面）
+    app.UseRequestLanguage();
     app.UseExceptionHandling();
 
     // 业务中间件

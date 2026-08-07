@@ -1,5 +1,7 @@
 using DTSoft.AppService.Attachment;
 using DTSoft.AppService.Integration;
+using DTSoft.AppService.Language;
+using DTSoft.AppService.Localization;
 using DTSoft.AppService.Dictionary;
 using DTSoft.AppService.Esb;
 using DTSoft.AppService.Ou;
@@ -66,6 +68,8 @@ namespace DTSoftServerApp.Extensions
             services.AddScoped<DictionaryApp>();
             services.AddScoped<EsbServiceConnectionApp>();
             services.AddScoped<EsbDataSourceApp>();
+            services.AddScoped<LanguageApp>();
+            services.AddSingleton<IAppLocalizer, AppLocalizer>();
 
             // 其他服务
             services.AddScoped<JwtService>();
@@ -149,6 +153,7 @@ namespace DTSoftServerApp.Extensions
                     OnChallenge = context =>
                     {
                         // 接口认证失败返回处理 - 返回 401 状态码
+                        var localizer = context.HttpContext.RequestServices.GetRequiredService<IAppLocalizer>();
                         context.HandleResponse();
                         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                         context.Response.Clear();
@@ -157,7 +162,7 @@ namespace DTSoftServerApp.Extensions
                         {
                             ["success"] = false,
                             ["statusCode"] = 401,  // 保留 statusCode 字段
-                            ["message"] = "身份验证失败，请登录"
+                            ["message"] = localizer["auth.challenge"]
                         };
                         return context.Response.WriteAsync(rv.ToString());
                     }

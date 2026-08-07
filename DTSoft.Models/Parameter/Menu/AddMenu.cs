@@ -7,6 +7,7 @@ public class AddMenu
 {
     public long Pid { get; set; }
     public string? MenuName { get; set; }
+    public string? I18nKey { get; set; }
     public string? MenuPath { get; set; }
     public int Order { get; set; }
     public string? Icon { get; set; }

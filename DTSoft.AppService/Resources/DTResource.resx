@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="auth.challenge" xml:space="preserve">
+    <value>身份验证失败，请登录</value>
+  </data>
+  <data name="auth.unauthorized" xml:space="preserve">
+    <value>未授权访问，请登录</value>
+  </data>
+  <data name="auth.forbidden" xml:space="preserve">
+    <value>权限不足，无法执行此操作</value>
+  </data>
+  <data name="validation.argumentMissing" xml:space="preserve">
+    <value>必需参数缺失</value>
+  </data>
+  <data name="validation.argumentInvalid" xml:space="preserve">
+    <value>参数格式不正确</value>
+  </data>
+  <data name="resource.notFound" xml:space="preserve">
+    <value>请求的资源不存在</value>
+  </data>
+  <data name="resource.conflict" xml:space="preserve">
+    <value>资源已存在，无法重复创建</value>
+  </data>
+  <data name="request.timeout" xml:space="preserve">
+    <value>请求超时，请稍后重试</value>
+  </data>
+  <data name="resource.locked" xml:space="preserve">
+    <value>资源已被锁定</value>
+  </data>
+  <data name="system.error" xml:space="preserve">
+    <value>系统内部错误，请稍后重试</value>
+  </data>
+  <data name="file.typeUnsupported" xml:space="preserve">
+    <value>{0}格式不支持</value>
+  </data>
+  <data name="file.sizeExceeded" xml:space="preserve">
+    <value>{0}不能超过 {1}</value>
+  </data>
+  <data name="permission.noModify" xml:space="preserve">
+    <value>操作失败：该账号没有修改权限</value>
+  </data>
+  <data name="language.codeRequired" xml:space="preserve">
+    <value>语言编码不能为空</value>
+  </data>
+  <data name="language.unsupported" xml:space="preserve">
+    <value>当前版本仅支持 zh-CN 和 en-US</value>
+  </data>
+  <data name="language.nameRequired" xml:space="preserve">
+    <value>语言名称不能为空</value>
+  </data>
+  <data name="language.notFound" xml:space="preserve">
+    <value>语言不存在</value>
+  </data>
+  <data name="language.defaultCannotDelete" xml:space="preserve">
+    <value>默认语言不能删除</value>
+  </data>
+  <data name="language.resourceKeyRequired" xml:space="preserve">
+    <value>语言词条 Key 不能为空</value>
+  </data>
+  <data name="language.resourceNotFound" xml:space="preserve">
+    <value>语言词条不存在</value>
+  </data>
+</root>
