@@ -5,6 +5,7 @@ using DTSoft.AppService.Localization;
 using DTSoft.Models.Entities;
 using DTSoft.Models.Parameter.Language;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -14,7 +15,8 @@ public class LanguageApp(
     SysDbContext dbContext,
     IDtSoftCache dtSoftCache,
     DtSoftHelper dtSoftHelper,
-    IAppLocalizer localizer)
+    IAppLocalizer localizer,
+    IConfiguration configuration)
 {
     private const string LanguageListCacheKey = "Language:List";
     private const string LanguageResourceCacheKeyPrefix = "Language:Resources:";
@@ -41,6 +43,16 @@ public class LanguageApp(
         public string LanguageName { get; init; } = string.Empty;
         public string NativeName { get; init; } = string.Empty;
         public bool IsDefault { get; init; }
+        public int Sort { get; init; }
+    }
+
+    private sealed class ConfigLanguageItem
+    {
+        public string Code { get; init; } = string.Empty;
+        public string LanguageCode { get; init; } = string.Empty;
+        public string Name { get; init; } = string.Empty;
+        public string LanguageName { get; init; } = string.Empty;
+        public string NativeName { get; init; } = string.Empty;
         public int Sort { get; init; }
     }
 
@@ -81,33 +93,16 @@ public class LanguageApp(
         };
     }
 
-    public async Task<JsonObject> GetEnabledLanguagesAsync()
+    public Task<JsonObject> GetEnabledLanguagesAsync()
     {
-        await EnsureSeedDataAsync();
+        var list = GetConfiguredEnabledLanguages();
 
-        var list = await dtSoftCache.GetOrCreateAsync(LanguageListCacheKey, TimeSpan.FromMinutes(5), () =>
-            dbContext.SysLanguage!
-                .AsNoTracking()
-                .Where(p => p.IsEnabled)
-                .OrderByDescending(p => p.IsDefault)
-                .ThenBy(p => p.Sort)
-                .ThenBy(p => p.LanguageCode)
-                .Select(p => new EnabledLanguageItem
-                {
-                    LanguageCode = p.LanguageCode,
-                    LanguageName = p.LanguageName,
-                    NativeName = p.NativeName,
-                    IsDefault = p.IsDefault,
-                    Sort = p.Sort
-                })
-                .ToList());
-
-        return new JsonObject
+        return Task.FromResult(new JsonObject
         {
             ["success"] = true,
             ["StateCode"] = 0,
             ["data"] = JsonSerializer.SerializeToNode(list)
-        };
+        });
     }
 
     public async Task<JsonObject> SaveLanguageAsync(LanguageSaveParameter parameter, string loginUserAcc)
@@ -389,6 +384,65 @@ public class LanguageApp(
         if (string.IsNullOrWhiteSpace(code)) return string.Empty;
         return BuiltInLanguageCodes.FirstOrDefault(p => p.Equals(code, StringComparison.OrdinalIgnoreCase)) ?? code;
     }
+
+    private List<EnabledLanguageItem> GetConfiguredEnabledLanguages()
+    {
+        var defaultLanguage = NormalizeLanguageCode(configuration[AppConfigurationKeys.Localization.DefaultLanguage]);
+        if (string.IsNullOrWhiteSpace(defaultLanguage) || !BuiltInLanguageCodes.Contains(defaultLanguage))
+        {
+            defaultLanguage = "zh-CN";
+        }
+
+        var configured = configuration
+            .GetSection(AppConfigurationKeys.Localization.Languages)
+            .Get<List<ConfigLanguageItem>>() ?? new List<ConfigLanguageItem>();
+
+        var list = configured
+            .Select((item, index) =>
+            {
+                var code = NormalizeLanguageCode(item.Code);
+                if (string.IsNullOrWhiteSpace(code))
+                {
+                    code = NormalizeLanguageCode(item.LanguageCode);
+                }
+
+                return new
+                {
+                    Code = code,
+                    Name = item.Name,
+                    LanguageName = item.LanguageName,
+                    NativeName = item.NativeName,
+                    Sort = item.Sort > 0 ? item.Sort : (index + 1) * 10
+                };
+            })
+            .Where(item => BuiltInLanguageCodes.Contains(item.Code))
+            .GroupBy(item => item.Code, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .Select(item => new EnabledLanguageItem
+            {
+                LanguageCode = item.Code,
+                LanguageName = string.IsNullOrWhiteSpace(item.Name) && string.IsNullOrWhiteSpace(item.LanguageName)
+                    ? GetBuiltInLanguageName(item.Code)
+                    : (string.IsNullOrWhiteSpace(item.Name) ? item.LanguageName : item.Name).Trim(),
+                NativeName = string.IsNullOrWhiteSpace(item.NativeName)
+                    ? GetBuiltInNativeName(item.Code)
+                    : item.NativeName.Trim(),
+                IsDefault = item.Code.Equals(defaultLanguage, StringComparison.OrdinalIgnoreCase),
+                Sort = item.Sort
+            })
+            .OrderByDescending(item => item.IsDefault)
+            .ThenBy(item => item.Sort)
+            .ThenBy(item => item.LanguageCode)
+            .ToList();
+
+        return list;
+    }
+
+    private static string GetBuiltInLanguageName(string languageCode) =>
+        languageCode.Equals("en-US", StringComparison.OrdinalIgnoreCase) ? "English" : "简体中文";
+
+    private static string GetBuiltInNativeName(string languageCode) =>
+        languageCode.Equals("en-US", StringComparison.OrdinalIgnoreCase) ? "English" : "简体中文";
 
     private static Dictionary<string, string?> ParseValues(string? valuesJson)
     {

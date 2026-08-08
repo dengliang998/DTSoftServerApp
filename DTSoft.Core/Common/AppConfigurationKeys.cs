@@ -17,6 +17,7 @@ public static class AppConfigurationKeys
     public static class Localization
     {
         public const string DefaultLanguage = "Localization:DefaultLanguage";
+        public const string Languages = "Localization:Languages";
     }
 
     public static class Authentication
