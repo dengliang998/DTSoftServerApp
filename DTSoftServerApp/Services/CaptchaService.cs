@@ -1,3 +1,4 @@
+using DTSoft.AppService.Localization;
 using DTSoft.Core.Interfaces;
 using System.Net;
 using System.Security.Cryptography;
@@ -8,7 +9,7 @@ namespace DTSoftServerApp.Services;
 /// <summary>
 /// 登录图形验证码服务
 /// </summary>
-public class CaptchaService(IDtSoftCache cache)
+public class CaptchaService(IDtSoftCache cache, IAppLocalizer localizer)
 {
     private const string CacheKeyPrefix = "auth:captcha:";
     private const string CodeChars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
@@ -41,7 +42,7 @@ public class CaptchaService(IDtSoftCache cache)
     public async Task<(bool Success, string Message)> ValidateAsync(string? captchaId, string? captchaCode)
     {
         if (string.IsNullOrWhiteSpace(captchaId) || string.IsNullOrWhiteSpace(captchaCode))
-            return (false, "验证码不能为空");
+            return (false, localizer["login.captchaRequired"]);
 
         var cacheKey = CacheKeyPrefix + captchaId.Trim();
         var code = await cache.GetAsync<string>(cacheKey);
@@ -49,12 +50,12 @@ public class CaptchaService(IDtSoftCache cache)
             await cache.RemoveAsync(cacheKey);
 
         if (string.IsNullOrWhiteSpace(code))
-            return (false, "验证码已过期，请刷新后重试");
+            return (false, localizer["login.captchaExpired"]);
 
         if (!string.Equals(code, captchaCode.Trim(), StringComparison.OrdinalIgnoreCase))
-            return (false, "验证码错误");
+            return (false, localizer["login.captchaInvalid"]);
 
-        return (true, "验证码校验通过");
+        return (true, localizer["login.captchaValid"]);
     }
 
     private static string GenerateCode(int length)

@@ -1,4 +1,5 @@
 using DTSoft.AppService.SysConfig;
+using DTSoft.AppService.Localization;
 using DTSoft.Core.Common;
 using DTSoft.Core.DbContexts;
 using DTSoft.Core.Interfaces;
@@ -24,7 +25,8 @@ namespace DTSoftServerApp.Controllers.Auth
         SysConfigApp sysConfigApp,
         AuthEncryptionService authEncryptionService,
         ILogQueueService logQueueService,
-        LicenseService licenseService) : ControllerBase
+        LicenseService licenseService,
+        IAppLocalizer localizer) : ControllerBase
     {
         /// <summary>
         /// 获取登录验证码
@@ -119,7 +121,7 @@ namespace DTSoftServerApp.Controllers.Auth
                     return StatusCode(StatusCodes.Status403Forbidden, new
                     {
                         Code = 403,
-                        Message = "当前在线用户数已达到许可证允许的上限"
+                        Message = localizer["login.concurrentLimitExceeded"]
                     });
                 }
 
@@ -130,7 +132,7 @@ namespace DTSoftServerApp.Controllers.Auth
 
                 return Ok(new {
                     Code = 200,
-                    Message = "登录成功",
+                    Message = localizer["login.success"],
                     Data = new {
                         Token = token,
                         Expires = expires,
@@ -146,7 +148,7 @@ namespace DTSoftServerApp.Controllers.Auth
 
                 return Unauthorized(new {
                     Code = 401,
-                    Message = "用户名或密码错误"
+                    Message = localizer["login.invalidCredentials"]
                 });
             }
         }
@@ -163,14 +165,14 @@ namespace DTSoftServerApp.Controllers.Auth
 
                 if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
                 {
-                    return (false, string.Empty, string.Empty, "用户名和密码不能为空");
+                    return (false, string.Empty, string.Empty, localizer["login.credentialsRequired"]);
                 }
 
                 return (true, username, password, string.Empty);
             }
             catch (AuthEncryptionException)
             {
-                return (false, string.Empty, string.Empty, "登录参数解密失败，请刷新页面后重试");
+                return (false, string.Empty, string.Empty, localizer["login.decryptionFailed"]);
             }
         }
 
