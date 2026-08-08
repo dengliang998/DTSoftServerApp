@@ -1,0 +1,8 @@
+.git
+.gitignore
+.idea
+.DS_Store
+**/bin
+**/obj
+DTSoftServerApp/Logs
+DTSoftServerApp/startup.log
