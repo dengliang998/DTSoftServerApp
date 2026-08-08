@@ -37,17 +37,6 @@ public class RequestLanguageMiddleware(RequestDelegate next, IConfiguration conf
         var culture = NormalizeCulture(headerLanguage);
         if (culture is not null) return culture;
 
-        var acceptLanguage = request.Headers["Accept-Language"].ToString();
-        if (!string.IsNullOrWhiteSpace(acceptLanguage))
-        {
-            foreach (var item in acceptLanguage.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
-            {
-                var code = item.Split(';', 2)[0];
-                culture = NormalizeCulture(code);
-                if (culture is not null) return culture;
-            }
-        }
-
         return GetDefaultCulture();
     }
 

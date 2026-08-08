@@ -233,7 +233,7 @@ public class LanguageApp(
         var normalizedLanguageCode = NormalizeLanguageCode(languageCode);
         if (string.IsNullOrWhiteSpace(normalizedLanguageCode))
         {
-            normalizedLanguageCode = "zh-CN";
+            normalizedLanguageCode = GetDefaultLanguageCode();
         }
 
         var values = await GetResourceValuesAsync(normalizedLanguageCode);
@@ -250,7 +250,7 @@ public class LanguageApp(
         var normalizedLanguageCode = NormalizeLanguageCode(languageCode);
         if (string.IsNullOrWhiteSpace(normalizedLanguageCode))
         {
-            normalizedLanguageCode = "zh-CN";
+            normalizedLanguageCode = GetDefaultLanguageCode();
         }
 
         var cacheKey = $"{LanguageResourceCacheKeyPrefix}{normalizedLanguageCode}";
@@ -387,11 +387,7 @@ public class LanguageApp(
 
     private List<EnabledLanguageItem> GetConfiguredEnabledLanguages()
     {
-        var defaultLanguage = NormalizeLanguageCode(configuration[AppConfigurationKeys.Localization.DefaultLanguage]);
-        if (string.IsNullOrWhiteSpace(defaultLanguage) || !BuiltInLanguageCodes.Contains(defaultLanguage))
-        {
-            defaultLanguage = "zh-CN";
-        }
+        var defaultLanguage = GetDefaultLanguageCode();
 
         var configured = configuration
             .GetSection(AppConfigurationKeys.Localization.Languages)
@@ -436,6 +432,14 @@ public class LanguageApp(
             .ToList();
 
         return list;
+    }
+
+    private string GetDefaultLanguageCode()
+    {
+        var defaultLanguage = NormalizeLanguageCode(configuration[AppConfigurationKeys.Localization.DefaultLanguage]);
+        return string.IsNullOrWhiteSpace(defaultLanguage) || !BuiltInLanguageCodes.Contains(defaultLanguage)
+            ? "zh-CN"
+            : defaultLanguage;
     }
 
     private static string GetBuiltInLanguageName(string languageCode) =>
