@@ -18,13 +18,13 @@ public static class EsbDbConnectionFactory
             "mysql" => new MySqlConnector.MySqlConnection(connectionString),
             "postgresql" => new NpgsqlConnection(connectionString),
             "oracle" => new OracleConnection(connectionString),
-            var unsupported => throw new NotSupportedException($"不支持的数据库类型：{unsupported}")
+            var unsupported => throw new NotSupportedException(DbProviderMessages.Text("db.typeUnsupported", unsupported))
         };
     }
 
     public static string NormalizeDbType(string? dbType)
     {
-        if (string.IsNullOrWhiteSpace(dbType)) throw new ArgumentException("数据库类型不能为空", nameof(dbType));
+        if (string.IsNullOrWhiteSpace(dbType)) throw new ArgumentException(DbProviderMessages.Text("db.typeRequired"), nameof(dbType));
 
         var normalized = dbType.Trim().ToLowerInvariant();
         if (normalized.Contains("sqlserver") || normalized.Contains("sql server") || normalized.Contains("microsoft.entityframeworkcore.sqlserver"))
@@ -47,7 +47,7 @@ public static class EsbDbConnectionFactory
             return "oracle";
         }
 
-        throw new NotSupportedException($"不支持的数据库类型：{dbType}");
+        throw new NotSupportedException(DbProviderMessages.Text("db.typeUnsupported", dbType));
     }
 
     public static string GetParameterPrefix(string? dbType)

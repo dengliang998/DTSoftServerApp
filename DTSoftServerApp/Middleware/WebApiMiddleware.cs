@@ -1,4 +1,5 @@
 using DTSoft.Core.Common;
+using DTSoft.AppService.Localization;
 using DTSoft.Models.Entities;
 using System.Text;
 using System.Text.Json;
@@ -166,14 +167,18 @@ namespace DTSoftServerApp.Middleware
             }
             catch (InvalidOperationException ex)
             {
+                var localizer = context.RequestServices.GetRequiredService<IAppLocalizer>();
+                var message = ex.Message.StartsWith("授权异常", StringComparison.Ordinal) ||
+                              ex.Message.StartsWith("License error", StringComparison.OrdinalIgnoreCase)
+                    ? ex.Message
+                    : localizer.Format("license.unauthorized", ex.Message);
+
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;
                 context.Response.ContentType = "application/json";
                 var response = new JsonObject
                 {
                     ["Code"] = 403,
-                    ["Message"] = ex.Message.StartsWith("授权异常", StringComparison.Ordinal)
-                        ? ex.Message
-                        : $"授权异常：{ex.Message}"
+                    ["Message"] = message
                 };
                 var responseContent = response.ToJsonString();
                 await context.Response.WriteAsync(responseContent);

@@ -10,18 +10,18 @@ public class ApiKeyLoginRequest
     /// <summary>
     /// 密钥名称
     /// </summary>
-    [Required(ErrorMessage = "KeyName不能为空")]
+    [Required(ErrorMessage = "integration.keyNameRequired")]
     public string KeyName { get; set; } = string.Empty;
     
     /// <summary>
     /// 密钥
     /// </summary>
-    [Required(ErrorMessage = "SecretKey不能为空")]
+    [Required(ErrorMessage = "integration.secretKeyRequired")]
     public string SecretKey { get; set; } = string.Empty;
     
     /// <summary>
     /// 用户账号
     /// </summary>
-    [Required(ErrorMessage = "UserAccount不能为空")]
+    [Required(ErrorMessage = "integration.userAccountRequired")]
     public string UserAccount { get; set; } = string.Empty;
 }

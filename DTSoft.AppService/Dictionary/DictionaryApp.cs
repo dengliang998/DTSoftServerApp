@@ -1,6 +1,7 @@
 using DTSoft.Core.Common;
 using DTSoft.Core.DbContexts;
 using DTSoft.Core.Interfaces;
+using DTSoft.AppService.Localization;
 using DTSoft.Models.Entities;
 using DTSoft.Models.Parameter.Dictionary;
 using Microsoft.EntityFrameworkCore;
@@ -8,9 +9,10 @@ using System.Text.Json.Nodes;
 
 namespace DTSoft.AppService.Dictionary;
 
-public class DictionaryApp(SysDbContext dbContext, IDtSoftCache dtSoftCache)
+public class DictionaryApp(SysDbContext dbContext, IDtSoftCache dtSoftCache, IAppLocalizer localizer)
 {
     private static string DictionaryItemsCacheKey(string dictCode) => $"Dictionary:Items:{dictCode.Trim().ToLowerInvariant()}";
+    private string L(string key, params object[] args) => args.Length == 0 ? localizer[key] : localizer.Format(key, args);
 
     public async Task<JsonObject> GetTypesAsync(DictionaryTypeQuery query)
     {
@@ -71,19 +73,19 @@ public class DictionaryApp(SysDbContext dbContext, IDtSoftCache dtSoftCache)
         var normalizedCode = (dto.DictCode ?? string.Empty).Trim();
         var normalizedName = (dto.DictName ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(normalizedCode) || string.IsNullOrWhiteSpace(normalizedName))
-            return Error("字典编码和名称不能为空");
+            return Error(L("dictionary.codeAndNameRequired"));
 
         var duplicateExists = await dbContext.SysDictionaryType!
             .AnyAsync(type => type.DictCode == normalizedCode && type.ItemId != (dto.ItemId ?? 0));
         if (duplicateExists)
-            return Error("字典编码已存在");
+            return Error(L("dictionary.codeExists"));
 
         var now = TimeUtil.CstDateTime;
         if (dto.ItemId.HasValue && dto.ItemId.Value > 0)
         {
             var type = await dbContext.SysDictionaryType!.FirstOrDefaultAsync(type => type.ItemId == dto.ItemId.Value);
             if (type == null)
-                return Error("字典不存在");
+                return Error(L("dictionary.notFound"));
 
             var oldCode = type.DictCode;
             type.DictCode = normalizedCode;
@@ -122,30 +124,30 @@ public class DictionaryApp(SysDbContext dbContext, IDtSoftCache dtSoftCache)
 
         await dbContext.SaveChangesAsync();
         dtSoftCache.RefreshCache(DictionaryItemsCacheKey(normalizedCode));
-        return Success("保存成功");
+        return Success(L("common.saveSuccess"));
     }
 
     public async Task<JsonObject> DeleteTypeAsync(long itemId)
     {
         var type = await dbContext.SysDictionaryType!.FirstOrDefaultAsync(type => type.ItemId == itemId);
         if (type == null)
-            return Error("字典不存在");
+            return Error(L("dictionary.notFound"));
 
         var items = await dbContext.SysDictionaryData!.Where(item => item.DictCode == type.DictCode).ToListAsync();
         dbContext.SysDictionaryData!.RemoveRange(items);
         dbContext.SysDictionaryType!.Remove(type);
         await dbContext.SaveChangesAsync();
         dtSoftCache.RefreshCache(DictionaryItemsCacheKey(type.DictCode));
-        return Success("删除成功");
+        return Success(L("common.deleteSuccess"));
     }
 
     public async Task<JsonObject> SortTypesAsync(DictionaryTypeSortRequest request)
     {
         if (request.Items == null || request.Items.Count == 0)
-            return Error("排序数据不能为空");
+            return Error(L("dictionary.sortDataRequired"));
 
         if (request.Items.Select(item => item.ItemId).Distinct().Count() != request.Items.Count)
-            return Error("排序数据存在重复项");
+            return Error(L("dictionary.sortDataDuplicate"));
 
         var sortMap = request.Items.ToDictionary(item => item.ItemId, item => item.Sort);
         var itemIds = sortMap.Keys.ToList();
@@ -153,7 +155,7 @@ public class DictionaryApp(SysDbContext dbContext, IDtSoftCache dtSoftCache)
             .Where(type => itemIds.Contains(type.ItemId))
             .ToListAsync();
         if (types.Count != request.Items.Count)
-            return Error("排序数据已变更，请刷新后重试");
+            return Error(L("dictionary.sortDataChanged"));
 
         var now = TimeUtil.CstDateTime;
         foreach (var type in types)
@@ -163,13 +165,13 @@ public class DictionaryApp(SysDbContext dbContext, IDtSoftCache dtSoftCache)
         }
 
         await dbContext.SaveChangesAsync();
-        return Success("排序保存成功");
+        return Success(L("dictionary.sortSaveSuccess"));
     }
 
     public async Task<JsonObject> GetItemsAsync(DictionaryItemQuery query)
     {
         if (string.IsNullOrWhiteSpace(query.DictCode))
-            return Error("字典编码不能为空");
+            return Error(L("dictionary.codeRequired"));
 
         var normalizedCode = (query.DictCode ?? string.Empty).Trim();
         var dataQuery = dbContext.SysDictionaryData!
@@ -219,7 +221,7 @@ public class DictionaryApp(SysDbContext dbContext, IDtSoftCache dtSoftCache)
     public async Task<JsonObject> GetEnabledItemsByCodeAsync(string dictCode)
     {
         if (string.IsNullOrWhiteSpace(dictCode))
-            return Error("字典编码不能为空");
+            return Error(L("dictionary.codeRequired"));
 
         var normalizedCode = dictCode.Trim();
         var cacheKey = DictionaryItemsCacheKey(normalizedCode);
@@ -270,23 +272,23 @@ public class DictionaryApp(SysDbContext dbContext, IDtSoftCache dtSoftCache)
         var label = (dto.ItemLabel ?? string.Empty).Trim();
         var value = (dto.ItemValue ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(normalizedCode) || string.IsNullOrWhiteSpace(label) || string.IsNullOrWhiteSpace(value))
-            return Error("字典编码、标签和值不能为空");
+            return Error(L("dictionary.itemFieldsRequired"));
 
         var type = await dbContext.SysDictionaryType!.FirstOrDefaultAsync(type => type.DictCode == normalizedCode);
         if (type == null)
-            return Error("字典不存在");
+            return Error(L("dictionary.notFound"));
 
         var duplicateExists = await dbContext.SysDictionaryData!
             .AnyAsync(item => item.DictCode == normalizedCode && item.ItemValue == value && item.ItemId != (dto.ItemId ?? 0));
         if (duplicateExists)
-            return Error("字典值已存在");
+            return Error(L("dictionary.valueExists"));
 
         var now = TimeUtil.CstDateTime;
         if (dto.ItemId.HasValue && dto.ItemId.Value > 0)
         {
             var item = await dbContext.SysDictionaryData!.FirstOrDefaultAsync(item => item.ItemId == dto.ItemId.Value);
             if (item == null)
-                return Error("字典项不存在");
+                return Error(L("dictionary.itemNotFound"));
 
             item.DictTypeId = type.ItemId;
             item.DictCode = normalizedCode;
@@ -318,33 +320,33 @@ public class DictionaryApp(SysDbContext dbContext, IDtSoftCache dtSoftCache)
 
         await dbContext.SaveChangesAsync();
         dtSoftCache.RefreshCache(DictionaryItemsCacheKey(normalizedCode));
-        return Success("保存成功");
+        return Success(L("common.saveSuccess"));
     }
 
     public async Task<JsonObject> DeleteItemAsync(long itemId)
     {
         var item = await dbContext.SysDictionaryData!.FirstOrDefaultAsync(item => item.ItemId == itemId);
         if (item == null)
-            return Error("字典项不存在");
+            return Error(L("dictionary.itemNotFound"));
 
         var dictCode = item.DictCode;
         dbContext.SysDictionaryData!.Remove(item);
         await dbContext.SaveChangesAsync();
         dtSoftCache.RefreshCache(DictionaryItemsCacheKey(dictCode));
-        return Success("删除成功");
+        return Success(L("common.deleteSuccess"));
     }
 
     public async Task<JsonObject> SortItemsAsync(DictionaryItemSortRequest request)
     {
         var normalizedCode = (request.DictCode ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(normalizedCode))
-            return Error("字典编码不能为空");
+            return Error(L("dictionary.codeRequired"));
 
         if (request.Items == null || request.Items.Count == 0)
-            return Error("排序数据不能为空");
+            return Error(L("dictionary.sortDataRequired"));
 
         if (request.Items.Select(item => item.ItemId).Distinct().Count() != request.Items.Count)
-            return Error("排序数据存在重复项");
+            return Error(L("dictionary.sortDataDuplicate"));
 
         var sortMap = request.Items.ToDictionary(item => item.ItemId, item => item.Sort);
         var itemIds = sortMap.Keys.ToList();
@@ -352,7 +354,7 @@ public class DictionaryApp(SysDbContext dbContext, IDtSoftCache dtSoftCache)
             .Where(item => item.DictCode == normalizedCode && itemIds.Contains(item.ItemId))
             .ToListAsync();
         if (items.Count != request.Items.Count)
-            return Error("排序数据已变更，请刷新后重试");
+            return Error(L("dictionary.sortDataChanged"));
 
         var now = TimeUtil.CstDateTime;
         foreach (var item in items)
@@ -363,7 +365,7 @@ public class DictionaryApp(SysDbContext dbContext, IDtSoftCache dtSoftCache)
 
         await dbContext.SaveChangesAsync();
         dtSoftCache.RefreshCache(DictionaryItemsCacheKey(normalizedCode));
-        return Success("排序保存成功");
+        return Success(L("dictionary.sortSaveSuccess"));
     }
 
     private static JsonObject Success(string message) => new()

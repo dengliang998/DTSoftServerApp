@@ -1,6 +1,7 @@
 using DTSoft.Core.Common;
 using DTSoft.Core.DbContexts;
 using DTSoft.Core.Interfaces;
+using DTSoft.AppService.Localization;
 using DTSoft.Models.Entities;
 using DTSoft.Models.Parameter.MicroApp;
 using Microsoft.EntityFrameworkCore;
@@ -8,9 +9,10 @@ using System.Text.Json;
 
 namespace DTSoft.AppService.MicroApp
 {
-    public class MicroConfigApp(SysDbContext context, MicroTableService microTableService, IDtSoftCache dtSoftCache)
-    {
-        private readonly MicroTableService _microTableService = microTableService;
+public class MicroConfigApp(SysDbContext context, MicroTableService microTableService, IDtSoftCache dtSoftCache, IAppLocalizer localizer)
+{
+    private readonly MicroTableService _microTableService = microTableService;
+    private string L(string key, params object[] args) => args.Length == 0 ? localizer[key] : localizer.Format(key, args);
 
         /// <summary>
         /// 获取微应用配置列表
@@ -78,7 +80,7 @@ namespace DTSoft.AppService.MicroApp
             var config = context.SysMicroAppConfig!.FirstOrDefault(c => c.ItemId == id);
             if (config == null)
             {
-                throw new Exception("未找到指定的微应用配置");
+                throw new Exception(L("micro.configNotFound"));
             }
 
             return MicroConfigSchema.ToResponse(config);
@@ -98,7 +100,7 @@ namespace DTSoft.AppService.MicroApp
                 .FirstOrDefault(c => c.ModelName == parameter.ModelName);
             if (existingConfig != null)
             {
-                throw new Exception("模型名称已存在，请使用其他模型名称");
+                throw new Exception(L("micro.modelNameExists"));
             }
         
             if (!string.IsNullOrWhiteSpace(parameter.MicroAppPath))
@@ -107,7 +109,7 @@ namespace DTSoft.AppService.MicroApp
                     .FirstOrDefault(c => c.ApiPrefix == parameter.MicroAppPath);
                 if (existingPathConfig != null)
                 {
-                    throw new Exception("微应用路径已存在，请使用其他路径");
+                    throw new Exception(L("micro.pathExists"));
                 }
             }
 
@@ -168,12 +170,12 @@ namespace DTSoft.AppService.MicroApp
                 .FirstOrDefault(c => c.ItemId == parameter.ItemId);
             if (existingConfig == null)
             {
-                throw new Exception("未找到指定的微应用配置");
+                throw new Exception(L("micro.configNotFound"));
             }
 
             if (!string.Equals(existingConfig.ModelName, parameter.ModelName, StringComparison.Ordinal))
             {
-                throw new Exception("数据模型创建后不允许修改");
+                throw new Exception(L("micro.modelImmutable"));
             }
 
             var targetMicroAppPath = string.IsNullOrWhiteSpace(parameter.MicroAppPath)
@@ -184,7 +186,7 @@ namespace DTSoft.AppService.MicroApp
                 .FirstOrDefault(c => c.ApiPrefix == targetMicroAppPath && c.ItemId != parameter.ItemId);
             if (duplicatePathConfig != null)
             {
-                throw new Exception("微应用路径已存在，请使用其他路径");
+                throw new Exception(L("micro.pathExists"));
             }
 
             var normalizedSubTables = MicroConfigSchema.NormalizeSubTables(parameter.SubTables);
@@ -237,7 +239,7 @@ namespace DTSoft.AppService.MicroApp
                 .FirstOrDefault(c => c.ItemId == parameter.ItemId);
             if (existingConfig == null)
             {
-                throw new Exception("未找到指定的微应用配置");
+                throw new Exception(L("micro.configNotFound"));
             }
 
             var modelName = existingConfig.ModelName;

@@ -1,5 +1,6 @@
 using DTSoft.Core;
 using DTSoft.Core.Common;
+using DTSoft.AppService.Localization;
 using DTSoft.Core.DbProviders;
 using DTSoft.Core.DbContexts;
 using DTSoft.Models.Entities;
@@ -24,19 +25,23 @@ namespace DTSoft.AppService.MicroApp
         private readonly IDbProvider _provider;
         private readonly ILogger<MicroTableService> _logger;
         private readonly IMemoryCache _cache;
+        private readonly IAppLocalizer _localizer;
         private static readonly ConcurrentDictionary<long, SemaphoreSlim> EnsureLocks = new();
         private const string MicroConfigTableName = "sys_microappconfig";
         private const string MicroConfigSubTablesColumnName = "SubTables";
         private const string MicroConfigShowSubTablesInListColumnName = "ShowSubTablesInList";
 
-        public MicroTableService(SysDbContext context, ILogger<MicroTableService> logger, IMemoryCache cache)
+        public MicroTableService(SysDbContext context, ILogger<MicroTableService> logger, IMemoryCache cache, IAppLocalizer localizer)
         {
             _context = context;
             var databaseName = GetDatabaseName();
             _provider = Core.DbProviders.DbProviderFactory.Create(_context.Database.ProviderName, databaseName);
             _logger = logger;
             _cache = cache;
+            _localizer = localizer;
         }
+
+        private string L(string key, params object[] args) => args.Length == 0 ? _localizer[key] : _localizer.Format(key, args);
 
         /// <summary>
         /// 根据微应用配置创建或更新对应的数据表结构。
@@ -110,18 +115,18 @@ namespace DTSoft.AppService.MicroApp
             return Convert.ToHexString(hash);
         }
 
-        private static string BuildMicroTableName(string modelName)
+        private string BuildMicroTableName(string modelName)
         {
             if (string.IsNullOrWhiteSpace(modelName))
-                throw new ArgumentException("ModelName cannot be empty", nameof(modelName));
+                throw new ArgumentException(_localizer["micro.modelNameRequired"], nameof(modelName));
 
             return $"micro_app_{modelName.Trim().ToLowerInvariant()}";
         }
 
-        private static string BuildMicroSubTableName(string modelName, string subTableName)
+        private string BuildMicroSubTableName(string modelName, string subTableName)
         {
             if (string.IsNullOrWhiteSpace(subTableName))
-                throw new ArgumentException("Sub table name cannot be empty", nameof(subTableName));
+                throw new ArgumentException(_localizer["micro.subTableNameRequired"], nameof(subTableName));
 
             return $"{BuildMicroTableName(modelName)}_{subTableName.Trim().ToLowerInvariant()}";
         }
@@ -165,7 +170,7 @@ namespace DTSoft.AppService.MicroApp
         {
             if (!IsValidTableName(tableName))
             {
-                throw new ArgumentException("Invalid table name format", nameof(tableName));
+                throw new ArgumentException(_localizer["micro.invalidTableName"], nameof(tableName));
             }
 
             var connection = _context.Database.GetDbConnection();
@@ -199,14 +204,14 @@ namespace DTSoft.AppService.MicroApp
         {
             if (!IsValidTableName(tableName))
             {
-                throw new ArgumentException("Invalid table name format", nameof(tableName));
+                throw new ArgumentException(_localizer["micro.invalidTableName"], nameof(tableName));
             }
 
             foreach (var field in fields)
             {
                 if (!IsValidColumnName(field.FieldName))
                 {
-                    throw new ArgumentException($"Invalid column name format: {field.FieldName}", nameof(fields));
+                    throw new ArgumentException(L("micro.invalidColumnName", field.FieldName), nameof(fields));
                 }
             }
 
@@ -218,14 +223,14 @@ namespace DTSoft.AppService.MicroApp
         {
             if (!IsValidTableName(tableName))
             {
-                throw new ArgumentException("Invalid table name format", nameof(tableName));
+                throw new ArgumentException(_localizer["micro.invalidTableName"], nameof(tableName));
             }
 
             foreach (var field in fields)
             {
                 if (!IsValidColumnName(field.FieldName))
                 {
-                    throw new ArgumentException($"Invalid column name format: {field.FieldName}", nameof(fields));
+                    throw new ArgumentException(L("micro.invalidColumnName", field.FieldName), nameof(fields));
                 }
             }
 
@@ -259,7 +264,7 @@ namespace DTSoft.AppService.MicroApp
         {
             if (!IsValidTableName(tableName))
             {
-                throw new ArgumentException("Invalid table name format", nameof(tableName));
+                throw new ArgumentException(_localizer["micro.invalidTableName"], nameof(tableName));
             }
 
             var connection = _context.Database.GetDbConnection();
@@ -1618,16 +1623,16 @@ namespace DTSoft.AppService.MicroApp
             ValidateSnowflakeIdColumn(tableName, columns);
         }
 
-        private static void ValidateSnowflakeIdColumn(string tableName, Dictionary<string, ColumnInfo> columns)
+        private void ValidateSnowflakeIdColumn(string tableName, Dictionary<string, ColumnInfo> columns)
         {
             if (!columns.TryGetValue(MicroTableSystemColumns.Id, out var idColumn))
             {
-                throw new InvalidOperationException($"微应用表 {tableName} 缺少 {MicroTableSystemColumns.Id} 主键列，请重新初始化表结构后重试。");
+                throw new InvalidOperationException(L("micro.idColumnMissing", tableName, MicroTableSystemColumns.Id));
             }
 
             if (idColumn.IsIdentity)
             {
-                throw new InvalidOperationException($"微应用表 {tableName} 的 {MicroTableSystemColumns.Id} 是自增列，当前微应用使用雪花ID，不需要数据库自增。请将 {MicroTableSystemColumns.Id} 调整为 BIGINT 非自增主键，或在确认无历史数据后重新初始化该微应用表。");
+                throw new InvalidOperationException(L("micro.idColumnIdentity", tableName, MicroTableSystemColumns.Id));
             }
         }
 

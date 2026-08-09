@@ -17,7 +17,7 @@ namespace DTSoft.Core.DbProviders
                 ?? "SqlServer";
             var connectionString = configuration.GetConnectionString(AppConfigurationKeys.Database.ConnectionName)
                 ?? configuration.GetConnectionString(AppConfigurationKeys.Database.LegacyConnectionName)
-                ?? throw new InvalidOperationException("数据库连接字符串未配置，请配置 ConnectionStrings:Default。");
+                ?? throw new InvalidOperationException(DbProviderMessages.Text("db.connectionStringMissing"));
 
             var databaseName = ExtractDatabaseName(connectionString);
             var provider = DbProviderFactory.Create(dbType, databaseName);

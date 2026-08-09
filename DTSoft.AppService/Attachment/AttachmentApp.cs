@@ -1,3 +1,4 @@
+using DTSoft.AppService.Localization;
 using DTSoft.Core.Common;
 using DTSoft.Core.DbContexts;
 using DTSoft.Models.Entities;
@@ -7,8 +8,15 @@ using System.Text.Json.Nodes;
 
 namespace DTSoft.AppService.Attachment;
 
-public class AttachmentApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, ConfigHelper configHelper, UserCacheHelper userCacheHelper)
+public class AttachmentApp(
+    SysDbContext dbContext,
+    DtSoftHelper dtSoftHelper,
+    ConfigHelper configHelper,
+    UserCacheHelper userCacheHelper,
+    IAppLocalizer localizer)
 {
+    private string L(string key, params object[] args) => args.Length == 0 ? localizer[key] : localizer.Format(key, args);
+
     public AttachmentInfo CreateFile(BaseFileParameter objFile)
     {
         var attachment = new AttachmentInfo();
@@ -50,7 +58,7 @@ public class AttachmentApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, Co
             {
                 ["success"] = false,
                 ["StateCode"] = 0,
-                ["Msg"] = "未读取到文件"
+                ["Msg"] = L("attachment.fileNotRead")
             };
         }
         
@@ -203,7 +211,7 @@ public class AttachmentApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, Co
             {
                 ["success"] = false,
                 ["StateCode"] = 0,
-                ["Msg"] = "FileID 不能为空"
+                ["Msg"] = L("attachment.fileIdRequired")
             };
         }
     
@@ -214,7 +222,7 @@ public class AttachmentApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, Co
             {
                 ["success"] = false,
                 ["StateCode"] = 0,
-                ["Msg"] = "FileID 不存在"
+                ["Msg"] = L("attachment.fileIdNotFound")
             };
         }
     
@@ -237,7 +245,7 @@ public class AttachmentApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, Co
             {
                 ["success"] = false,
                 ["StateCode"] = 0,
-                ["Msg"] = "文件不存在或已被删除"
+                ["Msg"] = L("attachment.fileMissing")
             };
         }
     }
@@ -318,7 +326,7 @@ public class AttachmentApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, Co
             {
                 ["success"] = false,
                 ["StateCode"] = 0,
-                ["Msg"] = "该账号没有删除权限"
+                ["Msg"] = L("permission.noDelete")
             };
         }
 
@@ -329,7 +337,7 @@ public class AttachmentApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, Co
             {
                 ["success"] = false,
                 ["StateCode"] = 0,
-                ["Msg"] = "未找到相关文件信息"
+                ["Msg"] = L("attachment.notFound")
             };
         }
 
@@ -350,7 +358,7 @@ public class AttachmentApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, Co
         {
             ["success"] = true,
             ["StateCode"] = 0,
-            ["Msg"] = "删除成功"
+            ["Msg"] = L("common.deleteSuccess")
         };
     }
 }

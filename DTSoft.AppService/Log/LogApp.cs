@@ -1,3 +1,4 @@
+using DTSoft.AppService.Localization;
 using DTSoft.Core.Common;
 using DTSoft.Core.DbContexts;
 using DTSoft.Models.Entities;
@@ -7,7 +8,7 @@ using System.Text.Json.Nodes;
 
 namespace DTSoft.AppService.Log;
 
-public class LogApp(SysDbContext dbContext, UserCacheHelper userCacheHelper)
+public class LogApp(SysDbContext dbContext, UserCacheHelper userCacheHelper, IAppLocalizer localizer)
 {
     /// <summary>
     /// 获取日志记录列表
@@ -15,7 +16,7 @@ public class LogApp(SysDbContext dbContext, UserCacheHelper userCacheHelper)
     public async Task<JsonObject> GetLogActionListAsync(LogAction obj)
     {
         // 先查询日志数据，然后手动关联用户显示名
-        IQueryable<SysActionLog> logs = (dbContext.SysActionLog ?? throw new InvalidOperationException("SysActionLog 数据集未初始化"))
+        IQueryable<SysActionLog> logs = (dbContext.SysActionLog ?? throw new InvalidOperationException(localizer["log.actionLogNotInitialized"]))
             .AsNoTracking();
     
         // 筛选条件

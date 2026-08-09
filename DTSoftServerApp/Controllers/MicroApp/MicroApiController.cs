@@ -1,4 +1,5 @@
 using DTSoft.AppService.MicroApp;
+using DTSoft.AppService.Localization;
 using DTSoft.Core.Common;
 using DTSoft.Core.Common.Excel;
 using DTSoft.Core.DbContexts;
@@ -22,14 +23,18 @@ namespace DTSoftServerApp.Controllers.MicroApp
         private readonly SysDbContext _context;
         private readonly MicroTableService _microTableService;
         private readonly IDtSoftCache _dtSoftCache;
+        private readonly IAppLocalizer _localizer;
         private const string RuntimeSubTablesKey = "__subTables";
 
-        public MicroApiController(SysDbContext context, MicroTableService microTableService, IDtSoftCache dtSoftCache)
+        public MicroApiController(SysDbContext context, MicroTableService microTableService, IDtSoftCache dtSoftCache, IAppLocalizer localizer)
         {
             _context = context;
             _microTableService = microTableService;
             _dtSoftCache = dtSoftCache;
+            _localizer = localizer;
         }
+
+        private string L(string key, params object[] args) => args.Length == 0 ? _localizer[key] : _localizer.Format(key, args);
 
         private async Task<SysMicroAppConfig?> GetActiveConfigAsync(string modelName)
         {
@@ -99,7 +104,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                     return Ok(new
                     {
                         success = false,
-                        msg = "未找到对应的微应用配置"
+                        msg = L("micro.configNotFound")
                     });
                 }
 
@@ -120,7 +125,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 return Ok(new
                 {
                     success = true,
-                    msg = "获取成功",
+                    msg = L("common.fetchSuccess"),
                     data = result  // 确保返回的是包含list和total的对象
                 });
             }
@@ -129,7 +134,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 return Ok(new
                 {
                     success = false,
-                    msg = $"查询失败: {ex.Message}"
+                    msg = $"{L("micro.queryFailed")}: {ex.Message}"
                 });
             }
         }
@@ -153,7 +158,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                     return Ok(new
                     {
                         success = false,
-                        msg = "未找到对应的微应用配置"
+                        msg = L("micro.configNotFound")
                     });
                 }
 
@@ -169,7 +174,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 return Ok(new
                 {
                     success = true,
-                    msg = "获取成功",
+                    msg = L("common.fetchSuccess"),
                     data = (object)result
                 });
             }
@@ -178,7 +183,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 return Ok(new
                 {
                     success = false,
-                    msg = $"获取详情失败: {ex.Message}"
+                    msg = $"{L("micro.detailFailed")}: {ex.Message}"
                 });
             }
         }
@@ -202,7 +207,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                     return Ok(new
                     {
                         success = false,
-                        msg = "未找到对应的微应用配置"
+                        msg = L("micro.configNotFound")
                     });
                 }
 
@@ -211,7 +216,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                     return Ok(new
                     {
                         success = false,
-                        msg = "该配置不支持新增操作"
+                        msg = L("micro.createNotSupported")
                     });
                 }
 
@@ -225,11 +230,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 validationErrors.AddRange(ValidateMicroSubTableData(config, subTableData));
                 if (validationErrors.Count > 0)
                 {
-                    return Ok(new
-                    {
-                        success = false,
-                        msg = string.Join("；", validationErrors)
-                    });
+                    return Ok(new { success = false, msg = string.Join("；", validationErrors) });
                 }
 
                 // 执行微应用数据插入
@@ -242,7 +243,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 return Ok(new
                 {
                     success = true,
-                    msg = "添加成功",
+                    msg = L("common.addSuccess"),
                     data = result
                 });
             }
@@ -251,7 +252,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 return Ok(new
                 {
                     success = false,
-                    msg = $"添加失败: {ex.Message}"
+                    msg = $"{L("micro.addFailed")}: {ex.Message}"
                 });
             }
         }
@@ -276,7 +277,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                     return Ok(new
                     {
                         success = false,
-                        msg = "未找到对应的微应用配置"
+                        msg = L("micro.configNotFound")
                     });
                 }
 
@@ -285,7 +286,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                     return Ok(new
                     {
                         success = false,
-                        msg = "该配置不支持更新操作"
+                        msg = L("micro.updateNotSupported")
                     });
                 }
 
@@ -299,11 +300,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 validationErrors.AddRange(ValidateMicroSubTableData(config, subTableData));
                 if (validationErrors.Count > 0)
                 {
-                    return Ok(new
-                    {
-                        success = false,
-                        msg = string.Join("；", validationErrors)
-                    });
+                    return Ok(new { success = false, msg = string.Join("；", validationErrors) });
                 }
 
                 // 执行微应用数据更新
@@ -319,14 +316,14 @@ namespace DTSoftServerApp.Controllers.MicroApp
                     return Ok(new
                     {
                         success = false,
-                        msg = "更新失败，数据不存在"
+                        msg = L("micro.dataNotFound")
                     });
                 }
 
                 return Ok(new
                 {
                     success = true,
-                    msg = "更新成功"
+                    msg = L("common.updateSuccess")
                 });
             }
             catch (Exception ex)
@@ -334,7 +331,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 return Ok(new
                 {
                     success = false,
-                    msg = $"更新失败: {ex.Message}"
+                    msg = $"{L("micro.updateFailed")}: {ex.Message}"
                 });
             }
         }
@@ -358,7 +355,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                     return Ok(new
                     {
                         success = false,
-                        msg = "未找到对应的微应用配置",
+                        msg = L("micro.configNotFound"),
                     });
                 }
 
@@ -367,7 +364,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                     return Ok(new
                     {
                         success = false,
-                        msg = "该配置不支持删除操作"
+                        msg = L("micro.deleteNotSupported")
                     });
                 }
 
@@ -385,14 +382,14 @@ namespace DTSoftServerApp.Controllers.MicroApp
                     return Ok(new
                     {
                         success = false,
-                        msg = "删除失败，数据不存在"
+                        msg = L("micro.dataNotFound")
                     });
                 }
 
                 return Ok(new
                 {
                     success = true,
-                    msg = "删除成功"
+                    msg = L("common.deleteSuccess")
                 });
             }
             catch (Exception ex)
@@ -400,7 +397,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 return Ok(new
                 {
                     success = false,
-                    msg = $"删除失败: {ex.Message}"
+                    msg = $"{L("micro.deleteFailed")}: {ex.Message}"
                 });
             }
         }
@@ -423,7 +420,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                     return Ok(new
                     {
                         success = false,
-                        msg = "未找到对应的微应用配置"
+                        msg = L("micro.configNotFound")
                     });
                 }
 
@@ -432,7 +429,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                     return Ok(new
                     {
                         success = false,
-                        msg = "该配置不支持批量删除操作"
+                        msg = L("micro.batchDeleteNotSupported")
                     });
                 }
 
@@ -441,7 +438,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                     return Ok(new
                     {
                         success = false,
-                        msg = "请选择要删除的数据"
+                        msg = L("micro.selectDeleteData")
                     });
                 }
 
@@ -455,7 +452,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 return Ok(new
                 {
                     success = true,
-                    msg = $"删除成功，共删除 {rowsAffected} 条数据",
+                    msg = L("micro.batchDeleteSuccess", rowsAffected),
                     data = new { deleted = rowsAffected }
                 });
             }
@@ -464,7 +461,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 return Ok(new
                 {
                     success = false,
-                    msg = $"批量删除失败: {ex.Message}"
+                    msg = $"{L("micro.deleteFailed")}: {ex.Message}"
                 });
             }
         }
@@ -496,7 +493,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                     return Ok(new
                     {
                         success = false,
-                        msg = "未找到对应的微应用配置"
+                        msg = L("micro.configNotFound")
                     });
                 }
         
@@ -506,7 +503,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                     return Ok(new
                     {
                         success = false,
-                        msg = "该配置不支持导出操作"
+                        msg = L("micro.exportNotSupported")
                     });
                 }
         
@@ -539,7 +536,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                     return Ok(new
                     {
                         success = false,
-                        msg = "没有可导出的数据"
+                        msg = L("micro.noDataToExport")
                     });
                 }
         
@@ -555,7 +552,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 return Ok(new
                 {
                     success = false,
-                    msg = $"导出失败：{ex.Message}"
+                    msg = $"{L("micro.exportFailed")}：{ex.Message}"
                 });
             }
         }
@@ -699,7 +696,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
             {
                 if (!configuredNames.Contains(submittedName))
                 {
-                    errors.Add($"子表{submittedName}未配置");
+                    errors.Add(L("micro.subTableNotConfigured", submittedName));
                 }
             }
 
@@ -710,12 +707,12 @@ namespace DTSoftServerApp.Controllers.MicroApp
 
                 if (subTable.MinRows.HasValue && rows.Count < subTable.MinRows.Value)
                 {
-                    errors.Add($"{subTable.Label}不能少于{subTable.MinRows.Value}行");
+                    errors.Add(L("micro.subTableMinRows", subTable.Label, subTable.MinRows.Value));
                 }
 
                 if (subTable.MaxRows.HasValue && subTable.MaxRows.Value > 0 && rows.Count > subTable.MaxRows.Value)
                 {
-                    errors.Add($"{subTable.Label}不能超过{subTable.MaxRows.Value}行");
+                    errors.Add(L("micro.subTableMaxRows", subTable.Label, subTable.MaxRows.Value));
                 }
 
                 for (var rowIndex = 0; rowIndex < rows.Count; rowIndex++)
@@ -723,7 +720,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                     errors.AddRange(ValidateFields(
                         subTable.Fields,
                         rows[rowIndex],
-                        $"{subTable.Label}第{rowIndex + 1}行"));
+                        L("micro.rowPrefix", subTable.Label, rowIndex + 1)));
                 }
             }
 
@@ -747,7 +744,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
 
                 if (field.Required && string.IsNullOrWhiteSpace(textValue))
                 {
-                    errors.Add($"{fieldLabel}不能为空");
+                    errors.Add(L("micro.fieldRequired", fieldLabel));
                     continue;
                 }
 
@@ -758,30 +755,30 @@ namespace DTSoftServerApp.Controllers.MicroApp
 
                 if (field.MinLength.HasValue && textValue.Length < field.MinLength.Value)
                 {
-                    errors.Add($"{fieldLabel}不能少于{field.MinLength.Value}个字符");
+                    errors.Add(L("micro.fieldMinLength", fieldLabel, field.MinLength.Value));
                 }
 
                 if (field.MaxLength.HasValue && textValue.Length > field.MaxLength.Value)
                 {
-                    errors.Add($"{fieldLabel}不能超过{field.MaxLength.Value}个字符");
+                    errors.Add(L("micro.fieldMaxLength", fieldLabel, field.MaxLength.Value));
                 }
 
                 if (field.FieldType == "number" && decimal.TryParse(textValue, out var numberValue))
                 {
                     if (field.MinValue.HasValue && numberValue < field.MinValue.Value)
                     {
-                        errors.Add($"{fieldLabel}不能小于{field.MinValue.Value}");
+                        errors.Add(L("micro.fieldMinValue", fieldLabel, field.MinValue.Value));
                     }
 
                     if (field.MaxValue.HasValue && numberValue > field.MaxValue.Value)
                     {
-                        errors.Add($"{fieldLabel}不能大于{field.MaxValue.Value}");
+                        errors.Add(L("micro.fieldMaxValue", fieldLabel, field.MaxValue.Value));
                     }
                 }
 
                 if (!string.IsNullOrWhiteSpace(field.Pattern) && !IsRegexMatch(textValue, field.Pattern))
                 {
-                    errors.Add($"{fieldLabel}格式不正确");
+                    errors.Add(L("micro.fieldFormatInvalid", fieldLabel));
                 }
             }
 
@@ -824,7 +821,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                     return Ok(new
                     {
                         success = false,
-                        msg = "请上传Excel文件"
+                        msg = L("micro.uploadExcel")
                     });
                 }
 
@@ -836,7 +833,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                     return Ok(new
                     {
                         success = false,
-                        msg = "文件格式不正确，请上传Excel文件(.xlsx或.xls)"
+                        msg = L("micro.excelFormatInvalid")
                     });
                 }
 
@@ -848,7 +845,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                     return Ok(new
                     {
                         success = false,
-                        msg = "未找到对应的微应用配置"
+                        msg = L("micro.configNotFound")
                     });
                 }
 
@@ -858,7 +855,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                     return Ok(new
                     {
                         success = false,
-                        msg = "该配置不支持导入操作"
+                        msg = L("micro.importNotSupported")
                     });
                 }
 
@@ -890,14 +887,14 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 catch (Exception ex)
                 {
                     errorCount = importedData.Count;
-                    errorMessages.Add($"批量导入失败: {ex.Message}");
+                    errorMessages.Add($"{L("micro.importFailed")}: {ex.Message}");
                 }
 
                 var total = importedData.Count;
-                var resultMsg = $"导入完成！成功: {successCount}, 失败: {errorCount}";
+                var resultMsg = L("micro.importSuccess", successCount, errorCount);
                 if (errorCount > 0)
                 {
-                    resultMsg += $", 错误详情: {string.Join("; ", errorMessages.Take(5))}"; // 只显示前5个错误
+                    resultMsg = L("micro.importSuccessWithError", successCount, errorCount, string.Join("; ", errorMessages.Take(5))); // 只显示前5个错误
                 }
 
                 return Ok(new
@@ -912,7 +909,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 return Ok(new
                 {
                     success = false,
-                    msg = $"导入失败: {ex.Message}"
+                    msg = $"{L("micro.importFailed")}: {ex.Message}"
                 });
             }
         }

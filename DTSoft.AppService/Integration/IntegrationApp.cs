@@ -1,6 +1,7 @@
 using DTSoft.Core.Common;
 using DTSoft.Core.DbContexts;
 using DTSoft.Core.Interfaces;
+using DTSoft.AppService.Localization;
 using DTSoft.Models.Entities;
 using DTSoft.Models.Parameter.Integration;
 using Microsoft.EntityFrameworkCore;
@@ -12,9 +13,10 @@ namespace DTSoft.AppService.Integration;
 /// <summary>
 /// 集成API管理服务
 /// </summary>
-public class IntegrationApp(SysDbContext dbContext, IDtSoftCache dtSoftCache)
+public class IntegrationApp(SysDbContext dbContext, IDtSoftCache dtSoftCache, IAppLocalizer localizer)
 {
     private static string ApiKeyCacheKey(string keyName) => $"ApiKey:{keyName.Trim().ToLowerInvariant()}";
+    private string L(string key, params object[] args) => args.Length == 0 ? localizer[key] : localizer.Format(key, args);
 
     /// <summary>
     /// 生成安全的随机密钥
@@ -63,7 +65,7 @@ public class IntegrationApp(SysDbContext dbContext, IDtSoftCache dtSoftCache)
             var exists = await dbContext.SysApiKey!.AnyAsync(x => x.KeyName == request.KeyName);
             if (exists)
             {
-                return (false, "KeyName已存在", null);
+                return (false, $"{L("integration.keyName")} {L("common.exists")}", null);
             }
             
             // 生成密钥
@@ -100,11 +102,11 @@ public class IntegrationApp(SysDbContext dbContext, IDtSoftCache dtSoftCache)
                 ExpireTime = apiKey.ExpireTime
             };
             
-            return (true, "创建成功", response);
+            return (true, L("common.createSuccess"), response);
         }
         catch (Exception ex)
         {
-            return (false, $"创建失败: {ex.Message}", null);
+            return (false, $"{L("common.createFailed")}: {ex.Message}", null);
         }
     }
     
@@ -120,7 +122,7 @@ public class IntegrationApp(SysDbContext dbContext, IDtSoftCache dtSoftCache)
             var apiKey = await dbContext.SysApiKey!.FirstOrDefaultAsync(x => x.ItemId == request.ItemId);
             if (apiKey == null)
             {
-                return (false, "API密钥不存在");
+                return (false, L("integration.apiKeyNotFound"));
             }
             
             apiKey.Description = request.Description;
@@ -131,11 +133,11 @@ public class IntegrationApp(SysDbContext dbContext, IDtSoftCache dtSoftCache)
 
             dtSoftCache.RefreshCache(ApiKeyCacheKey(apiKey.KeyName));
             
-            return (true, "更新成功");
+            return (true, L("common.updateSuccess"));
         }
         catch (Exception ex)
         {
-            return (false, $"更新失败: {ex.Message}");
+            return (false, $"{L("common.updateFailed")}: {ex.Message}");
         }
     }
     
@@ -151,7 +153,7 @@ public class IntegrationApp(SysDbContext dbContext, IDtSoftCache dtSoftCache)
             var apiKey = await dbContext.SysApiKey!.FirstOrDefaultAsync(x => x.ItemId == request.ItemId);
             if (apiKey == null)
             {
-                return (false, "API密钥不存在");
+                return (false, L("integration.apiKeyNotFound"));
             }
             
             var keyName = apiKey.KeyName;
@@ -160,11 +162,11 @@ public class IntegrationApp(SysDbContext dbContext, IDtSoftCache dtSoftCache)
 
             dtSoftCache.RefreshCache(ApiKeyCacheKey(keyName));
             
-            return (true, "删除成功");
+            return (true, L("common.deleteSuccess"));
         }
         catch (Exception ex)
         {
-            return (false, $"删除失败: {ex.Message}");
+            return (false, $"{L("common.deleteFailed")}: {ex.Message}");
         }
     }
     
@@ -216,7 +218,7 @@ public class IntegrationApp(SysDbContext dbContext, IDtSoftCache dtSoftCache)
         try
         {
             if (string.IsNullOrWhiteSpace(keyName))
-                return (false, "KeyName不能为空", null);
+                return (false, $"{L("integration.keyName")} {L("common.required")}", null);
 
             // 查询密钥（缓存优先）
             SysApiKey? apiKey = null;
@@ -247,33 +249,33 @@ public class IntegrationApp(SysDbContext dbContext, IDtSoftCache dtSoftCache)
 
             if (apiKey == null)
             {
-                return (false, "KeyName不存在", null);
+                return (false, L("integration.keyNameNotFound"), null);
             }
             
             // 检查是否启用
             if (!apiKey.Enabled)
             {
-                return (false, "API密钥已禁用", null);
+                return (false, L("integration.apiKeyDisabled"), null);
             }
             
             // 检查是否过期
             if (apiKey.ExpireTime.HasValue && apiKey.ExpireTime.Value < DateTime.Now)
             {
-                return (false, "API密钥已过期", null);
+                return (false, L("integration.apiKeyExpired"), null);
             }
             
             // 验证密钥
             var hashedKey = HashSecretKey(secretKey);
             if (apiKey.SecretKey != hashedKey)
             {
-                return (false, "SecretKey错误", null);
+                return (false, L("integration.secretKeyInvalid"), null);
             }
             
-            return (true, "验证成功", apiKey);
+            return (true, L("integration.validateSuccess"), apiKey);
         }
         catch (Exception ex)
         {
-            return (false, $"验证失败: {ex.Message}", null);
+            return (false, $"{L("common.operationFailed")}: {ex.Message}", null);
         }
     }
 }

@@ -1,4 +1,5 @@
 using DTSoft.AppService.Attachment;
+using DTSoft.AppService.Localization;
 using DTSoft.Core.Common;
 using DTSoft.Core.DbContexts;
 using DTSoft.Models.Entities;
@@ -16,8 +17,11 @@ public class UserApp(
     DtSoftHelper dtSoftHelper,
     ConfigHelper configHelper,
     OnlineUserService onlineUserService,
-    AttachmentApp att)
+    AttachmentApp att,
+    IAppLocalizer localizer)
 {
+    private string L(string key, params object[] args) => args.Length == 0 ? localizer[key] : localizer.Format(key, args);
+
     public async Task<JsonObject> GetUserInfoAsync(string userAcc)
     {
         // 业务验证
@@ -27,7 +31,7 @@ public class UserApp(
             {
                 ["success"] = false,
                 ["StateCode"] = 0,
-                ["Msg"] = "参数 UserAcc 错误"
+                ["Msg"] = L("user.userAccInvalid")
             };
         }
     
@@ -51,7 +55,7 @@ public class UserApp(
             {
                 ["success"] = false,
                 ["StateCode"] = 0,
-                ["Msg"] = "用户不存在"
+                ["Msg"] = L("user.notFound")
             };
         }
     }
@@ -69,7 +73,7 @@ public class UserApp(
             {
                 ["success"] = false,
                 ["StateCode"] = 0,
-                ["Msg"] = "用户不存在"
+                ["Msg"] = L("user.notFound")
             };
         }
 
@@ -212,7 +216,7 @@ public class UserApp(
             {
                 ["success"] = false,
                 ["StateCode"] = 0,
-                ["Msg"] = "账号和密码不能为空"
+                ["Msg"] = L("user.accountPasswordRequired")
             };
         }
 
@@ -224,7 +228,7 @@ public class UserApp(
             {
                 ["success"] = false,
                 ["StateCode"] = 0,
-                ["Msg"] = $"账号：{userDto.Account}已存在"
+                ["Msg"] = L("user.exists", userDto.Account)
             };
         }
 
@@ -265,7 +269,7 @@ public class UserApp(
             {
                 ["success"] = false,
                 ["StateCode"] = 0,
-                ["Msg"] = upsertSupervisorResult.ErrorMessage ?? "主管维护失败"
+                ["Msg"] = upsertSupervisorResult.ErrorMessage ?? L("user.supervisorMaintenanceFailed")
             };
         }
 
@@ -280,7 +284,7 @@ public class UserApp(
         {
             ["success"] = true,
             ["StateCode"] = 0,
-            ["Msg"] = "账号创建成功"
+            ["Msg"] = L("common.addSuccess")
         };
     }
 
@@ -293,7 +297,7 @@ public class UserApp(
             {
                 ["success"] = false,
                 ["StateCode"] = 0,
-                ["Msg"] = "该账号没有修改权限"
+                ["Msg"] = L("permission.noModify")
             };
         }
 
@@ -305,7 +309,7 @@ public class UserApp(
             {
                 ["success"] = false,
                 ["StateCode"] = 0,
-                ["Msg"] = "用户不存在"
+                ["Msg"] = L("user.notFound")
             };
         }
 
@@ -360,11 +364,11 @@ public class UserApp(
             {
                 return new JsonObject
                 {
-                    ["success"] = false,
-                    ["StateCode"] = 0,
-                    ["Msg"] = upsertSupervisorResult.ErrorMessage ?? "主管维护失败"
-                };
-            }
+                ["success"] = false,
+                ["StateCode"] = 0,
+                ["Msg"] = upsertSupervisorResult.ErrorMessage ?? L("user.supervisorMaintenanceFailed")
+            };
+        }
         }
 
         await dbContext.SaveChangesAsync();
@@ -375,7 +379,7 @@ public class UserApp(
         {
             ["success"] = true,
             ["StateCode"] = 0,
-            ["Msg"] = "修改成功"
+            ["Msg"] = L("common.updateSuccess")
         };
     }
 
@@ -388,7 +392,7 @@ public class UserApp(
             {
                 ["success"] = false,
                 ["StateCode"] = 0,
-                ["Msg"] = "该账户没有删除权限"
+                ["Msg"] = L("permission.noDelete")
             };
         }
 
@@ -400,7 +404,7 @@ public class UserApp(
             {
                 ["success"] = false,
                 ["StateCode"] = 0,
-                ["Msg"] = "必须先删除角色成员才能删除"
+                ["Msg"] = L("user.roleMembersMustBeRemoved")
             };
         }
 
@@ -422,7 +426,7 @@ public class UserApp(
             {
                 ["success"] = false,
                 ["StateCode"] = 0,
-                ["Msg"] = "用户不存在"
+                ["Msg"] = L("user.notFound")
             };
         }
 
@@ -442,7 +446,7 @@ public class UserApp(
         {
             ["success"] = true,
             ["StateCode"] = 0,
-            ["Msg"] = "删除成功"
+            ["Msg"] = L("common.deleteSuccess")
         };
     }
 
@@ -469,7 +473,7 @@ public class UserApp(
             {
                 ["success"] = false,
                 ["StateCode"] = 0,
-                ["msg"] = "账号错误"
+                ["msg"] = L("user.accountInvalid")
             };
         }
 
@@ -480,7 +484,7 @@ public class UserApp(
                 ["success"] = false,
                 ["StateCode"] = 0,
                 ["FilePath"] = "",
-                ["msg"] = "用户没有头像"
+                ["msg"] = L("user.noAvatar")
             };
         }
 
@@ -501,7 +505,7 @@ public class UserApp(
                 ["success"] = false,
                 ["StateCode"] = 0,
                 ["FilePath"] = "",
-                ["msg"] = "文件不存在或已被删除"
+                ["msg"] = L("attachment.fileMissing")
             };
         }
     }
@@ -515,7 +519,7 @@ public class UserApp(
             {
                 ["success"] = false,
                 ["StateCode"] = 0,
-                ["Msg"] = "该账号没有重置密码权限"
+                ["Msg"] = L("permission.noResetPassword")
             };
         }
 
@@ -528,7 +532,7 @@ public class UserApp(
             {
                 ["success"] = false,
                 ["StateCode"] = 0,
-                ["Msg"] = "用户不存在"
+                ["Msg"] = L("user.notFound")
             };
         }
 
@@ -540,7 +544,7 @@ public class UserApp(
         {
             ["success"] = true,
             ["StateCode"] = 0,
-            ["Msg"] = "密码重置成功"
+            ["Msg"] = L("user.passwordResetSuccess")
         };
     }
 
@@ -553,7 +557,7 @@ public class UserApp(
             {
                 ["success"] = false,
                 ["StateCode"] = 0,
-                ["Msg"] = "修改失败，必要字段不能为空！"
+                ["Msg"] = L("user.modifyPasswordRequired")
             };
         }
 
@@ -566,7 +570,7 @@ public class UserApp(
             {
                 ["success"] = false,
                 ["StateCode"] = 0,
-                ["Msg"] = "旧密码错误！"
+                ["Msg"] = L("user.oldPasswordInvalid")
             };
         }
 
@@ -578,7 +582,7 @@ public class UserApp(
         {
             ["success"] = true,
             ["StateCode"] = 0,
-            ["Msg"] = "密码修改成功"
+            ["Msg"] = L("user.passwordUpdateSuccess")
         };
     }
 
@@ -588,7 +592,7 @@ public class UserApp(
     {
         if (string.IsNullOrWhiteSpace(userAcc))
         {
-            return new UpsertSupervisorResult(false, "参数 UserAcc 错误");
+            return new UpsertSupervisorResult(false, L("user.userAccInvalid"));
         }
 
         supervisorAcc = string.IsNullOrWhiteSpace(supervisorAcc) ? null : supervisorAcc.Trim();
@@ -604,14 +608,14 @@ public class UserApp(
 
         if (string.Equals(userAcc, supervisorAcc, StringComparison.OrdinalIgnoreCase))
         {
-            return new UpsertSupervisorResult(false, "直属主管不能是自己");
+            return new UpsertSupervisorResult(false, L("user.supervisorCannotSelf"));
         }
 
         // 主管账号必须存在
         var supervisorExists = await dbContext.SysUser.AsNoTracking().AnyAsync(x => x.Account == supervisorAcc);
         if (!supervisorExists)
         {
-            return new UpsertSupervisorResult(false, $"直属主管账号不存在：{supervisorAcc}");
+            return new UpsertSupervisorResult(false, L("user.supervisorNotFound", supervisorAcc));
         }
 
         // 防止形成循环主管链
@@ -621,7 +625,7 @@ public class UserApp(
         {
             if (!visited.Add(cursor))
             {
-                return new UpsertSupervisorResult(false, "设置失败：会形成循环的主管链");
+                return new UpsertSupervisorResult(false, L("user.supervisorCycleDetected"));
             }
 
             var next = await dbContext.SysUserSupervisor!

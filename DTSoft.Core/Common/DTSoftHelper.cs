@@ -2,6 +2,7 @@ using DTSoft.Core.DbContexts;
 using DTSoft.Core.Interfaces;
 using DTSoft.Plugin.Abstractions;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text.Json.Nodes;
@@ -142,7 +143,9 @@ public sealed class DtSoftHelper(SysDbContext dbContext, UserCacheHelper userCac
         {
             rv["StateCode"] = 0;
             rv["success"] = false;
-            rv["Msg"] = "账号不能为空";
+            rv["Msg"] = CultureInfo.CurrentUICulture.Name.StartsWith("en", StringComparison.OrdinalIgnoreCase)
+                ? "Account is required."
+                : "账号不能为空";
             return rv;
         }
 
@@ -151,7 +154,9 @@ public sealed class DtSoftHelper(SysDbContext dbContext, UserCacheHelper userCac
         {
             rv["StateCode"] = 0;
             rv["success"] = false;
-            rv["Msg"] = "请求失败，账号已被禁用！";
+            rv["Msg"] = CultureInfo.CurrentUICulture.Name.StartsWith("en", StringComparison.OrdinalIgnoreCase)
+                ? "Request failed. The account has been disabled."
+                : "请求失败，账号已被禁用！";
         }
         else
         {

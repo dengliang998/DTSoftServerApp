@@ -1,3 +1,4 @@
+using DTSoft.AppService.Localization;
 using DTSoft.Core.Common;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -9,7 +10,7 @@ namespace DTSoftServerApp.Services
     /// <summary>
     /// Jwt 服务
     /// </summary>
-    public class JwtService(IConfiguration configuration)
+    public class JwtService(IConfiguration configuration, IAppLocalizer localizer)
     {
         private readonly int _expiresInHours = 8;
 
@@ -32,7 +33,7 @@ namespace DTSoftServerApp.Services
 
             var signingKey = configuration[AppConfigurationKeys.Authentication.Jwt.SigningKey]
                 ?? configuration[AppConfigurationKeys.Authentication.Jwt.LegacySigningKey]
-                ?? throw new InvalidOperationException("JWT 签名密钥未配置，请配置 Authentication:Jwt:SigningKey。");
+                ?? throw new InvalidOperationException(localizer["jwt.signingKeyMissing"]);
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 

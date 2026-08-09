@@ -1,4 +1,5 @@
 using System.Data;
+using DTSoft.AppService.Localization;
 using DTSoft.Core.Common;
 using DTSoft.Core.DbContexts;
 using DTSoft.Core.DbProviders;
@@ -11,10 +12,11 @@ namespace DTSoft.AppService.Esb;
 /// <summary>
 /// ESB 服务连接配置服务。
 /// </summary>
-public class EsbServiceConnectionApp(SysDbContext context)
+public class EsbServiceConnectionApp(SysDbContext context, IAppLocalizer localizer)
 {
     private const string ServiceTypeDatabase = "database";
     private const string ServiceTypeWebApi = "webapi";
+    private string L(string key, params object[] args) => args.Length == 0 ? localizer[key] : localizer.Format(key, args);
 
     public async Task<(List<EsbServiceConnectionResponse> Data, int Total)> GetConnections(EsbServiceConnectionQueryParameter parameter)
     {
@@ -76,7 +78,7 @@ public class EsbServiceConnectionApp(SysDbContext context)
         NormalizeAndValidate(parameter);
 
         var duplicated = await context.SysEsbServiceConnection!.AnyAsync(item => item.Code == parameter.Code.Trim());
-        if (duplicated) throw new Exception("连接编码已存在");
+        if (duplicated) throw new Exception(L("esb.connectionCodeExists"));
 
         var now = DateTime.Now;
         var entity = new SysEsbServiceConnection
@@ -105,11 +107,11 @@ public class EsbServiceConnectionApp(SysDbContext context)
         NormalizeAndValidate(parameter);
 
         var entity = await context.SysEsbServiceConnection!.FirstOrDefaultAsync(item => item.ItemId == parameter.ItemId);
-        if (entity == null) throw new Exception("未找到指定的 ESB 服务连接");
+        if (entity == null) throw new Exception(L("esb.connectionNotFound"));
 
         var duplicated = await context.SysEsbServiceConnection!
             .AnyAsync(item => item.Code == parameter.Code.Trim() && item.ItemId != parameter.ItemId);
-        if (duplicated) throw new Exception("连接编码已存在");
+        if (duplicated) throw new Exception(L("esb.connectionCodeExists"));
 
         entity.Code = parameter.Code.Trim();
         entity.Name = parameter.Name.Trim();
@@ -129,10 +131,10 @@ public class EsbServiceConnectionApp(SysDbContext context)
     public async Task DeleteConnection(long id)
     {
         var entity = await context.SysEsbServiceConnection!.FirstOrDefaultAsync(item => item.ItemId == id);
-        if (entity == null) throw new Exception("未找到指定的 ESB 服务连接");
+        if (entity == null) throw new Exception(L("esb.connectionNotFound"));
 
         var used = await context.SysEsbDataSource!.AnyAsync(item => item.ConnectionId == id);
-        if (used) throw new Exception("该连接已被 ESB 数据源使用，不能删除");
+        if (used) throw new Exception(L("esb.connectionInUse"));
 
         context.SysEsbServiceConnection!.Remove(entity);
         await context.SaveChangesAsync();
@@ -143,7 +145,7 @@ public class EsbServiceConnectionApp(SysDbContext context)
         var serviceType = NormalizeServiceType(parameter.ServiceType);
         if (serviceType != ServiceTypeDatabase)
         {
-            throw new Exception("当前版本仅支持测试数据库连接");
+            throw new Exception(L("esb.onlyDatabaseTestSupported"));
         }
 
         if (parameter.ItemId is null or <= 0)
@@ -174,7 +176,7 @@ public class EsbServiceConnectionApp(SysDbContext context)
 
         if (entity.ServiceType != ServiceTypeDatabase)
         {
-            throw new Exception("当前版本仅支持测试数据库连接");
+            throw new Exception(L("esb.onlyDatabaseTestSupported"));
         }
 
         await TestExternalConnection(entity.DbType, entity.ConnectionString, entity.TimeoutSeconds);
@@ -187,7 +189,7 @@ public class EsbServiceConnectionApp(SysDbContext context)
         var entity = await context.SysEsbServiceConnection!
             .AsNoTracking()
             .FirstOrDefaultAsync(item => item.ItemId == connectionId.Value && item.Status == 1);
-        if (entity == null) throw new Exception("未找到启用的 ESB 服务连接");
+        if (entity == null) throw new Exception(L("esb.enabledConnectionNotFound"));
 
         return entity;
     }
@@ -222,9 +224,9 @@ public class EsbServiceConnectionApp(SysDbContext context)
         }
     }
 
-    private static async Task TestExternalConnection(string? dbType, string? connectionString, int timeoutSeconds)
+    private async Task TestExternalConnection(string? dbType, string? connectionString, int timeoutSeconds)
     {
-        if (string.IsNullOrWhiteSpace(connectionString)) throw new Exception("数据库连接字符串不能为空");
+        if (string.IsNullOrWhiteSpace(connectionString)) throw new Exception(L("esb.connectionStringRequired"));
 
         await using var connection = EsbDbConnectionFactory.CreateConnection(dbType, connectionString);
         await connection.OpenAsync();
@@ -241,19 +243,19 @@ public class EsbServiceConnectionApp(SysDbContext context)
         {
             ItemId = 0,
             Code = "default",
-            Name = "默认系统库",
+            Name = L("esb.defaultSystemDb"),
             ServiceType = ServiceTypeDatabase,
             DbType = GetDefaultDbType(),
             ConnectionString = null,
             WebApiConfig = null,
             Status = 1,
             TimeoutSeconds = 30,
-            Remark = "使用当前系统数据库连接",
+            Remark = L("esb.systemDbRemark"),
             IsDefault = true
         };
     }
 
-    private static void NormalizeAndValidate(EsbServiceConnectionAddParameter parameter)
+    private void NormalizeAndValidate(EsbServiceConnectionAddParameter parameter)
     {
         parameter.ServiceType = NormalizeServiceType(parameter.ServiceType);
         parameter.DbType = NormalizeDbType(parameter.DbType);
@@ -263,23 +265,23 @@ public class EsbServiceConnectionApp(SysDbContext context)
         if (parameter.ServiceType == ServiceTypeDatabase)
         {
             parameter.DbType = NormalizeRequiredDbType(parameter.DbType);
-            if (string.IsNullOrWhiteSpace(parameter.ConnectionString)) throw new Exception("数据库连接字符串不能为空");
+            if (string.IsNullOrWhiteSpace(parameter.ConnectionString)) throw new Exception(L("esb.connectionStringRequired"));
             return;
         }
 
         if (parameter.ServiceType == ServiceTypeWebApi)
         {
-            if (string.IsNullOrWhiteSpace(parameter.WebApiConfig)) throw new Exception("WebApi 配置不能为空");
+            if (string.IsNullOrWhiteSpace(parameter.WebApiConfig)) throw new Exception(L("esb.webApiConfigRequired"));
             return;
         }
 
-        throw new Exception("不支持的服务连接类型");
+        throw new Exception(L("esb.serviceTypeUnsupported"));
     }
 
-    private static string NormalizeServiceType(string? value)
+    private string NormalizeServiceType(string? value)
     {
         var normalized = string.IsNullOrWhiteSpace(value) ? ServiceTypeDatabase : value.Trim().ToLowerInvariant();
-        return normalized is ServiceTypeDatabase or ServiceTypeWebApi ? normalized : throw new Exception("不支持的服务连接类型");
+        return normalized is ServiceTypeDatabase or ServiceTypeWebApi ? normalized : throw new Exception(L("esb.serviceTypeUnsupported"));
     }
 
     private static string? NormalizeDbType(string? value)
@@ -288,9 +290,9 @@ public class EsbServiceConnectionApp(SysDbContext context)
         return EsbDbConnectionFactory.NormalizeDbType(value);
     }
 
-    private static string NormalizeRequiredDbType(string? value)
+    private string NormalizeRequiredDbType(string? value)
     {
-        if (string.IsNullOrWhiteSpace(value)) throw new Exception("数据库类型不能为空");
+        if (string.IsNullOrWhiteSpace(value)) throw new Exception(L("esb.dbTypeRequired"));
         return EsbDbConnectionFactory.NormalizeDbType(value);
     }
 

@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using DTSoft.AppService.Localization;
 using DTSoft.Core.Common;
 using DTSoft.Core.DbContexts;
 using DTSoft.Core.DbProviders;
@@ -16,7 +17,7 @@ namespace DTSoft.AppService.Esb;
 /// <summary>
 /// ESB 数据源配置与执行服务。
 /// </summary>
-public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp connectionApp)
+public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp connectionApp, IAppLocalizer localizer)
 {
     private const string SourceTypeSql = "sql";
     private const string ExecuteModeQuery = "query";
@@ -25,6 +26,7 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
     private static readonly Regex UnsafeSqlKeywordPattern = new(
         @"\b(insert|update|delete|merge|drop|alter|create|truncate|exec|execute|grant|revoke|into|call|copy|replace|load|set|use|backup|restore)\b",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private string L(string key, params object[] args) => args.Length == 0 ? localizer[key] : localizer.Format(key, args);
 
     public async Task<(List<EsbDataSourceResponse> Data, int Total)> GetDataSources(EsbDataSourceQueryParameter parameter)
     {
@@ -74,7 +76,7 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
     public async Task<EsbDataSourceResponse> GetDataSourceById(long id)
     {
         var entity = await context.SysEsbDataSource!.AsNoTracking().FirstOrDefaultAsync(item => item.ItemId == id);
-        if (entity == null) throw new Exception("未找到指定的 ESB 数据源");
+        if (entity == null) throw new Exception(L("esb.dataSourceNotFound"));
         var connectionNames = await BuildConnectionNameMap([entity.ConnectionId]);
         return ToResponse(entity, ResolveConnectionName(entity.ConnectionId, connectionNames));
     }
@@ -86,7 +88,7 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
 
         var code = parameter.Code.Trim();
         var duplicated = await context.SysEsbDataSource!.AnyAsync(item => item.Code == code);
-        if (duplicated) throw new Exception("数据源编码已存在");
+        if (duplicated) throw new Exception(L("esb.dataSourceCodeExists"));
 
         var now = DateTime.Now;
         var entity = new SysEsbDataSource
@@ -121,12 +123,12 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
         await ValidateConnection(parameter);
 
         var entity = await context.SysEsbDataSource!.FirstOrDefaultAsync(item => item.ItemId == parameter.ItemId);
-        if (entity == null) throw new Exception("未找到指定的 ESB 数据源");
+        if (entity == null) throw new Exception(L("esb.dataSourceNotFound"));
 
         var code = parameter.Code.Trim();
         var duplicated = await context.SysEsbDataSource!
             .AnyAsync(item => item.Code == code && item.ItemId != parameter.ItemId);
-        if (duplicated) throw new Exception("数据源编码已存在");
+        if (duplicated) throw new Exception(L("esb.dataSourceCodeExists"));
 
         entity.Code = code;
         entity.Name = parameter.Name.Trim();
@@ -151,7 +153,7 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
     public async Task DeleteDataSource(long id)
     {
         var entity = await context.SysEsbDataSource!.FirstOrDefaultAsync(item => item.ItemId == id);
-        if (entity == null) throw new Exception("未找到指定的 ESB 数据源");
+        if (entity == null) throw new Exception(L("esb.dataSourceNotFound"));
 
         context.SysEsbDataSource!.Remove(entity);
         await context.SaveChangesAsync();
@@ -159,21 +161,21 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
 
     public async Task<object> Execute(EsbExecuteRequest request, string userAccount)
     {
-        if (string.IsNullOrWhiteSpace(request.Code)) throw new Exception("数据源编码不能为空");
+        if (string.IsNullOrWhiteSpace(request.Code)) throw new Exception(L("esb.dataSourceCodeRequired"));
 
         var entity = await context.SysEsbDataSource!
             .AsNoTracking()
             .FirstOrDefaultAsync(item => item.Code == request.Code.Trim() && item.Status == 1);
-        if (entity == null) throw new Exception("未找到启用的 ESB 数据源");
+        if (entity == null) throw new Exception(L("esb.dataSourceEnabledNotFound"));
 
         if (!string.Equals(entity.SourceType, SourceTypeSql, StringComparison.OrdinalIgnoreCase))
         {
-            throw new Exception("当前版本仅支持 SQL 数据源");
+            throw new Exception(L("esb.onlySqlDataSourceSupported"));
         }
 
         if (!string.Equals(entity.ExecuteMode, ExecuteModeQuery, StringComparison.OrdinalIgnoreCase))
         {
-            throw new Exception("ESB 数据源仅支持查询模式");
+            throw new Exception(L("esb.queryModeOnly"));
         }
 
         return await ExecuteSqlQuery(
@@ -312,27 +314,27 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
         };
     }
 
-    private static object ResolveParameterValue(EsbParameterConfig config, Dictionary<string, JsonNode?> inputParameters, Dictionary<string, string> variableContext)
+    private object ResolveParameterValue(EsbParameterConfig config, Dictionary<string, JsonNode?> inputParameters, Dictionary<string, string> variableContext)
     {
         inputParameters.TryGetValue(config.Name, out var valueNode);
         valueNode ??= config.DefaultValue;
 
         if (valueNode == null)
         {
-            if (config.Required) throw new Exception($"参数 {config.Name} 不能为空");
+            if (config.Required) throw new Exception(L("esb.parameterRequired", config.Name));
             return DBNull.Value;
         }
 
         var text = ResolveVariables(ReadJsonNodeAsString(valueNode), variableContext);
-        if (config.Required && string.IsNullOrWhiteSpace(text)) throw new Exception($"参数 {config.Name} 不能为空");
+        if (config.Required && string.IsNullOrWhiteSpace(text)) throw new Exception(L("esb.parameterRequired", config.Name));
 
         return NormalizeParameterType(config.Type) switch
         {
             "number" => decimal.TryParse(text, NumberStyles.Number, CultureInfo.InvariantCulture, out var number)
                 ? number
-                : throw new Exception($"参数 {config.Name} 必须是数字"),
-            "boolean" => bool.TryParse(text, out var boolean) ? boolean : throw new Exception($"参数 {config.Name} 必须是布尔值"),
-            "datetime" => DateTime.TryParse(text, out var dateTime) ? dateTime : throw new Exception($"参数 {config.Name} 必须是日期时间"),
+                : throw new Exception(L("esb.parameterNumber", config.Name)),
+            "boolean" => bool.TryParse(text, out var boolean) ? boolean : throw new Exception(L("esb.parameterBoolean", config.Name)),
+            "datetime" => DateTime.TryParse(text, out var dateTime) ? dateTime : throw new Exception(L("esb.parameterDateTime", config.Name)),
             _ => text
         };
     }
@@ -386,7 +388,7 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
         var connection = await connectionApp.GetEnabledConnection(parameter.ConnectionId);
         if (connection != null && !string.Equals(connection.ServiceType, "database", StringComparison.OrdinalIgnoreCase))
         {
-            throw new Exception("SQL 数据源只能绑定数据库服务连接");
+            throw new Exception(L("esb.sqlRequiresDatabaseConnection"));
         }
     }
 
@@ -444,19 +446,19 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
         return valueNode.ToJsonString();
     }
 
-    private static void NormalizeAndValidate(EsbDataSourceAddParameter parameter)
+    private void NormalizeAndValidate(EsbDataSourceAddParameter parameter)
     {
         parameter.SourceType = NormalizeSourceType(parameter.SourceType);
         parameter.ExecuteMode = NormalizeExecuteMode(parameter.ExecuteMode);
 
         if (!string.Equals(parameter.SourceType, SourceTypeSql, StringComparison.OrdinalIgnoreCase))
         {
-            throw new Exception("当前版本仅支持 SQL 数据源");
+            throw new Exception(L("esb.onlySqlDataSourceSupported"));
         }
 
         if (!string.Equals(parameter.ExecuteMode, ExecuteModeQuery, StringComparison.OrdinalIgnoreCase))
         {
-            throw new Exception("ESB 数据源仅支持查询模式");
+            throw new Exception(L("esb.queryModeOnly"));
         }
 
         var sql = NormalizeSql(parameter.SqlText);
@@ -464,27 +466,27 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
         ValidateSqlParameters(sql, parameter.Parameters ?? []);
     }
 
-    private static void ValidateSafeQuerySql(string sql)
+    private void ValidateSafeQuerySql(string sql)
     {
         var trimmed = sql.Trim();
         if (!trimmed.StartsWith("select", StringComparison.OrdinalIgnoreCase) &&
             !trimmed.StartsWith("with", StringComparison.OrdinalIgnoreCase))
         {
-            throw new Exception("ESB 数据源仅允许 SELECT 查询");
+            throw new Exception(L("esb.selectOnly"));
         }
 
         if (trimmed.Contains(';'))
         {
-            throw new Exception("ESB 数据源不允许多语句 SQL");
+            throw new Exception(L("esb.multiStatementNotAllowed"));
         }
 
         if (UnsafeSqlKeywordPattern.IsMatch(RemoveSqlStringLiterals(trimmed)))
         {
-            throw new Exception("SQL 包含非查询操作或高风险关键字");
+            throw new Exception(L("esb.sqlUnsafe"));
         }
     }
 
-    private static void ValidateSqlParameters(string sql, List<EsbParameterConfig> parameters)
+    private void ValidateSqlParameters(string sql, List<EsbParameterConfig> parameters)
     {
         var declared = parameters.Select(item => item.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var used = SqlParameterPattern.Matches(RemoveSqlStringLiterals(sql))
@@ -494,7 +496,7 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
         var missing = used.Where(item => !declared.Contains(item)).ToList();
         if (missing.Count > 0)
         {
-            throw new Exception($"SQL 参数未声明：{string.Join(", ", missing)}");
+            throw new Exception(L("esb.sqlParameterUndeclared", string.Join(", ", missing)));
         }
     }
 
@@ -515,9 +517,9 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
         return normalized.Equals(ExecuteModeQuery, StringComparison.OrdinalIgnoreCase) ? ExecuteModeQuery : normalized;
     }
 
-    private static string NormalizeSql(string? value)
+    private string NormalizeSql(string? value)
     {
-        if (string.IsNullOrWhiteSpace(value)) throw new Exception("SQL 不能为空");
+        if (string.IsNullOrWhiteSpace(value)) throw new Exception(L("esb.sqlRequired"));
         return value.Trim();
     }
 
@@ -587,10 +589,10 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
             .ToDictionaryAsync(item => item.ItemId, item => item.Name);
     }
 
-    private static string ResolveConnectionName(long? connectionId, Dictionary<long, string> connectionNames)
+    private string ResolveConnectionName(long? connectionId, Dictionary<long, string> connectionNames)
     {
-        if (connectionId is null or 0) return "默认系统库";
-        return connectionNames.TryGetValue(connectionId.Value, out var name) ? name : "已删除连接";
+        if (connectionId is null or 0) return localizer["esb.defaultSystemDb"];
+        return connectionNames.TryGetValue(connectionId.Value, out var name) ? name : localizer["esb.deletedConnection"];
     }
 
     private static EsbDataSourceResponse ToResponse(SysEsbDataSource entity, string connectionName)

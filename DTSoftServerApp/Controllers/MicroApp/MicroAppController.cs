@@ -1,5 +1,7 @@
 using DTSoft.AppService.MicroApp;
+using DTSoft.AppService.Localization;
 using DTSoft.Models.Parameter.MicroApp;
+using DTSoftServerApp.Helpers;
 
 namespace DTSoftServerApp.Controllers.MicroApp
 {
@@ -11,7 +13,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
     [ApiController]
     [Tags("微应用")]
     [Route("api/[controller]")]
-    public class MicroAppController(MicroConfigApp microConfigApp) : ControllerBase
+    public class MicroAppController(MicroConfigApp microConfigApp, IAppLocalizer localizer) : ControllerBase
     {
 
         /// <summary>
@@ -40,11 +42,11 @@ namespace DTSoftServerApp.Controllers.MicroApp
 
                 var result = await microConfigApp.GetMicroAppConfigs(parameter);
 
-                return Ok(new { success = true, msg = "获取成功", data = result.Data, total = result.Total });
+                return Ok(new { success = true, msg = localizer["common.fetchSuccess"], data = result.Data, total = result.Total });
             }
             catch (Exception ex)
             {
-                return Ok(new { success = false, msg = $"获取失败: {ex.Message}" });
+                return Ok(new { success = false, msg = $"{localizer["common.fetchFailed"]}: {ex.Message}" });
             }
         }
 
@@ -61,12 +63,8 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 // 验证参数
                 if (!ModelState.IsValid)
                 {
-                    var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
-                    return Ok(new
-                    {
-                        success = false,
-                        msg = string.Join(";", errors)
-                    });
+                    var errors = ModelStateLocalizationHelper.GetLocalizedErrors(ModelState, localizer);
+                    return Ok(new { success = false, msg = string.Join(";", errors.DefaultIfEmpty(localizer["common.argumentMissing"])) });
                 }
 
                 var result = await microConfigApp.AddMicroAppConfig(parameter);
@@ -74,7 +72,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 return Ok(new
                 {
                     success = true,
-                    msg = "添加成功",
+                    msg = localizer["common.addSuccess"],
                     data = result
                 });
             }
@@ -83,7 +81,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 return Ok(new
                 {
                     success = false,
-                    msg = $"添加失败: {ex.Message}"
+                    msg = $"{localizer["common.addFailed"]}: {ex.Message}"
                 });
             }
         }
@@ -101,12 +99,8 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 // 验证参数
                 if (!ModelState.IsValid)
                 {
-                    var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
-                    return Ok(new
-                    {
-                        success = false,
-                        msg = string.Join(";", errors)
-                    });
+                    var errors = ModelStateLocalizationHelper.GetLocalizedErrors(ModelState, localizer);
+                    return Ok(new { success = false, msg = string.Join(";", errors.DefaultIfEmpty(localizer["common.argumentMissing"])) });
                 }
 
                 var result = await microConfigApp.UpdateMicroAppConfig(parameter);
@@ -114,7 +108,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 return Ok(new
                 {
                     success = true,
-                    msg = "更新成功",
+                    msg = localizer["common.updateSuccess"],
                     data = result
                 });
             }
@@ -123,7 +117,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 return Ok(new
                 {
                     success = false,
-                    msg = $"更新失败: {ex.Message}"
+                    msg = $"{localizer["common.updateFailed"]}: {ex.Message}"
                 });
             }
         }
@@ -141,12 +135,8 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 // 验证参数
                 if (!ModelState.IsValid)
                 {
-                    var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
-                    return Ok(new
-                    {
-                        success = false,
-                        msg = string.Join(";", errors)
-                    });
+                    var errors = ModelStateLocalizationHelper.GetLocalizedErrors(ModelState, localizer);
+                    return Ok(new { success = false, msg = string.Join(";", errors.DefaultIfEmpty(localizer["common.argumentMissing"])) });
                 }
 
                 await microConfigApp.DeleteMicroAppConfig(parameter);
@@ -154,7 +144,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 return Ok(new
                 {
                     success = true,
-                    msg = "删除成功"
+                    msg = localizer["common.deleteSuccess"]
                 });
             }
             catch (Exception ex)
@@ -162,7 +152,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 return Ok(new
                 {
                     success = false,
-                    msg = $"删除失败: {ex.Message}"
+                    msg = $"{localizer["common.deleteFailed"]}: {ex.Message}"
                 });
             }
         }

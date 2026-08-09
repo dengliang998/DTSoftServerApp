@@ -133,7 +133,7 @@ namespace DTSoftServerApp.Extensions
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
                         configuration[AppConfigurationKeys.Authentication.Jwt.SigningKey]
                         ?? configuration[AppConfigurationKeys.Authentication.Jwt.LegacySigningKey]
-                        ?? throw new InvalidOperationException("JWT 签名密钥未配置，请配置 Authentication:Jwt:SigningKey。")))
+                        ?? throw new InvalidOperationException(new AppLocalizer()["jwt.signingKeyMissing"])))
                 };
 
                 options.Events = new JwtBearerEvents

@@ -26,7 +26,7 @@ namespace DTSoft.Core.DbProviders
         public string QuoteTableName(string tableName)
         {
             if (string.IsNullOrWhiteSpace(tableName))
-                throw new ArgumentException("Table name cannot be empty", nameof(tableName));
+                throw new ArgumentException(DbProviderMessages.Text("db.tableNameRequired"), nameof(tableName));
             
             if (!IdentifierPattern.IsMatch(tableName))
                 throw new ArgumentException($"Invalid table name format: {tableName}", nameof(tableName));
@@ -40,7 +40,7 @@ namespace DTSoft.Core.DbProviders
         public string QuoteColumnName(string columnName)
         {
             if (string.IsNullOrWhiteSpace(columnName))
-                throw new ArgumentException("Column name cannot be empty", nameof(columnName));
+                throw new ArgumentException(DbProviderMessages.Text("db.columnNameRequired"), nameof(columnName));
             
             if (!IdentifierPattern.IsMatch(columnName))
                 throw new ArgumentException($"Invalid column name format: {columnName}", nameof(columnName));

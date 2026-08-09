@@ -1,4 +1,5 @@
 using DTSoft.AppService.Dictionary;
+using DTSoft.AppService.Localization;
 using DTSoft.Models.Parameter.Dictionary;
 
 namespace DTSoftServerApp.Controllers.Dictionary;
@@ -7,7 +8,7 @@ namespace DTSoftServerApp.Controllers.Dictionary;
 [ApiController]
 [Tags("数据字典")]
 [Route("api/[controller]/[action]")]
-public class DictionaryController(DictionaryApp dictionaryApp) : ControllerBase
+public class DictionaryController(DictionaryApp dictionaryApp, IAppLocalizer localizer) : ControllerBase
 {
     [HttpPost]
     public async Task<IActionResult> GetTypes([FromBody] DictionaryTypeQuery? query)
@@ -19,7 +20,7 @@ public class DictionaryController(DictionaryApp dictionaryApp) : ControllerBase
     public async Task<IActionResult> SaveType([FromBody] DictionaryTypeDto? dto)
     {
         if (dto == null)
-            return Ok(Error("参数不能为空"));
+            return Ok(Error(localizer["common.argumentMissing"]));
 
         return Ok(await dictionaryApp.SaveTypeAsync(dto));
     }
@@ -28,7 +29,7 @@ public class DictionaryController(DictionaryApp dictionaryApp) : ControllerBase
     public async Task<IActionResult> DeleteType([FromBody] DeleteRequest? request)
     {
         if (request == null)
-            return Ok(Error("参数不能为空"));
+            return Ok(Error(localizer["common.argumentMissing"]));
 
         return Ok(await dictionaryApp.DeleteTypeAsync(request.ItemId));
     }
@@ -37,7 +38,7 @@ public class DictionaryController(DictionaryApp dictionaryApp) : ControllerBase
     public async Task<IActionResult> SortTypes([FromBody] DictionaryTypeSortRequest? request)
     {
         if (request == null)
-            return Ok(Error("参数不能为空"));
+            return Ok(Error(localizer["common.argumentMissing"]));
 
         return Ok(await dictionaryApp.SortTypesAsync(request));
     }
@@ -58,7 +59,7 @@ public class DictionaryController(DictionaryApp dictionaryApp) : ControllerBase
     public async Task<IActionResult> SaveItem([FromBody] DictionaryItemDto? dto)
     {
         if (dto == null)
-            return Ok(Error("参数不能为空"));
+            return Ok(Error(localizer["common.argumentMissing"]));
 
         return Ok(await dictionaryApp.SaveItemAsync(dto));
     }
@@ -67,7 +68,7 @@ public class DictionaryController(DictionaryApp dictionaryApp) : ControllerBase
     public async Task<IActionResult> DeleteItem([FromBody] DeleteRequest? request)
     {
         if (request == null)
-            return Ok(Error("参数不能为空"));
+            return Ok(Error(localizer["common.argumentMissing"]));
 
         return Ok(await dictionaryApp.DeleteItemAsync(request.ItemId));
     }
@@ -76,7 +77,7 @@ public class DictionaryController(DictionaryApp dictionaryApp) : ControllerBase
     public async Task<IActionResult> SortItems([FromBody] DictionaryItemSortRequest? request)
     {
         if (request == null)
-            return Ok(Error("参数不能为空"));
+            return Ok(Error(localizer["common.argumentMissing"]));
 
         return Ok(await dictionaryApp.SortItemsAsync(request));
     }

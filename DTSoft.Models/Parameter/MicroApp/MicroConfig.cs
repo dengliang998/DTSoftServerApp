@@ -51,7 +51,7 @@ namespace DTSoft.Models.Parameter.MicroApp
         /// 数据模型名称
         /// </summary>
         [Required]
-        [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_]*$", ErrorMessage = "模型名称只能包含英文、数字和下划线，且以英文开头")]
+        [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_]*$", ErrorMessage = "micro.modelNameInvalid")]
         public required string ModelName { get; set; }
 
         /// <summary>
@@ -124,7 +124,7 @@ namespace DTSoft.Models.Parameter.MicroApp
         /// <summary>
         /// 微应用路径
         /// </summary>
-        [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_-]*$", ErrorMessage = "微应用路径只能包含英文、数字、中划线和下划线，且以英文开头")]
+        [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_-]*$", ErrorMessage = "micro.pathInvalid")]
         public string? MicroAppPath { get; set; }
 
         /// <summary>
@@ -161,7 +161,7 @@ namespace DTSoft.Models.Parameter.MicroApp
         /// 数据模型名称
         /// </summary>
         [Required]
-        [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_]*$", ErrorMessage = "模型名称只能包含英文、数字和下划线，且以英文开头")]
+        [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_]*$", ErrorMessage = "micro.modelNameInvalid")]
         public required string ModelName { get; set; }
 
         /// <summary>
@@ -234,7 +234,7 @@ namespace DTSoft.Models.Parameter.MicroApp
         /// <summary>
         /// 微应用路径
         /// </summary>
-        [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_-]*$", ErrorMessage = "微应用路径只能包含英文、数字、中划线和下划线，且以英文开头")]
+        [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_-]*$", ErrorMessage = "micro.pathInvalid")]
         public string? MicroAppPath { get; set; }
 
         /// <summary>
@@ -319,7 +319,7 @@ namespace DTSoft.Models.Parameter.MicroApp
         /// 字段标识
         /// </summary>
         [Required]
-        [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_]*$", ErrorMessage = "字段标识只能包含英文、数字和下划线，且以英文开头")]
+        [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_]*$", ErrorMessage = "micro.fieldNameInvalid")]
         public required string FieldName { get; set; }
 
         /// <summary>
@@ -492,7 +492,7 @@ namespace DTSoft.Models.Parameter.MicroApp
         /// 子表标识，会用于拼接物理表名。
         /// </summary>
         [Required]
-        [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_]*$", ErrorMessage = "子表标识只能包含英文、数字和下划线，且以英文开头")]
+        [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_]*$", ErrorMessage = "micro.subTableNameInvalid")]
         public required string TableName { get; set; }
 
         /// <summary>

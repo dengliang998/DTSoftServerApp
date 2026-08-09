@@ -1,4 +1,5 @@
 using DTSoft.AppService.Integration;
+using DTSoft.AppService.Localization;
 using DTSoft.Core.Common;
 using DTSoft.Models.Parameter.Integration;
 using DTSoftServerApp.Services;
@@ -14,7 +15,8 @@ namespace DTSoftServerApp.Controllers.Integration
     public class IntegrationController(
         JwtService jwtService,
         UserCacheHelper userCacheHelper,
-        IntegrationApp integrationApp) : ControllerBase
+        IntegrationApp integrationApp,
+        IAppLocalizer localizer) : ControllerBase
     {
         /// <summary>
         /// API密钥获取Token接口
@@ -24,7 +26,7 @@ namespace DTSoftServerApp.Controllers.Integration
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] ApiKeyLoginRequest request)
         {
-            return await IssueApiKeyToken(request, "获取Token成功");
+            return await IssueApiKeyToken(request, localizer["integration.tokenSuccess"]);
         }
 
         /// <summary>
@@ -35,7 +37,7 @@ namespace DTSoftServerApp.Controllers.Integration
         [HttpPost("sso-token")]
         public async Task<IActionResult> IssueSsoToken([FromBody] ApiKeyLoginRequest request)
         {
-            return await IssueApiKeyToken(request, "获取SSO Token成功");
+            return await IssueApiKeyToken(request, localizer["integration.ssoTokenSuccess"]);
         }
 
         private async Task<IActionResult> IssueApiKeyToken(
@@ -62,7 +64,7 @@ namespace DTSoftServerApp.Controllers.Integration
                     return Unauthorized(new
                     {
                         Code = 401,
-                        Message = "用户账号不存在或已禁用"
+                        Message = localizer["auth.userDisabled"]
                     });
                 }
 
@@ -88,7 +90,7 @@ namespace DTSoftServerApp.Controllers.Integration
                 return StatusCode(500, new
                 {
                     Code = 500,
-                    Message = $"获取Token失败: {ex.Message}"
+                    Message = $"{localizer["integration.tokenFailed"]}: {ex.Message}"
                 });
             }
         }
@@ -192,9 +194,9 @@ namespace DTSoftServerApp.Controllers.Integration
             return Ok(new
             {
                 Code = 200,
-                Message = "查询成功",
-                Data = list
-            });
+                    Message = localizer["common.querySuccess"],
+                    Data = list
+                });
         }
     }
 }

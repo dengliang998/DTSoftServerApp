@@ -1,4 +1,5 @@
-﻿using DTSoft.Core.Common;
+﻿using DTSoft.AppService.Localization;
+using DTSoft.Core.Common;
 using DTSoft.Core.DbContexts;
 using DTSoft.Models.Entities;
 using DTSoft.Models.Parameter.Base;
@@ -8,8 +9,14 @@ using System.Text.Json.Nodes;
 
 namespace DTSoft.AppService.Role;
 
-public class RoleApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheHelper userCacheHelper)
+public class RoleApp(
+    SysDbContext dbContext,
+    DtSoftHelper dtSoftHelper,
+    UserCacheHelper userCacheHelper,
+    IAppLocalizer localizer)
 {
+    private string L(string key, params object[] args) => args.Length == 0 ? localizer[key] : localizer.Format(key, args);
+
     /// <summary>
     /// 获取角色列表
     /// </summary>
@@ -23,7 +30,7 @@ public class RoleApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCach
             {
                 ["success"] = false,
                 ["StateCode"] = 0,
-                ["Msg"] = "系统错误",
+                ["Msg"] = L("common.systemError"),
                 ["data"] = new JsonArray(),
                 ["Total"] = 0
             };
@@ -69,7 +76,7 @@ public class RoleApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCach
             {
                 ["success"] = false,
                 ["StateCode"] = 0,
-                ["Msg"] = "系统错误"
+                ["Msg"] = L("common.systemError")
             };
         }
         
@@ -91,7 +98,7 @@ public class RoleApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCach
             {
                 ["success"] = false,
                 ["StateCode"] = 0,
-                ["Msg"] = "角色不存在"
+                ["Msg"] = L("role.notFound")
             };
         }
     }
@@ -112,7 +119,7 @@ public class RoleApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCach
         if (string.IsNullOrEmpty(role.RoleName))
         {
             rv["success"] = false;
-            rv["Msg"] = "角色名称不能为空";
+            rv["Msg"] = L("role.nameRequired");
             return rv;
         }
         var data = dbContext.SysRole!.Where(b => b.RoleName == role.RoleName.Trim());
@@ -120,12 +127,12 @@ public class RoleApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCach
         {
             dbContext.SysRole!.Add(new SysRole { ItemId = YitterHelper.NewId(), RoleName = role.RoleName });
             await dbContext.SaveChangesAsync();
-            rv["Msg"] = "角色创建成功";
+            rv["Msg"] = L("common.addSuccess");
         }
         else
         {
             rv["success"] = false;
-            rv["Msg"] = $"角色：{role.RoleName}已存在";
+            rv["Msg"] = L("role.exists", role.RoleName);
         }
         
         return rv;
@@ -148,7 +155,7 @@ public class RoleApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCach
         if (!dtSoftHelper.IsAdmin(loginUserAcc))
         {
             rv["success"] = false;
-            rv["Msg"] = "该账号没有修改的权限";
+            rv["Msg"] = L("permission.noModify");
             return rv;
         }
         
@@ -157,13 +164,13 @@ public class RoleApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCach
         if (targetRole != null && (targetRole.RoleName == "Administrator" || targetRole.RoleName == "Everyone"))
         {
             rv["success"] = false;
-            rv["Msg"] = "系统角色不能修改";
+            rv["Msg"] = L("role.systemRoleNotModifiable");
             return rv;
         }
         if (string.IsNullOrEmpty(role.RoleName))
         {
             rv["success"] = false;
-            rv["Msg"] = "角色名称不能为空";
+            rv["Msg"] = L("role.nameRequired");
             return rv;
         }
         //查询角色是否存在
@@ -176,18 +183,18 @@ public class RoleApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCach
             {
                 data.RoleName = role.RoleName;
                 await dbContext.SaveChangesAsync();
-                rv["Msg"] = "修改成功";
+                rv["Msg"] = L("common.updateSuccess");
             }
             else
             {
                 rv["success"] = false;
-                rv["Msg"] = "角色不存在";
+                rv["Msg"] = L("role.notFound");
             }
         }
         else
         {
             rv["success"] = false;
-            rv["Msg"] = "角色名称重复或者未更新";
+            rv["Msg"] = L("role.duplicateOrUnchanged");
         }
         
         return rv;
@@ -210,7 +217,7 @@ public class RoleApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCach
         if (!dtSoftHelper.IsAdmin(loginUserAcc))
         {
             rv["success"] = false;
-            rv["Msg"] = "该账号没有删除权限";
+            rv["Msg"] = L("permission.noDelete");
             return rv;
         }
         
@@ -221,7 +228,7 @@ public class RoleApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCach
         if (targetRole != null && (targetRole.RoleName == "Administrator" || targetRole.RoleName == "Everyone"))
         {
             rv["success"] = false;
-            rv["Msg"] = "系统角色不能删除";
+            rv["Msg"] = L("role.systemRoleNotDeletable");
             return rv;
         }
 
@@ -247,7 +254,7 @@ public class RoleApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCach
             await tx.RollbackAsync();
             throw;
         }
-        rv["Msg"] = "删除成功";
+        rv["Msg"] = L("common.deleteSuccess");
         
         return rv;
     }
@@ -310,7 +317,7 @@ public class RoleApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCach
         if (!dtSoftHelper.IsAdmin(loginUserAcc))
         {
             rv["success"] = false;
-            rv["Msg"] = "该账号没有添加成员权限";
+            rv["Msg"] = L("permission.noAddMember");
             return rv;
         }
         //删除所有现有成员
@@ -328,7 +335,7 @@ public class RoleApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCach
             }
         }
         await dbContext.SaveChangesAsync();
-        rv["Msg"] = "添加成功";
+        rv["Msg"] = L("common.addSuccess");
         
         return rv;
     }

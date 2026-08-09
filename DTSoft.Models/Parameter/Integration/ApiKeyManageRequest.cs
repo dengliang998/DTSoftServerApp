@@ -10,14 +10,14 @@ public class ApiKeyCreateRequest
     /// <summary>
     /// 密钥名称（唯一）
     /// </summary>
-    [Required(ErrorMessage = "KeyName不能为空")]
-    [MaxLength(100, ErrorMessage = "KeyName长度不能超过100个字符")]
+    [Required(ErrorMessage = "integration.keyNameRequired")]
+    [MaxLength(100, ErrorMessage = "integration.keyNameMaxLength")]
     public string KeyName { get; set; } = string.Empty;
     
     /// <summary>
     /// 描述信息
     /// </summary>
-    [MaxLength(500, ErrorMessage = "描述长度不能超过500个字符")]
+    [MaxLength(500, ErrorMessage = "integration.descriptionMaxLength")]
     public string? Description { get; set; }
     
     /// <summary>
@@ -34,13 +34,13 @@ public class ApiKeyUpdateRequest
     /// <summary>
     /// 主键ID
     /// </summary>
-    [Required(ErrorMessage = "ItemId不能为空")]
+    [Required(ErrorMessage = "integration.itemIdRequired")]
     public long ItemId { get; set; }
     
     /// <summary>
     /// 描述信息
     /// </summary>
-    [MaxLength(500, ErrorMessage = "描述长度不能超过500个字符")]
+    [MaxLength(500, ErrorMessage = "integration.descriptionMaxLength")]
     public string? Description { get; set; }
     
     /// <summary>
@@ -62,7 +62,7 @@ public class ApiKeyDeleteRequest
     /// <summary>
     /// 主键ID
     /// </summary>
-    [Required(ErrorMessage = "ItemId不能为空")]
+    [Required(ErrorMessage = "integration.itemIdRequired")]
     public long ItemId { get; set; }
 }
 

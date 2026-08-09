@@ -14,7 +14,7 @@ public class DictionaryTypeDto
     public long? ItemId { get; set; }
 
     [Required]
-    [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_:-]*$", ErrorMessage = "字典编码只能包含英文、数字、下划线、中划线和冒号，且以英文开头")]
+    [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_:-]*$", ErrorMessage = "dictionary.codeInvalid")]
     public string DictCode { get; set; } = string.Empty;
 
     [Required]

@@ -1,3 +1,4 @@
+using DTSoft.AppService.Localization;
 using DTSoft.Core.Common;
 using DTSoft.Core.DbContexts;
 using DTSoft.Core.Interfaces;
@@ -12,9 +13,15 @@ namespace DTSoft.AppService.Ou;
 /// <summary>
 /// 部门管理服务
 /// </summary>
-public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheHelper userCacheHelper, IDtSoftCache dtSoftCache)
+public class OuApp(
+    SysDbContext dbContext,
+    DtSoftHelper dtSoftHelper,
+    UserCacheHelper userCacheHelper,
+    IDtSoftCache dtSoftCache,
+    IAppLocalizer localizer)
 {
     private const string OuTreeCacheKey = "Ou:Tree";
+    private string L(string key, params object[] args) => args.Length == 0 ? localizer[key] : localizer.Format(key, args);
 
     /// <summary>
     /// 获取部门列表（树形结构）
@@ -29,7 +36,7 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
             {
                 ["success"] = false,
                 ["StateCode"] = 0,
-                ["Msg"] = "系统错误",
+                ["Msg"] = L("common.systemError"),
                 ["data"] = new JsonArray(),
                 ["Total"] = 0
             };
@@ -72,7 +79,7 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
             {
                 ["success"] = false,
                 ["StateCode"] = 0,
-                ["Msg"] = "系统错误",
+                ["Msg"] = L("common.systemError"),
                 ["data"] = new JsonArray()
             };
         }
@@ -126,7 +133,7 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
             {
                 ["success"] = false,
                 ["StateCode"] = 0,
-                ["Msg"] = "系统错误"
+                ["Msg"] = L("common.systemError")
             };
         }
         
@@ -154,7 +161,7 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
             {
                 ["success"] = false,
                 ["StateCode"] = 0,
-                ["Msg"] = "部门不存在"
+                ["Msg"] = L("ou.notFound")
             };
         }
     }
@@ -173,7 +180,7 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
         if (string.IsNullOrEmpty(ouDto.OuName))
         {
             rv["success"] = false;
-            rv["Msg"] = "部门名称不能为空";
+            rv["Msg"] = L("ou.nameRequired");
             return rv;
         }
 
@@ -185,7 +192,7 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
             if (exists)
             {
                 rv["success"] = false;
-                rv["Msg"] = $"部门编码：{ouDto.OuCode}已存在";
+                rv["Msg"] = L("ou.codeExists", ouDto.OuCode);
                 return rv;
             }
         }
@@ -203,7 +210,7 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
         
         await dbContext.SaveChangesAsync();
         dtSoftCache.RefreshCache(OuTreeCacheKey);
-        rv["Msg"] = "部门创建成功";
+        rv["Msg"] = L("common.addSuccess");
         
         return rv;
     }
@@ -222,14 +229,14 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
         if (!dtSoftHelper.IsAdmin(loginUserAcc))
         {
             rv["success"] = false;
-            rv["Msg"] = "该账号没有修改的权限";
+            rv["Msg"] = L("permission.noModify");
             return rv;
         }
 
         if (string.IsNullOrEmpty(ouDto.OuName))
         {
             rv["success"] = false;
-            rv["Msg"] = "部门名称不能为空";
+            rv["Msg"] = L("ou.nameRequired");
             return rv;
         }
 
@@ -239,7 +246,7 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
         if (Ou == null)
         {
             rv["success"] = false;
-            rv["Msg"] = "部门不存在";
+            rv["Msg"] = L("ou.notFound");
             return rv;
         }
 
@@ -251,7 +258,7 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
             if (exists)
             {
                 rv["success"] = false;
-                rv["Msg"] = "部门编码已存在";
+                rv["Msg"] = L("ou.codeExists");
                 return rv;
             }
         }
@@ -265,7 +272,7 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
 
         await dbContext.SaveChangesAsync();
         dtSoftCache.RefreshCache(OuTreeCacheKey);
-        rv["Msg"] = "修改成功";
+        rv["Msg"] = L("common.updateSuccess");
         
         return rv;
     }
@@ -284,7 +291,7 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
         if (!dtSoftHelper.IsAdmin(loginUserAcc))
         {
             rv["success"] = false;
-            rv["Msg"] = "该账号没有删除权限";
+            rv["Msg"] = L("permission.noDelete");
             return rv;
         }
 
@@ -294,7 +301,7 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
         if (hasChildren)
         {
             rv["success"] = false;
-            rv["Msg"] = "存在子部门，不能删除";
+            rv["Msg"] = L("ou.hasChildren");
             return rv;
         }
 
@@ -304,7 +311,7 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
         if (hasMembers)
         {
             rv["success"] = false;
-            rv["Msg"] = "部门中存在成员，请先移除成员";
+            rv["Msg"] = L("ou.hasMembers");
             return rv;
         }
 
@@ -318,7 +325,7 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
         }
         dtSoftCache.RefreshCache(OuTreeCacheKey);
         
-        rv["Msg"] = "删除成功";
+        rv["Msg"] = L("common.deleteSuccess");
         
         return rv;
     }
@@ -378,7 +385,7 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
         if (!dtSoftHelper.IsAdmin(loginUserAcc))
         {
             rv["success"] = false;
-            rv["Msg"] = "该账号没有添加成员权限";
+            rv["Msg"] = L("permission.noAddMember");
             return rv;
         }
 
@@ -403,7 +410,7 @@ public class OuApp(SysDbContext dbContext, DtSoftHelper dtSoftHelper, UserCacheH
         }
         
         await dbContext.SaveChangesAsync();
-        rv["Msg"] = "添加成功";
+        rv["Msg"] = L("common.addSuccess");
         
         return rv;
     }

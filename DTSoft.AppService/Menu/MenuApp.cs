@@ -1,3 +1,4 @@
+using DTSoft.AppService.Localization;
 using DTSoft.Core.Common;
 using DTSoft.Core.DbContexts;
 using DTSoft.Core.Interfaces;
@@ -9,9 +10,10 @@ using System.Text.Json.Nodes;
 
 namespace DTSoft.AppService.Menu;
 
-public class MenuApp(SysDbContext dbContext, IDtSoftCache dtSoftCache, DtSoftHelper dtSoftHelper)
+public class MenuApp(SysDbContext dbContext, IDtSoftCache dtSoftCache, DtSoftHelper dtSoftHelper, IAppLocalizer localizer)
 {
     private const string MenuUrlMapCacheKey = "MenuUrlMap";
+    private string L(string key, params object[] args) => args.Length == 0 ? localizer[key] : localizer.Format(key, args);
 
     private sealed class MenuUrlInfo
     {
@@ -118,7 +120,7 @@ public class MenuApp(SysDbContext dbContext, IDtSoftCache dtSoftCache, DtSoftHel
             {
                 ["success"] = false,
                 ["StateCode"] = 0,
-                ["Msg"] = "参数 UserAcc 不能为空"
+                ["Msg"] = L("menu.userAccRequired")
             };
         }
     
@@ -217,7 +219,7 @@ public class MenuApp(SysDbContext dbContext, IDtSoftCache dtSoftCache, DtSoftHel
         {
             rv["StateCode"] = 1;
             rv["success"] = false;
-            rv["Msg"] = "数据访问对象未初始化";
+            rv["Msg"] = L("common.dataSourceNotInitialized");
             return rv;
         }
 
@@ -253,7 +255,7 @@ public class MenuApp(SysDbContext dbContext, IDtSoftCache dtSoftCache, DtSoftHel
         if (!dtSoftHelper.IsAdmin(loginUserAcc))
         {
             rv["success"] = false;
-            rv["Msg"] = "操作失败：该账号没有修改权限";
+            rv["Msg"] = L("permission.noModify");
             return rv;
         }
         if (!menulist.RoleId.Equals(1))
@@ -275,12 +277,12 @@ public class MenuApp(SysDbContext dbContext, IDtSoftCache dtSoftCache, DtSoftHel
             }
             dtSoftCache.RefreshCache("MenuList");
             await dbContext.SaveChangesAsync();
-            rv["Msg"] = "操作成功";
+            rv["Msg"] = L("common.operationSuccess");
         }
         else
         {
             rv["success"] = false;
-            rv["Msg"] = "操作失败：Administrator 不允许操作";
+            rv["Msg"] = L("role.administratorOperationForbidden");
         }
             
         return rv;
@@ -302,7 +304,7 @@ public class MenuApp(SysDbContext dbContext, IDtSoftCache dtSoftCache, DtSoftHel
         if (string.IsNullOrEmpty(pageCode))
         {
             rv["success"] = false;
-            rv["Msg"] = "PageCode 不能为空";
+            rv["Msg"] = L("menu.pageCodeRequired");
             return rv;
         }
         var sysSystemUrl = dbContext.SysSystemUrl;
@@ -312,7 +314,7 @@ public class MenuApp(SysDbContext dbContext, IDtSoftCache dtSoftCache, DtSoftHel
         {
             rv["StateCode"] = 1;
             rv["success"] = false;
-            rv["Msg"] = "数据访问对象未初始化";
+            rv["Msg"] = L("common.dataSourceNotInitialized");
             return rv;
         }
     
@@ -333,7 +335,7 @@ public class MenuApp(SysDbContext dbContext, IDtSoftCache dtSoftCache, DtSoftHel
         if (map == null || !map.TryGetValue(pageCode, out var info) || info == null)
         {
             rv["success"] = false;
-            rv["Msg"] = "配置错误，未找到菜单地址";
+            rv["Msg"] = L("menu.urlNotFound");
             return rv;
         }
 
@@ -371,7 +373,7 @@ public class MenuApp(SysDbContext dbContext, IDtSoftCache dtSoftCache, DtSoftHel
         else
         {
             rv["success"] = false;
-            rv["Msg"] = "参数不能为空";
+            rv["Msg"] = L("common.argumentMissing");
         }
         
         return rv;
@@ -394,7 +396,7 @@ public class MenuApp(SysDbContext dbContext, IDtSoftCache dtSoftCache, DtSoftHel
         if (!dtSoftHelper.IsAdmin(loginUserAcc))
         {
             rv["success"] = false;
-            rv["Msg"] = "操作失败：该账号没有修改权限";
+            rv["Msg"] = L("permission.noModify");
             return rv;
         }
     
@@ -404,7 +406,7 @@ public class MenuApp(SysDbContext dbContext, IDtSoftCache dtSoftCache, DtSoftHel
             if (dbmenu is null)
             {
                 rv["success"] = false;
-                rv["Msg"] = "pid 错误";
+                rv["Msg"] = L("menu.parentIdInvalid");
                 return rv;
             }
         }
@@ -468,7 +470,7 @@ public class MenuApp(SysDbContext dbContext, IDtSoftCache dtSoftCache, DtSoftHel
         if (!dtSoftHelper.IsAdmin(loginUserAcc))
         {
             rv["success"] = false;
-            rv["Msg"] = "操作失败：该账号没有修改权限";
+            rv["Msg"] = L("permission.noModify");
             return rv;
         }
     
@@ -476,7 +478,7 @@ public class MenuApp(SysDbContext dbContext, IDtSoftCache dtSoftCache, DtSoftHel
         if (menu is null)
         {
             rv["success"] = false;
-            rv["Msg"] = "MenuID 错误";
+            rv["Msg"] = L("menu.idInvalid");
             return rv;
         }
     
@@ -514,14 +516,14 @@ public class MenuApp(SysDbContext dbContext, IDtSoftCache dtSoftCache, DtSoftHel
         if (!dtSoftHelper.IsAdmin(loginUserAcc))
         {
             rv["success"] = false;
-            rv["Msg"] = "操作失败：该账号没有修改权限";
+            rv["Msg"] = L("permission.noModify");
             return rv;
         }
         SysMenu? menu = await dbContext.SysMenu.FirstOrDefaultAsync(p => p.ItemId.Equals(menuId));
         if (menu is null)
         {
             rv["success"] = false;
-            rv["Msg"] = "MenuID 错误";
+            rv["Msg"] = L("menu.idInvalid");
             return rv;
         }
     
@@ -530,7 +532,7 @@ public class MenuApp(SysDbContext dbContext, IDtSoftCache dtSoftCache, DtSoftHel
         if (childMenus)
         {
             rv["success"] = false;
-            rv["Msg"] = "操作失败：该菜单下存在子级菜单，请先删除子级菜单";
+            rv["Msg"] = L("menu.hasChildren");
             return rv;
         }
 

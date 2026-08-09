@@ -287,8 +287,8 @@ public class SysConfigApp(
             return new JsonObject
             {
                 ["IsValid"] = false,
-                ["Status"] = "授权异常",
-                ["Message"] = licenseService.ErrorMessage ?? "许可文件无效。"
+                ["Status"] = localizer["license.errorStatus"],
+                ["Message"] = licenseService.ErrorMessage ?? localizer["license.fileInvalid"]
             };
         }
 
@@ -299,17 +299,17 @@ public class SysConfigApp(
         return new JsonObject
         {
             ["IsValid"] = true,
-            ["Status"] = "已授权",
+            ["Status"] = localizer["license.authorizedStatus"],
             ["LicenseId"] = license.LicenseId,
             ["Customer"] = license.Customer,
             ["LicenseType"] = isTemporary ? "Temporary" : "Official",
-            ["LicenseTypeName"] = isTemporary ? "临时授权" : "正式授权",
+            ["LicenseTypeName"] = isTemporary ? localizer["license.temporaryTypeName"] : localizer["license.officialTypeName"],
             ["ExpireAt"] = license.ExpireAt?.ToString("yyyy-MM-dd"),
-            ["ExpireAtText"] = license.ExpireAt.HasValue ? license.ExpireAt.Value.ToString("yyyy-MM-dd") : "不限时间",
+            ["ExpireAtText"] = license.ExpireAt.HasValue ? license.ExpireAt.Value.ToString("yyyy-MM-dd") : localizer["license.unlimitedTime"],
             ["MaxConcurrentUsers"] = JsonValue.Create(maxConcurrentUsers),
             ["MaxConcurrentUsersText"] = isTemporary
-                ? "不控制"
-                : maxConcurrentUsers == -1 ? "不限制" : maxConcurrentUsers?.ToString() ?? "-"
+                ? localizer["license.notControlled"]
+                : maxConcurrentUsers == -1 ? localizer["license.unlimited"] : maxConcurrentUsers?.ToString() ?? "-"
         };
     }
 
@@ -917,7 +917,7 @@ public class SysConfigApp(
             {
                 ["StateCode"] = 0,
                 ["success"] = true,
-                ["Msg"] = "数据库已存在，跳过初始化！"
+                ["Msg"] = localizer["sysConfig.databaseAlreadyInitialized"]
             };
         }
 
@@ -936,7 +936,7 @@ public class SysConfigApp(
                     {
                         ["StateCode"] = 0,
                         ["success"] = true,
-                        ["Msg"] = "数据库已存在，跳过初始化！"
+                        ["Msg"] = localizer["sysConfig.databaseAlreadyInitialized"]
                     };
                 }
 
@@ -947,7 +947,7 @@ public class SysConfigApp(
                 {
                     ["StateCode"] = 0,
                     ["success"] = true,
-                    ["Msg"] = "系统初始化成功！"
+                    ["Msg"] = localizer["sysConfig.initializationSuccess"]
                 };
             }
             else
@@ -956,7 +956,7 @@ public class SysConfigApp(
                 {
                     ["StateCode"] = 1,
                     ["success"] = false,
-                    ["Msg"] = "数据库连接失败！"
+                    ["Msg"] = localizer["sysConfig.databaseConnectionFailed"]
                 };
             }
         }
@@ -975,10 +975,10 @@ public class SysConfigApp(
                     {
                         return new JsonObject
                         {
-                            ["StateCode"] = 0,
-                            ["success"] = true,
-                            ["Msg"] = "数据库已存在，跳过初始化！"
-                        };
+                        ["StateCode"] = 0,
+                        ["success"] = true,
+                        ["Msg"] = localizer["sysConfig.databaseAlreadyInitialized"]
+                    };
                     }
 
                     // 添加初始数据
@@ -988,7 +988,7 @@ public class SysConfigApp(
                     {
                         ["StateCode"] = 0,
                         ["success"] = true,
-                        ["Msg"] = "系统初始化成功！"
+                        ["Msg"] = localizer["sysConfig.initializationSuccess"]
                     };
                 }
                 else
@@ -997,7 +997,7 @@ public class SysConfigApp(
                     {
                         ["StateCode"] = 1,
                         ["success"] = false,
-                        ["Msg"] = "数据库连接失败！"
+                        ["Msg"] = localizer["sysConfig.databaseConnectionFailed"]
                     };
                 }
             }

@@ -24,7 +24,7 @@ public class EsbServiceConnectionQueryParameter
 public class EsbServiceConnectionAddParameter
 {
     [Required]
-    [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_-]*$", ErrorMessage = "连接编码只能包含英文、数字、中划线和下划线，且以英文开头")]
+    [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_-]*$", ErrorMessage = "esb.connectionCodeInvalid")]
     public required string Code { get; set; }
 
     [Required]

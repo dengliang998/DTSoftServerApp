@@ -27,7 +27,7 @@ public class EsbDataSourceQueryParameter
 public class EsbDataSourceAddParameter
 {
     [Required]
-    [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_-]*$", ErrorMessage = "数据源编码只能包含英文、数字、中划线和下划线，且以英文开头")]
+    [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_-]*$", ErrorMessage = "esb.dataSourceCodeInvalid")]
     public required string Code { get; set; }
 
     [Required]
@@ -98,7 +98,7 @@ public class EsbExecuteRequest
 public class EsbParameterConfig
 {
     [Required]
-    [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_]*$", ErrorMessage = "参数名只能包含英文、数字和下划线，且以英文开头")]
+    [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_]*$", ErrorMessage = "esb.parameterNameInvalid")]
     public required string Name { get; set; }
 
     public string? Label { get; set; }

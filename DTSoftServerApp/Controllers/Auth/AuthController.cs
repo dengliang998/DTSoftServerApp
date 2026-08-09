@@ -36,7 +36,7 @@ namespace DTSoftServerApp.Controllers.Auth
             return Ok(new
             {
                 Code = 200,
-                Message = "获取验证码成功",
+                Message = localizer["auth.captchaSuccess"],
                 Data = await captchaService.CreateAsync()
             });
         }
@@ -51,7 +51,7 @@ namespace DTSoftServerApp.Controllers.Auth
             return Ok(new
             {
                 Code = 200,
-                Message = "获取登录加密公钥成功",
+                Message = localizer["auth.loginKeySuccess"],
                 Data = authEncryptionService.GetPublicKey()
             });
         }

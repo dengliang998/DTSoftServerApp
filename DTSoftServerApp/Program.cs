@@ -1,11 +1,14 @@
+using DTSoft.AppService.Localization;
 using DTSoft.AppService.SysConfig;
 using DTSoft.Core.Common;
 using DTSoft.Core.Licensing;
 using DTSoftServerApp.Extensions;
+using DTSoftServerApp.Helpers;
 using DTSoftServerApp.Middleware;
 using DTSoftServerApp.Plugins;
 using DTSoftServerApp.Services;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi;
 using Serilog;
 using Scalar.AspNetCore;
@@ -59,6 +62,29 @@ try
             // 保持 PascalCase 命名，不使用默认的 camelCase
             options.JsonSerializerOptions.PropertyNamingPolicy = null;
         });
+
+    builder.Services.Configure<ApiBehaviorOptions>(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var localizer = context.HttpContext.RequestServices.GetRequiredService<IAppLocalizer>();
+            var errors = context.ModelState.Values
+                .SelectMany(v => v.Errors)
+                .Select(error => ModelStateLocalizationHelper.Translate(localizer, error.ErrorMessage))
+                .Where(message => !string.IsNullOrWhiteSpace(message))
+                .ToArray();
+
+            var message = errors.Length == 0
+                ? localizer["common.argumentMissing"]
+                : string.Join(";", errors);
+
+            return new BadRequestObjectResult(new
+            {
+                Code = 400,
+                Message = message
+            });
+        };
+    });
 
     // Swagger/OpenAPI 配置
     builder.Services.AddOpenApi(options =>

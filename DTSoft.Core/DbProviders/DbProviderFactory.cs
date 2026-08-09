@@ -24,7 +24,7 @@ namespace DTSoft.Core.DbProviders
         {
             if (string.IsNullOrEmpty(providerName))
             {
-                throw new ArgumentException("数据库提供程序名称不能为空。请指定 'MySql'、'SqlServer'、'Oracle' 或 'PostgreSql'。");
+                throw new ArgumentException(DbProviderMessages.Text("db.providerRequired"));
             }
         
             var provider = providerName.ToLower();
@@ -42,7 +42,7 @@ namespace DTSoft.Core.DbProviders
                 }
             }
         
-            throw new NotSupportedException($"不支持的数据库提供程序：{providerName}。支持的类型包括：{string.Join(", ", _providerTypes.Keys)}");
+            throw new NotSupportedException(DbProviderMessages.Text("db.providerUnsupported", providerName, string.Join(", ", _providerTypes.Keys)));
         }
 
         public static IEnumerable<string> GetSupportedProviders() => _providerTypes.Keys.OrderBy(k => k);

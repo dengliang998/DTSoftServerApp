@@ -1,3 +1,4 @@
+using DTSoft.AppService.Localization;
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
@@ -14,9 +15,11 @@ public sealed class AuthEncryptionService : IDisposable
     private readonly string _keyId;
     private readonly ConcurrentBag<RSA> _rsaPool = [];
     private int _pooledRsaCount;
+    private readonly IAppLocalizer _localizer;
 
-    public AuthEncryptionService()
+    public AuthEncryptionService(IAppLocalizer localizer)
     {
+        _localizer = localizer;
         using var rsa = RSA.Create(KeySize);
         _privateKey = rsa.ExportPkcs8PrivateKey();
         _publicKey = rsa.ExportSubjectPublicKeyInfo();
@@ -43,7 +46,7 @@ public sealed class AuthEncryptionService : IDisposable
             string.IsNullOrWhiteSpace(encryptedUsername) ||
             string.IsNullOrWhiteSpace(encryptedPassword))
         {
-            throw new AuthEncryptionException("登录加密参数不能为空");
+            throw new AuthEncryptionException(_localizer["auth.encryptionParamsRequired"]);
         }
 
         ValidateCurrentKey(keyId);
@@ -101,11 +104,11 @@ public sealed class AuthEncryptionService : IDisposable
     {
         if (!IsCurrentKey(keyId))
         {
-            throw new AuthEncryptionException("登录加密公钥已失效，请刷新页面后重试");
+            throw new AuthEncryptionException(_localizer["auth.encryptionKeyExpired"]);
         }
     }
 
-    private static byte[] DecodeCipherText(string encryptedText, string fieldName)
+    private byte[] DecodeCipherText(string encryptedText, string fieldName)
     {
         try
         {
@@ -113,11 +116,11 @@ public sealed class AuthEncryptionService : IDisposable
         }
         catch (FormatException ex)
         {
-            throw new AuthEncryptionException($"{fieldName} 加密内容格式错误", ex);
+            throw new AuthEncryptionException(_localizer.Format("auth.encryptionContentInvalid", fieldName), ex);
         }
     }
 
-    private static string DecryptText(RSA rsa, byte[] cipherBytes, string fieldName)
+    private string DecryptText(RSA rsa, byte[] cipherBytes, string fieldName)
     {
         try
         {
@@ -126,7 +129,7 @@ public sealed class AuthEncryptionService : IDisposable
         }
         catch (CryptographicException ex)
         {
-            throw new AuthEncryptionException($"{fieldName} 解密失败", ex);
+            throw new AuthEncryptionException(_localizer.Format("auth.decryptionFailed", fieldName), ex);
         }
     }
 
