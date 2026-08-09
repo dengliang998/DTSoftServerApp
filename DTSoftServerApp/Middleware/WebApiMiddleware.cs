@@ -1,5 +1,4 @@
 using DTSoft.Core.Common;
-using DTSoft.Core.DbContexts;
 using DTSoft.Models.Entities;
 using System.Text;
 using System.Text.Json;
@@ -40,40 +39,34 @@ namespace DTSoftServerApp.Middleware
             }
 
             // 记录请求开始时间
-            var startTime = DateTime.Now;
+            var startTime = TimeUtil.CstDateTime;
             var requestMethod = context.Request.Method;
             var clientIp = GetClientIp(context);
+
+            // 读取请求体内容（仅对POST、PUT等方法）
+            string requestBody = string.Empty;
+            if (ShouldReadRequestBody(requestMethod))
+            {
+                requestBody = await TryReadRequestBodyForLoggingAsync(context.Request, requestPath);
+            }
+
+            string? userAccount = TryGetUserAccount(context, dtSoftHelper);
 
             var licenseErrorResponse = await TryEnsureLicenseUsableAsync(context, licenseService);
             if (licenseErrorResponse is not null)
             {
-                LogNonSuccessResponse(null, requestPath, requestMethod, clientIp, licenseErrorResponse, startTime, context);
+                WriteAuditLog(userAccount, requestPath, requestMethod, clientIp, requestBody, licenseErrorResponse, startTime, context);
+                LogNonSuccessResponse(userAccount, requestPath, requestMethod, clientIp, licenseErrorResponse, startTime, context);
                 return;
-            }
-
-            // 读取请求体内容（仅对POST、PUT等方法）
-            string requestBody = "";
-            if (requestMethod.ToUpper() == "POST" || requestMethod.ToUpper() == "PUT" || requestMethod.ToUpper() == "PATCH")
-            {
-                requestBody = await TryReadRequestBodyForLoggingAsync(context.Request, requestPath);
             }
 
             // 在调用下一个中间件之前执行的逻辑（相当于 OnActionExecuting ）
             #region 账号状态检测
             string? token = context.Request.Headers["Authorization"];
-            string? userAccount = null;
 
             if (!string.IsNullOrEmpty(token))
             {
-                // 移除Bearer前缀
-                if (token.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-                {
-                    token = token["Bearer ".Length..].Trim();
-                }
-
-                // 使用新的JWT解析方法获取用户账号
-                userAccount = dtSoftHelper.GetLoginUserAccountFromJwt(token);
-                JsonObject rv = await dtSoftHelper.CheckAccStatus(userAccount);
+                JsonObject rv = await dtSoftHelper.CheckAccStatus(userAccount!);
 
                 // 修复CS8602/CS8604警告：安全访问JSON属性
                 var successValue = rv["success"];
@@ -81,7 +74,11 @@ namespace DTSoftServerApp.Middleware
                 {
                     context.Response.StatusCode = 200;
                     context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsync(Convert.ToString(rv)!);
+                    var ResContent = Convert.ToString(rv)!;
+                    await context.Response.WriteAsync(ResContent);
+
+                    WriteAuditLog(userAccount, requestPath, requestMethod, clientIp, requestBody, ResContent, startTime, context);
+                    LogNonSuccessResponse(userAccount, requestPath, requestMethod, clientIp, ResContent, startTime, context);
                     return; // 如果账号状态检查失败，直接返回，不执行后续中间件
                 }
 
@@ -104,10 +101,11 @@ namespace DTSoftServerApp.Middleware
             }
             catch (Exception ex)
             {
-                // 记录业务异常日志，但不处理响应（由 ExceptionHandlingMiddleware 统一处理）
-                logger.LogError(ex, "请求处理过程中发生未处理异常：{RequestPath}, 用户：{UserAccount}, IP: {ClientIP}", 
-                    requestPath, userAccount, clientIp);
-                throw; // 重新抛出异常，让 ExceptionHandlingMiddleware 统一处理
+                // 文件异常日志由 ExceptionHandlingMiddleware 统一记录，避免同一个未处理异常重复写入文件。
+                // 这里仅补充数据库审计日志，保证异常请求在 sys_action_log 中可追踪。
+                var exceptionContent = $"[exception: {ex.GetType().Name}] {ex.Message}";
+                WriteAuditLog(userAccount, requestPath, requestMethod, clientIp, requestBody, exceptionContent, startTime, context);
+                throw;
             }
             finally
             {
@@ -135,9 +133,7 @@ namespace DTSoftServerApp.Middleware
             // 出于性能考虑：不再修改响应体内容，仅做日志记录
 
             // 记录完整请求日志
-            requestBody = RedactSensitiveContent(requestBody);
-            responseContent = RedactSensitiveContent(responseContent);
-            LogRequestAsync(userAccount, requestPath, requestMethod, clientIp, requestBody, responseContent, startTime, context);
+            WriteAuditLog(userAccount, requestPath, requestMethod, clientIp, requestBody, responseContent, startTime, context);
             LogNonSuccessResponse(userAccount, requestPath, requestMethod, clientIp, responseContent, startTime, context);
         }
 
@@ -387,14 +383,49 @@ namespace DTSoftServerApp.Middleware
             return content;
         }
 
-        private void LogRequestAsync(string? userAccount, string requestPath, string requestMethod,
+        private static bool ShouldReadRequestBody(string requestMethod)
+        {
+            return HttpMethods.IsPost(requestMethod) ||
+                   HttpMethods.IsPut(requestMethod) ||
+                   HttpMethods.IsPatch(requestMethod) ||
+                   HttpMethods.IsDelete(requestMethod);
+        }
+
+        private static string? TryGetUserAccount(HttpContext context, DtSoftHelper dtSoftHelper)
+        {
+            string? token = context.Request.Headers["Authorization"];
+            if (string.IsNullOrWhiteSpace(token))
+                return null;
+
+            if (token.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            {
+                token = token["Bearer ".Length..].Trim();
+            }
+
+            if (string.IsNullOrWhiteSpace(token))
+                return null;
+
+            try
+            {
+                return dtSoftHelper.GetLoginUserAccountFromJwt(token);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private void WriteAuditLog(string? userAccount, string requestPath, string requestMethod,
             string clientIp, string requestBody, string responseContent, DateTime startTime, HttpContext context)
         {
+            requestBody = RedactSensitiveContent(requestBody);
+            responseContent = RedactSensitiveContent(responseContent);
+
             // 使用日志队列异步写入，不阻塞请求流程
             var logEntry = new SysActionLog
             {
                 ItemId = YitterHelper.NewId(),  // 生成唯一 ID
-                LogDate = DateTime.Now,
+                LogDate = TimeUtil.CstDateTime,
                 UserAcc = userAccount,
                 ActionName = requestPath, // 接口名称就是请求路径
                 ClientIP = clientIp,
@@ -411,21 +442,99 @@ namespace DTSoftServerApp.Middleware
             string clientIp, string responseContent, DateTime startTime, HttpContext context)
         {
             var statusCode = context.Response.StatusCode;
-            if (statusCode == StatusCodes.Status200OK)
+            var businessFailure = IsBusinessFailureResponse(responseContent);
+            if (statusCode >= StatusCodes.Status200OK && statusCode < StatusCodes.Status300MultipleChoices && !businessFailure)
             {
                 return;
             }
 
-            var elapsedMilliseconds = Convert.ToInt64((DateTime.Now - startTime).TotalMilliseconds);
-            logger.LogError(
-                "接口错误：{StatusCode} {RequestMethod} {RequestPath}, 用户：{UserAccount}, IP：{ClientIP}, 耗时：{ElapsedMilliseconds}ms, 响应：{ResponseContent}",
-                statusCode,
-                requestMethod,
-                requestPath,
-                userAccount ?? "Anonymous",
-                clientIp,
-                elapsedMilliseconds,
-                string.IsNullOrWhiteSpace(responseContent) ? "-" : responseContent);
+            var elapsedMilliseconds = Convert.ToInt64((TimeUtil.CstDateTime - startTime).TotalMilliseconds);
+            var safeResponseContent = RedactSensitiveContent(responseContent);
+            var logMessage = businessFailure
+                ? "接口业务失败：{StatusCode} {RequestMethod} {RequestPath}, 用户：{UserAccount}, IP：{ClientIP}, 耗时：{ElapsedMilliseconds}ms, 响应：{ResponseContent}"
+                : "接口非成功响应：{StatusCode} {RequestMethod} {RequestPath}, 用户：{UserAccount}, IP：{ClientIP}, 耗时：{ElapsedMilliseconds}ms, 响应：{ResponseContent}";
+
+            if (statusCode >= StatusCodes.Status500InternalServerError)
+            {
+                logger.LogError(
+                    logMessage,
+                    statusCode,
+                    requestMethod,
+                    requestPath,
+                    userAccount ?? "Anonymous",
+                    clientIp,
+                    elapsedMilliseconds,
+                    string.IsNullOrWhiteSpace(safeResponseContent) ? "-" : safeResponseContent);
+            }
+            else
+            {
+                logger.LogWarning(
+                    logMessage,
+                    statusCode,
+                    requestMethod,
+                    requestPath,
+                    userAccount ?? "Anonymous",
+                    clientIp,
+                    elapsedMilliseconds,
+                    string.IsNullOrWhiteSpace(safeResponseContent) ? "-" : safeResponseContent);
+            }
+        }
+
+        private static bool IsBusinessFailureResponse(string responseContent)
+        {
+            if (string.IsNullOrWhiteSpace(responseContent))
+                return false;
+
+            try
+            {
+                using var document = JsonDocument.Parse(responseContent);
+                var root = document.RootElement;
+                if (root.ValueKind != JsonValueKind.Object)
+                    return false;
+
+                if (TryGetPropertyIgnoreCase(root, "success", out var success) &&
+                    success.ValueKind is JsonValueKind.False)
+                {
+                    return true;
+                }
+
+                if (TryGetPropertyIgnoreCase(root, "Code", out var code) &&
+                    code.ValueKind == JsonValueKind.Number &&
+                    code.TryGetInt32(out var codeValue) &&
+                    codeValue != StatusCodes.Status200OK)
+                {
+                    return true;
+                }
+
+                if (TryGetPropertyIgnoreCase(root, "StateCode", out var stateCode) &&
+                    stateCode.ValueKind == JsonValueKind.Number &&
+                    stateCode.TryGetInt32(out var stateCodeValue) &&
+                    stateCodeValue != 0)
+                {
+                    return true;
+                }
+            }
+            catch (JsonException)
+            {
+                return false;
+            }
+
+            return false;
+        }
+
+        private static bool TryGetPropertyIgnoreCase(JsonElement element, string propertyName, out JsonElement value)
+        {
+            foreach (var property in element.EnumerateObject())
+            {
+                if (string.Equals(property.Name, propertyName, StringComparison.OrdinalIgnoreCase))
+                {
+                    value = property.Value;
+                    return true;
+                }
+            }
+
+            value = default;
+            return false;
         }
 
         private sealed class TeeStream : Stream

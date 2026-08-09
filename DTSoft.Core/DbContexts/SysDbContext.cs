@@ -18,7 +18,6 @@ public class SysDbContext(
     public virtual DbSet<SysRoleMember>? SysRoleMember { get; set; }
     public virtual DbSet<SysSystemUrl>? SysSystemUrl { get; set; }
     public virtual DbSet<SysActionLog>? SysActionLog { get; set; }
-    public virtual DbSet<SysResultLog>? SysResultLog { get; set; }
     public virtual DbSet<SysConfig>? SysConfig { get; set; }
     public virtual DbSet<SysMicroAppConfig>? SysMicroAppConfig { get; set; }
     public virtual DbSet<SysOu>? SysOu { get; set; }
@@ -44,7 +43,6 @@ public class SysDbContext(
         modelBuilder.Entity<SysConfig>().Property(p => p.ItemId).ValueGeneratedNever();
         modelBuilder.Entity<SysConfig>().Property(p => p.LoginCaptchaEnabled).HasDefaultValue(true);
         modelBuilder.Entity<SysActionLog>().Property(p => p.ItemId).ValueGeneratedNever();
-        modelBuilder.Entity<SysResultLog>().Property(p => p.ItemId).ValueGeneratedNever();
         modelBuilder.Entity<SysRoleMember>().Property(p => p.ItemId).ValueGeneratedNever();
         modelBuilder.Entity<SysMenuAuthority>().Property(p => p.ItemId).ValueGeneratedNever();
         modelBuilder.Entity<SysSystemUrl>().Property(p => p.ItemId).ValueGeneratedNever();

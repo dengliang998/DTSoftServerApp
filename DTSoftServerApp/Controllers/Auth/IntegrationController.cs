@@ -1,7 +1,5 @@
 using DTSoft.AppService.Integration;
 using DTSoft.Core.Common;
-using DTSoft.Core.DbContexts;
-using DTSoft.Models.Entities;
 using DTSoft.Models.Parameter.Integration;
 using DTSoftServerApp.Services;
 
@@ -15,7 +13,6 @@ namespace DTSoftServerApp.Controllers.Integration
     [Route("api/integration/api-keys")]
     public class IntegrationController(
         JwtService jwtService,
-        SysDbContext dbContext,
         UserCacheHelper userCacheHelper,
         IntegrationApp integrationApp) : ControllerBase
     {
@@ -27,7 +24,7 @@ namespace DTSoftServerApp.Controllers.Integration
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] ApiKeyLoginRequest request)
         {
-            return await IssueApiKeyToken(request, "IntegrationApiKeyLogin", "API-IntegrationApiKeyLogin", "获取Token成功");
+            return await IssueApiKeyToken(request, "获取Token成功");
         }
 
         /// <summary>
@@ -38,37 +35,19 @@ namespace DTSoftServerApp.Controllers.Integration
         [HttpPost("sso-token")]
         public async Task<IActionResult> IssueSsoToken([FromBody] ApiKeyLoginRequest request)
         {
-            return await IssueApiKeyToken(request, "IntegrationApiKeySsoToken", "API-IntegrationApiKeySsoToken", "获取SSO Token成功");
+            return await IssueApiKeyToken(request, "获取SSO Token成功");
         }
 
         private async Task<IActionResult> IssueApiKeyToken(
             ApiKeyLoginRequest request,
-            string actionName,
-            string requestType,
             string successMessage)
         {
-            // 记录日志
-            var log = new SysActionLog
-            {
-                ItemId = YitterHelper.NewId(),
-                LogDate = DateTime.Now.ToCstTime(),
-                UserAcc = request.UserAccount,
-                ActionName = actionName,
-                ClientIP = HttpContext.Connection.RemoteIpAddress?.ToString(),
-                Param = $"KeyName: {request.KeyName}",
-                RequestType = requestType
-            };
-
             try
             {
                 // 验证API密钥
                 var (valid, message, _) = await integrationApp.ValidateApiKey(request.KeyName, request.SecretKey);
                 if (!valid)
                 {
-                    log.Result = message;
-                    dbContext.SysActionLog!.Add(log);
-                    await dbContext.SaveChangesAsync();
-
                     return Unauthorized(new
                     {
                         Code = 401,
@@ -80,10 +59,6 @@ namespace DTSoftServerApp.Controllers.Integration
                 var user = await userCacheHelper.GetUserByAccountAsync(request.UserAccount);
                 if (user == null || user.Disable)
                 {
-                    log.Result = "用户账号不存在或已禁用";
-                    dbContext.SysActionLog!.Add(log);
-                    await dbContext.SaveChangesAsync();
-
                     return Unauthorized(new
                     {
                         Code = 401,
@@ -93,10 +68,6 @@ namespace DTSoftServerApp.Controllers.Integration
 
                 // 生成Token
                 var (token, expires) = jwtService.GenerateToken(request.UserAccount, user.Account!);
-
-                log.Result = successMessage;
-                dbContext.SysActionLog!.Add(log);
-                await dbContext.SaveChangesAsync();
 
                 return Ok(new
                 {
@@ -114,10 +85,6 @@ namespace DTSoftServerApp.Controllers.Integration
             }
             catch (Exception ex)
             {
-                log.Result = $"获取Token失败: {ex.Message}";
-                dbContext.SysActionLog!.Add(log);
-                await dbContext.SaveChangesAsync();
-
                 return StatusCode(500, new
                 {
                     Code = 500,

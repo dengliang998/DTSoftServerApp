@@ -40,7 +40,7 @@ namespace DTSoftServerApp.Services
             // 创建有界 Channel，容量为 10000
             var options = new BoundedChannelOptions(10000)
             {
-                FullMode = BoundedChannelFullMode.DropOldest, // 队列满时丢弃最旧的日志
+                FullMode = BoundedChannelFullMode.Wait, // 队列满时不再丢弃旧日志；TryWrite 失败时写文件告警
                 SingleReader = true, // 单消费者模式
                 SingleWriter = false // 多生产者模式
             };
@@ -56,7 +56,7 @@ namespace DTSoftServerApp.Services
             if (!_logChannel.Writer.TryWrite(logEntry))
             {
                 // 队列已满，记录警告
-                _logger.LogWarning("日志队列已满，丢弃日志：{ActionName}", logEntry.ActionName);
+                _logger.LogWarning("日志队列已满，审计日志未入库：{ActionName} {RequestType} {ClientIP}", logEntry.ActionName, logEntry.RequestType, logEntry.ClientIP);
             }
         }
 

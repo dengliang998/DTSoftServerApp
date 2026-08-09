@@ -2,7 +2,6 @@ using DTSoft.AppService.SysConfig;
 using DTSoft.AppService.Localization;
 using DTSoft.Core.Common;
 using DTSoft.Core.DbContexts;
-using DTSoft.Core.Interfaces;
 using DTSoft.Core.Licensing;
 using DTSoft.Models.Entities;
 using DTSoftServerApp.Services;
@@ -24,7 +23,6 @@ namespace DTSoftServerApp.Controllers.Auth
         CaptchaService captchaService,
         SysConfigApp sysConfigApp,
         AuthEncryptionService authEncryptionService,
-        ILogQueueService logQueueService,
         LicenseService licenseService,
         IAppLocalizer localizer) : ControllerBase
     {
@@ -66,25 +64,11 @@ namespace DTSoftServerApp.Controllers.Auth
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
-            // 记录登录日志
-            var log = new SysActionLog
-            {
-                ItemId = YitterHelper.NewId(),  // 生成唯一 ID
-                LogDate = DateTime.Now.ToCstTime(),
-                ActionName = "Login",
-                ClientIP = HttpContext.Connection.RemoteIpAddress?.ToString(),
-                Param = "",
-                RequestType = "API-Login"
-            };
-
             if (sysConfigApp.IsLoginCaptchaEnabled())
             {
                 var (captchaValid, captchaMessage) = await captchaService.ValidateAsync(request.CaptchaId, request.CaptchaCode);
                 if (!captchaValid)
                 {
-                    log.Result = captchaMessage;
-                    logQueueService.Enqueue(log);
-
                     return BadRequest(new {
                         Code = 400,
                         Message = captchaMessage
@@ -95,17 +79,12 @@ namespace DTSoftServerApp.Controllers.Auth
             var (credentialsValid, username, password, credentialsMessage) = TryDecryptCredentials(request);
             if (!credentialsValid)
             {
-                log.Result = credentialsMessage;
-                logQueueService.Enqueue(log);
-
                 return BadRequest(new
                 {
                     Code = 400,
                     Message = credentialsMessage
                 });
             }
-
-            log.UserAcc = username;
 
             var user = await ValidateUser(username, password);
             if (user != null)
@@ -115,9 +94,6 @@ namespace DTSoftServerApp.Controllers.Auth
                     : null;
                 if (!await onlineUserService.TryMarkActiveAsync(user.Account, maxConcurrentUsers))
                 {
-                    log.Result = "超过许可证允许的最大并发用户数";
-                    logQueueService.Enqueue(log);
-
                     return StatusCode(StatusCodes.Status403Forbidden, new
                     {
                         Code = 403,
@@ -126,9 +102,6 @@ namespace DTSoftServerApp.Controllers.Auth
                 }
 
                 var (token, expires) = jwtService.GenerateToken(username, user.Account!); // 用户ID来自数据库
-
-                log.Result = "登录成功";
-                logQueueService.Enqueue(log);
 
                 return Ok(new {
                     Code = 200,
@@ -143,9 +116,6 @@ namespace DTSoftServerApp.Controllers.Auth
             }
             else
             {
-                log.Result = "用户名或密码错误";
-                logQueueService.Enqueue(log);
-
                 return Unauthorized(new {
                     Code = 401,
                     Message = localizer["login.invalidCredentials"]
