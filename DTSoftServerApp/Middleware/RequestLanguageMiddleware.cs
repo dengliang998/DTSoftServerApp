@@ -43,7 +43,7 @@ public class RequestLanguageMiddleware(RequestDelegate next, IConfiguration conf
     private CultureInfo GetDefaultCulture()
     {
         return NormalizeCulture(configuration[AppConfigurationKeys.Localization.DefaultLanguage])
-               ?? CultureInfo.GetCultureInfo("zh-CN");
+               ?? CultureInfo.GetCultureInfo("en-US");
     }
 
     private static CultureInfo? NormalizeCulture(string? value)

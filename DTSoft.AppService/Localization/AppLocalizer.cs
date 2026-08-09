@@ -10,7 +10,7 @@ public class AppLocalizer : IAppLocalizer
         "DTSoft.AppService.Resources.DTResource",
         Assembly.GetExecutingAssembly());
 
-    private static readonly CultureInfo FallbackCulture = CultureInfo.GetCultureInfo("zh-CN");
+    private static readonly CultureInfo FallbackCulture = CultureInfo.GetCultureInfo("en-US");
 
     public string this[string key] => GetString(key);
 

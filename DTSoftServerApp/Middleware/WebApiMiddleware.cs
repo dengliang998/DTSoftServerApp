@@ -456,8 +456,8 @@ namespace DTSoftServerApp.Middleware
             var elapsedMilliseconds = Convert.ToInt64((TimeUtil.CstDateTime - startTime).TotalMilliseconds);
             var safeResponseContent = RedactSensitiveContent(responseContent);
             var logMessage = businessFailure
-                ? "接口业务失败：{StatusCode} {RequestMethod} {RequestPath}, 用户：{UserAccount}, IP：{ClientIP}, 耗时：{ElapsedMilliseconds}ms, 响应：{ResponseContent}"
-                : "接口非成功响应：{StatusCode} {RequestMethod} {RequestPath}, 用户：{UserAccount}, IP：{ClientIP}, 耗时：{ElapsedMilliseconds}ms, 响应：{ResponseContent}";
+                ? "API business failure: {StatusCode} {RequestMethod} {RequestPath}, user: {UserAccount}, IP: {ClientIP}, elapsed: {ElapsedMilliseconds}ms, response: {ResponseContent}"
+                : "API non-success response: {StatusCode} {RequestMethod} {RequestPath}, user: {UserAccount}, IP: {ClientIP}, elapsed: {ElapsedMilliseconds}ms, response: {ResponseContent}";
 
             if (statusCode >= StatusCodes.Status500InternalServerError)
             {

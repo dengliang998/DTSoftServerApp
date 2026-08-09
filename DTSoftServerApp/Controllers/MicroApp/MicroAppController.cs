@@ -9,6 +9,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
     /// 微应用接口
     /// </summary>
     /// <param name="microConfigApp"></param>
+    /// <param name="localizer"></param>
     [Authorize]
     [ApiController]
     [Tags("微应用")]
