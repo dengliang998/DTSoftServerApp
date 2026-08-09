@@ -357,6 +357,11 @@ namespace DTSoft.Models.Parameter.MicroApp
         public int? ColumnWidth { get; set; }
 
         /// <summary>
+        /// 列对齐方式，left/center/right
+        /// </summary>
+        public string? ColumnAlign { get; set; }
+
+        /// <summary>
         /// 是否支持排序
         /// </summary>
         public bool Sortable { get; set; }
