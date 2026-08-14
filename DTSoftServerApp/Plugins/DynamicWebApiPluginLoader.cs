@@ -24,19 +24,29 @@ public static class DynamicWebApiPluginLoader
 
         var pluginDirectory = ResolvePluginDirectory(configuration);
         Directory.CreateDirectory(pluginDirectory);
+        DynamicWebApiPluginCatalog.CleanupShadowCopies(configuration);
 
         var sharedAssemblyNames = AssemblyLoadContext.Default.Assemblies
             .Select(assembly => assembly.GetName().Name)
             .Where(name => !string.IsNullOrWhiteSpace(name))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var pluginFiles = Directory.EnumerateFiles(pluginDirectory, "*.dll", SearchOption.TopDirectoryOnly)
+        var legacyPluginFiles = Directory.EnumerateFiles(pluginDirectory, "*.dll", SearchOption.TopDirectoryOnly)
             .Where(file => !sharedAssemblyNames.Contains(Path.GetFileNameWithoutExtension(file)))
+            .ToArray();
+        var managedPluginFiles = DynamicWebApiPluginCatalog.GetEnabledPluginAssemblies(configuration)
+            .Where(file => !sharedAssemblyNames.Contains(Path.GetFileNameWithoutExtension(file)));
+        var managedPluginFileSet = managedPluginFiles.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var pluginFiles = legacyPluginFiles
+            .Concat(managedPluginFileSet)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(file => file, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
         if (pluginFiles.Length == 0)
         {
+            var emptyLoadLocalizer = LocalizationConfigurationExtensions.CreateAppLocalizer(configuration);
+            DynamicWebApiPluginCatalog.UpdateEffectiveStatuses(configuration, DynamicWebApiPluginLoadResult.Empty, emptyLoadLocalizer);
             return DynamicWebApiPluginLoadResult.Empty;
         }
 
@@ -49,8 +59,12 @@ public static class DynamicWebApiPluginLoader
         {
             try
             {
-                var loadContext = new DynamicWebApiPluginLoadContext(filePath, localizer);
-                var assembly = loadContext.LoadFromAssemblyPath(Path.GetFullPath(filePath));
+                var isManagedPlugin = managedPluginFileSet.Contains(filePath);
+                var loadFilePath = isManagedPlugin
+                    ? DynamicWebApiPluginCatalog.CreateShadowCopy(configuration, filePath)
+                    : filePath;
+                var loadContext = new DynamicWebApiPluginLoadContext(loadFilePath, localizer);
+                var assembly = loadContext.LoadFromAssemblyPath(Path.GetFullPath(loadFilePath));
                 var loadableTypes = GetLoadableTypes(assembly).ToArray();
 
                 var controllerTypes = loadableTypes
@@ -71,6 +85,13 @@ public static class DynamicWebApiPluginLoader
 
                 if (controllerTypes.Length == 0 && moduleTypes.Length == 0 && entityModelConfigurationTypes.Length == 0)
                 {
+                    if (managedPluginFileSet.Contains(filePath))
+                    {
+                        failures.Add(new DynamicWebApiPluginLoadFailure(
+                            filePath,
+                            localizer["plugin.noPluginEntryFound"]));
+                    }
+
                     continue;
                 }
 
@@ -120,7 +141,9 @@ public static class DynamicWebApiPluginLoader
             }
         }
 
-        return new DynamicWebApiPluginLoadResult(assemblies, plugins, failures);
+        var loadResult = new DynamicWebApiPluginLoadResult(assemblies, plugins, failures);
+        DynamicWebApiPluginCatalog.UpdateEffectiveStatuses(configuration, loadResult, localizer);
+        return loadResult;
     }
 
     public static void RegisterApplicationParts(IMvcBuilder mvcBuilder, DynamicWebApiPluginLoadResult loadResult)
@@ -139,7 +162,7 @@ public static class DynamicWebApiPluginLoader
         });
     }
 
-    private static string ResolvePluginDirectory(IConfiguration configuration)
+    public static string ResolvePluginDirectory(IConfiguration configuration)
     {
         var configuredPath = configuration[PluginDirectoryKey];
         if (string.IsNullOrWhiteSpace(configuredPath))

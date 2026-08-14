@@ -789,6 +789,54 @@
   <data name="plugin.directReferenceForbidden" xml:space="preserve">
     <value>插件只能直接引用 {0}、{1}、{2}，不能直接引用 {3}。</value>
   </data>
+  <data name="plugin.uploadFileRequired" xml:space="preserve">
+    <value>请选择要上传的插件文件。</value>
+  </data>
+  <data name="plugin.uploadFileEmpty" xml:space="preserve">
+    <value>上传文件不能为空。</value>
+  </data>
+  <data name="plugin.uploadTypeUnsupported" xml:space="preserve">
+    <value>仅支持上传 .dll 或 .zip 插件包。</value>
+  </data>
+  <data name="plugin.versionAlreadyExists" xml:space="preserve">
+    <value>插件 {0} 的版本 {1} 已存在。</value>
+  </data>
+  <data name="plugin.notFound" xml:space="preserve">
+    <value>插件不存在。</value>
+  </data>
+  <data name="plugin.pathInvalid" xml:space="preserve">
+    <value>插件路径非法。</value>
+  </data>
+  <data name="plugin.mainAssemblyNotFound" xml:space="preserve">
+    <value>插件包中未找到有效的主 DLL。</value>
+  </data>
+  <data name="plugin.packagePathInvalid" xml:space="preserve">
+    <value>插件包包含非法路径。</value>
+  </data>
+  <data name="plugin.uploadSuccessRestartRequired" xml:space="preserve">
+    <value>插件上传成功，重启服务后生效。</value>
+  </data>
+  <data name="plugin.deleteSuccessRestartRequired" xml:space="preserve">
+    <value>插件已删除，重启服务后完全生效。</value>
+  </data>
+  <data name="plugin.statusUpdatedRestartRequired" xml:space="preserve">
+    <value>插件状态已更新，重启服务后生效。</value>
+  </data>
+  <data name="plugin.assemblyFileMissing" xml:space="preserve">
+    <value>插件主 DLL 文件不存在。</value>
+  </data>
+  <data name="plugin.noValidEntryLoaded" xml:space="preserve">
+    <value>未加载到有效的插件入口。</value>
+  </data>
+  <data name="plugin.noPluginEntryFound" xml:space="preserve">
+    <value>未找到 Controller、插件模块或实体模型配置。</value>
+  </data>
+  <data name="plugin.deleteDirectoryFailed" xml:space="preserve">
+    <value>插件目录删除失败，请确认插件文件未被占用后重试。</value>
+  </data>
+  <data name="plugin.directoryAlreadyExists" xml:space="preserve">
+    <value>插件 {0} 的版本目录 {1} 已存在且无法清理。</value>
+  </data>
   <data name="excel.fieldRequiredNull" xml:space="preserve">
     <value>字段 '{0}' 是必填项，不能为null或空</value>
   </data>
@@ -848,6 +896,9 @@
   </data>
   <data name="menu.onlineUsers" xml:space="preserve">
     <value>在线用户</value>
+  </data>
+  <data name="menu.plugins" xml:space="preserve">
+    <value>插件管理</value>
   </data>
   <data name="menu.systemLog" xml:space="preserve">
     <value>系统日志</value>

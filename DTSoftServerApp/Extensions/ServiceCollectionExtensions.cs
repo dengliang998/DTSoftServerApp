@@ -19,6 +19,7 @@ using DTSoft.Core.Interfaces;
 using DTSoft.Core.DbContexts;
 using DTSoft.Core.Licensing;
 using DTSoft.Core.Localization;
+using DTSoftServerApp.Plugins;
 using DTSoftServerApp.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
@@ -78,6 +79,7 @@ namespace DTSoftServerApp.Extensions
             services.AddScoped<JwtService>();
             services.AddScoped<CaptchaService>();
             services.AddSingleton<AuthEncryptionService>();
+            services.AddSingleton<DynamicWebApiPluginCatalog>();
 
             return services;
         }
