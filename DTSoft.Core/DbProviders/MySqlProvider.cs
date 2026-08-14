@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using DTSoft.Core.DbContexts;
+using DTSoft.Core.Localization;
 using DTSoft.Models.Parameter.MicroApp;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,10 +11,12 @@ namespace DTSoft.Core.DbProviders
     {
         // 验证标识符（表名、列名、数据库名）只能包含字母、数字、下划线
         private static readonly Regex IdentifierPattern = new(@"^[a-zA-Z_][a-zA-Z0-9_]*$", RegexOptions.Compiled);
+        private readonly ITextLocalizer? _localizer;
 
-        public MySqlProvider(string? databaseName = null)
+        public MySqlProvider(string? databaseName = null, ITextLocalizer? localizer = null)
         {
             DatabaseName = databaseName;
+            _localizer = localizer;
         }
 
         public string? DatabaseName { get; }
@@ -26,10 +29,10 @@ namespace DTSoft.Core.DbProviders
         public string QuoteTableName(string tableName)
         {
             if (string.IsNullOrWhiteSpace(tableName))
-                throw new ArgumentException(DbProviderMessages.Text("db.tableNameRequired"), nameof(tableName));
+                throw new ArgumentException(DbProviderMessages.Text(_localizer, "db.tableNameRequired"), nameof(tableName));
             
             if (!IdentifierPattern.IsMatch(tableName))
-                throw new ArgumentException($"Invalid table name format: {tableName}", nameof(tableName));
+                throw new ArgumentException(DbProviderMessages.Text(_localizer, "db.tableNameInvalid", tableName), nameof(tableName));
             
             return $"`{tableName}`";
         }
@@ -40,10 +43,10 @@ namespace DTSoft.Core.DbProviders
         public string QuoteColumnName(string columnName)
         {
             if (string.IsNullOrWhiteSpace(columnName))
-                throw new ArgumentException(DbProviderMessages.Text("db.columnNameRequired"), nameof(columnName));
+                throw new ArgumentException(DbProviderMessages.Text(_localizer, "db.columnNameRequired"), nameof(columnName));
             
             if (!IdentifierPattern.IsMatch(columnName))
-                throw new ArgumentException($"Invalid column name format: {columnName}", nameof(columnName));
+                throw new ArgumentException(DbProviderMessages.Text(_localizer, "db.columnNameInvalid", columnName), nameof(columnName));
             
             return $"`{columnName}`";
         }
@@ -71,26 +74,26 @@ namespace DTSoft.Core.DbProviders
 
         public string GetTableExistsQuery(string tableName)
         {
-            var dbName = DatabaseName ?? throw new InvalidOperationException(DbProviderMessages.Text("db.databaseNameRequiredForTableExists"));
+            var dbName = DatabaseName ?? throw new InvalidOperationException(DbProviderMessages.Text(_localizer, "db.databaseNameRequiredForTableExists"));
             
             // 验证数据库名和表名
             if (!IdentifierPattern.IsMatch(dbName))
-                throw new ArgumentException($"Invalid database name format: {dbName}", nameof(dbName));
+                throw new ArgumentException(DbProviderMessages.Text(_localizer, "db.databaseNameInvalid", dbName), nameof(dbName));
             if (!IdentifierPattern.IsMatch(tableName))
-                throw new ArgumentException($"Invalid table name format: {tableName}", nameof(tableName));
+                throw new ArgumentException(DbProviderMessages.Text(_localizer, "db.tableNameInvalid", tableName), nameof(tableName));
             
             return $"SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '{EscapeStringValue(dbName)}' AND table_name = '{EscapeStringValue(tableName)}'";
         }
 
         public string GetTableColumnsWithInfoQuery(string tableName)
         {
-            var dbName = DatabaseName ?? throw new InvalidOperationException(DbProviderMessages.Text("db.databaseNameRequiredForColumns"));
+            var dbName = DatabaseName ?? throw new InvalidOperationException(DbProviderMessages.Text(_localizer, "db.databaseNameRequiredForColumns"));
             
             // 验证数据库名和表名
             if (!IdentifierPattern.IsMatch(dbName))
-                throw new ArgumentException($"Invalid database name format: {dbName}", nameof(dbName));
+                throw new ArgumentException(DbProviderMessages.Text(_localizer, "db.databaseNameInvalid", dbName), nameof(dbName));
             if (!IdentifierPattern.IsMatch(tableName))
-                throw new ArgumentException($"Invalid table name format: {tableName}", nameof(tableName));
+                throw new ArgumentException(DbProviderMessages.Text(_localizer, "db.tableNameInvalid", tableName), nameof(tableName));
             
             return $@"
                 SELECT

@@ -167,11 +167,7 @@ namespace DTSoftServerApp.Middleware
             }
             catch (InvalidOperationException ex)
             {
-                var localizer = context.RequestServices.GetRequiredService<IAppLocalizer>();
-                var message = ex.Message.StartsWith("授权异常", StringComparison.Ordinal) ||
-                              ex.Message.StartsWith("License error", StringComparison.OrdinalIgnoreCase)
-                    ? ex.Message
-                    : localizer.Format("license.unauthorized", ex.Message);
+                var message = ex.Message;
 
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;
                 context.Response.ContentType = "application/json";

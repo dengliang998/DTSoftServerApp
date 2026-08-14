@@ -343,8 +343,8 @@ public class LanguageApp(
             {
                 ItemId = YitterHelper.NewId(),
                 LanguageCode = "zh-CN",
-                LanguageName = "简体中文",
-                NativeName = "简体中文",
+                LanguageName = localizer["language.zhCn"],
+                NativeName = localizer["language.zhCnNative"],
                 IsEnabled = true,
                 IsDefault = true,
                 Sort = 10
@@ -442,11 +442,11 @@ public class LanguageApp(
             : defaultLanguage;
     }
 
-    private static string GetBuiltInLanguageName(string languageCode) =>
-        languageCode.Equals("en-US", StringComparison.OrdinalIgnoreCase) ? "English" : "简体中文";
+    private string GetBuiltInLanguageName(string languageCode) =>
+        languageCode.Equals("en-US", StringComparison.OrdinalIgnoreCase) ? "English" : localizer["language.zhCn"];
 
-    private static string GetBuiltInNativeName(string languageCode) =>
-        languageCode.Equals("en-US", StringComparison.OrdinalIgnoreCase) ? "English" : "简体中文";
+    private string GetBuiltInNativeName(string languageCode) =>
+        languageCode.Equals("en-US", StringComparison.OrdinalIgnoreCase) ? "English" : localizer["language.zhCnNative"];
 
     private static Dictionary<string, string?> ParseValues(string? valuesJson)
     {

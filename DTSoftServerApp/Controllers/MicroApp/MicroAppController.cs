@@ -1,7 +1,7 @@
 using DTSoft.AppService.MicroApp;
 using DTSoft.AppService.Localization;
 using DTSoft.Models.Parameter.MicroApp;
-using DTSoftServerApp.Helpers;
+using DTSoftServerApp.Extensions;
 
 namespace DTSoftServerApp.Controllers.MicroApp
 {
@@ -12,7 +12,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
     /// <param name="localizer"></param>
     [Authorize]
     [ApiController]
-    [Tags("微应用")]
+    [Tags("Micro App")]
     [Route("api/[controller]")]
     public class MicroAppController(MicroConfigApp microConfigApp, IAppLocalizer localizer) : ControllerBase
     {
@@ -64,7 +64,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 // 验证参数
                 if (!ModelState.IsValid)
                 {
-                    var errors = ModelStateLocalizationHelper.GetLocalizedErrors(ModelState, localizer);
+                    var errors = ModelState.GetErrorMessages();
                     return Ok(new { success = false, msg = string.Join(";", errors.DefaultIfEmpty(localizer["common.argumentMissing"])) });
                 }
 
@@ -100,7 +100,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 // 验证参数
                 if (!ModelState.IsValid)
                 {
-                    var errors = ModelStateLocalizationHelper.GetLocalizedErrors(ModelState, localizer);
+                    var errors = ModelState.GetErrorMessages();
                     return Ok(new { success = false, msg = string.Join(";", errors.DefaultIfEmpty(localizer["common.argumentMissing"])) });
                 }
 
@@ -136,7 +136,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 // 验证参数
                 if (!ModelState.IsValid)
                 {
-                    var errors = ModelStateLocalizationHelper.GetLocalizedErrors(ModelState, localizer);
+                    var errors = ModelState.GetErrorMessages();
                     return Ok(new { success = false, msg = string.Join(";", errors.DefaultIfEmpty(localizer["common.argumentMissing"])) });
                 }
 

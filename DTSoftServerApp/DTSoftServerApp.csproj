@@ -37,4 +37,8 @@
       <_ContentIncludedByDefault Remove="wwwroot\static\js\chunk-vendors.9308a2db.js.map" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="Logs/" />
+    </ItemGroup>
+
 </Project>

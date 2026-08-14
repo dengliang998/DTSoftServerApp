@@ -6,7 +6,7 @@ namespace DTSoftServerApp.Controllers.Dictionary;
 
 [Authorize]
 [ApiController]
-[Tags("数据字典")]
+[Tags("Dictionary")]
 [Route("api/[controller]/[action]")]
 public class DictionaryController(DictionaryApp dictionaryApp, IAppLocalizer localizer) : ControllerBase
 {

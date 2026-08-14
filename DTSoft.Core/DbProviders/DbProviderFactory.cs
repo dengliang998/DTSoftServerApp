@@ -1,4 +1,5 @@
 using System.Reflection;
+using DTSoft.Core.Localization;
 
 namespace DTSoft.Core.DbProviders
 {
@@ -20,29 +21,29 @@ namespace DTSoft.Core.DbProviders
             }
         }
 
-        public static IDbProvider Create(string? providerName, string? databaseName = null)
+        public static IDbProvider Create(string? providerName, string? databaseName = null, ITextLocalizer? localizer = null)
         {
             if (string.IsNullOrEmpty(providerName))
             {
-                throw new ArgumentException(DbProviderMessages.Text("db.providerRequired"));
+                throw new ArgumentException(DbProviderMessages.Text(localizer, "db.providerRequired"));
             }
         
             var provider = providerName.ToLower();
         
             if (_providerTypes.TryGetValue(provider, out var exactType))
             {
-                return (IDbProvider)Activator.CreateInstance(exactType, databaseName)!;
+                return (IDbProvider)Activator.CreateInstance(exactType, databaseName, localizer)!;
             }
         
             foreach (var kvp in _providerTypes)
             {
                 if (provider.Contains(kvp.Key))
                 {
-                    return (IDbProvider)Activator.CreateInstance(kvp.Value, databaseName)!;
+                    return (IDbProvider)Activator.CreateInstance(kvp.Value, databaseName, localizer)!;
                 }
             }
         
-            throw new NotSupportedException(DbProviderMessages.Text("db.providerUnsupported", providerName, string.Join(", ", _providerTypes.Keys)));
+            throw new NotSupportedException(DbProviderMessages.Text(localizer, "db.providerUnsupported", providerName, string.Join(", ", _providerTypes.Keys)));
         }
 
         public static IEnumerable<string> GetSupportedProviders() => _providerTypes.Keys.OrderBy(k => k);

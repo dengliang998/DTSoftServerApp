@@ -105,4 +105,823 @@
   <data name="login.captchaValid" xml:space="preserve">
     <value>验证码校验通过</value>
   </data>
+  <data name="auth.captchaSuccess" xml:space="preserve">
+    <value>获取验证码成功</value>
+  </data>
+  <data name="auth.loginKeySuccess" xml:space="preserve">
+    <value>获取登录加密公钥成功</value>
+  </data>
+  <data name="auth.userDisabled" xml:space="preserve">
+    <value>用户账号不存在或已禁用</value>
+  </data>
+  <data name="common.argumentMissing" xml:space="preserve">
+    <value>参数不能为空</value>
+  </data>
+  <data name="common.querySuccess" xml:space="preserve">
+    <value>查询成功</value>
+  </data>
+  <data name="common.fetchSuccess" xml:space="preserve">
+    <value>获取成功</value>
+  </data>
+  <data name="common.fetchFailed" xml:space="preserve">
+    <value>获取失败</value>
+  </data>
+  <data name="common.addSuccess" xml:space="preserve">
+    <value>添加成功</value>
+  </data>
+  <data name="common.addFailed" xml:space="preserve">
+    <value>添加失败</value>
+  </data>
+  <data name="common.updateSuccess" xml:space="preserve">
+    <value>更新成功</value>
+  </data>
+  <data name="common.updateFailed" xml:space="preserve">
+    <value>更新失败</value>
+  </data>
+  <data name="common.deleteSuccess" xml:space="preserve">
+    <value>删除成功</value>
+  </data>
+  <data name="common.deleteFailed" xml:space="preserve">
+    <value>删除失败</value>
+  </data>
+  <data name="common.executeSuccess" xml:space="preserve">
+    <value>执行成功</value>
+  </data>
+  <data name="common.executeFailed" xml:space="preserve">
+    <value>执行失败</value>
+  </data>
+  <data name="common.createSuccess" xml:space="preserve">
+    <value>创建成功</value>
+  </data>
+  <data name="common.createFailed" xml:space="preserve">
+    <value>创建失败</value>
+  </data>
+  <data name="common.operationFailed" xml:space="preserve">
+    <value>操作失败</value>
+  </data>
+  <data name="common.notFound" xml:space="preserve">
+    <value>未找到对应数据</value>
+  </data>
+  <data name="common.exists" xml:space="preserve">
+    <value>已存在</value>
+  </data>
+  <data name="common.required" xml:space="preserve">
+    <value>不能为空</value>
+  </data>
+  <data name="common.invalid" xml:space="preserve">
+    <value>格式不正确</value>
+  </data>
+  <data name="common.enabled" xml:space="preserve">
+    <value>已启用</value>
+  </data>
+  <data name="common.disabled" xml:space="preserve">
+    <value>已禁用</value>
+  </data>
+  <data name="common.noData" xml:space="preserve">
+    <value>没有可处理的数据</value>
+  </data>
+  <data name="common.uploadExcel" xml:space="preserve">
+    <value>请上传Excel文件</value>
+  </data>
+  <data name="common.fileFormatInvalid" xml:space="preserve">
+    <value>文件格式不正确，请上传Excel文件(.xlsx或.xls)</value>
+  </data>
+  <data name="esb.connectionCodeExists" xml:space="preserve">
+    <value>连接编码已存在</value>
+  </data>
+  <data name="esb.connectionNotFound" xml:space="preserve">
+    <value>未找到指定的 ESB 服务连接</value>
+  </data>
+  <data name="esb.connectionInUse" xml:space="preserve">
+    <value>该连接已被 ESB 数据源使用，不能删除</value>
+  </data>
+  <data name="esb.onlyDatabaseTestSupported" xml:space="preserve">
+    <value>当前版本仅支持测试数据库连接</value>
+  </data>
+  <data name="esb.enabledConnectionNotFound" xml:space="preserve">
+    <value>未找到启用的 ESB 服务连接</value>
+  </data>
+  <data name="esb.connectionStringRequired" xml:space="preserve">
+    <value>数据库连接字符串不能为空</value>
+  </data>
+  <data name="esb.webApiConfigRequired" xml:space="preserve">
+    <value>WebApi 配置不能为空</value>
+  </data>
+  <data name="esb.serviceTypeUnsupported" xml:space="preserve">
+    <value>不支持的服务连接类型</value>
+  </data>
+  <data name="esb.dbTypeRequired" xml:space="preserve">
+    <value>数据库类型不能为空</value>
+  </data>
+  <data name="esb.defaultSystemDb" xml:space="preserve">
+    <value>默认系统库</value>
+  </data>
+  <data name="esb.systemDbRemark" xml:space="preserve">
+    <value>使用当前系统数据库连接</value>
+  </data>
+  <data name="esb.deletedConnection" xml:space="preserve">
+    <value>已删除连接</value>
+  </data>
+  <data name="esb.dataSourceNotFound" xml:space="preserve">
+    <value>未找到指定的 ESB 数据源</value>
+  </data>
+  <data name="esb.dataSourceCodeExists" xml:space="preserve">
+    <value>数据源编码已存在</value>
+  </data>
+  <data name="esb.dataSourceCodeRequired" xml:space="preserve">
+    <value>数据源编码不能为空</value>
+  </data>
+  <data name="esb.dataSourceEnabledNotFound" xml:space="preserve">
+    <value>未找到启用的 ESB 数据源</value>
+  </data>
+  <data name="esb.onlySqlDataSourceSupported" xml:space="preserve">
+    <value>当前版本仅支持 SQL 数据源</value>
+  </data>
+  <data name="esb.queryModeOnly" xml:space="preserve">
+    <value>ESB 数据源仅支持查询模式</value>
+  </data>
+  <data name="esb.sqlRequiresDatabaseConnection" xml:space="preserve">
+    <value>SQL 数据源只能绑定数据库服务连接</value>
+  </data>
+  <data name="esb.selectOnly" xml:space="preserve">
+    <value>ESB 数据源仅允许 SELECT 查询</value>
+  </data>
+  <data name="esb.multiStatementNotAllowed" xml:space="preserve">
+    <value>ESB 数据源不允许多语句 SQL</value>
+  </data>
+  <data name="esb.sqlUnsafe" xml:space="preserve">
+    <value>SQL 包含非查询操作或高风险关键字</value>
+  </data>
+  <data name="esb.sqlParameterUndeclared" xml:space="preserve">
+    <value>SQL 参数未声明：{0}</value>
+  </data>
+  <data name="esb.sqlRequired" xml:space="preserve">
+    <value>SQL 不能为空</value>
+  </data>
+  <data name="esb.parameterRequired" xml:space="preserve">
+    <value>参数 {0} 不能为空</value>
+  </data>
+  <data name="esb.parameterNumber" xml:space="preserve">
+    <value>参数 {0} 必须是数字</value>
+  </data>
+  <data name="esb.parameterBoolean" xml:space="preserve">
+    <value>参数 {0} 必须是布尔值</value>
+  </data>
+  <data name="esb.parameterDateTime" xml:space="preserve">
+    <value>参数 {0} 必须是日期时间</value>
+  </data>
+  <data name="micro.configNotFound" xml:space="preserve">
+    <value>未找到对应的微应用配置</value>
+  </data>
+  <data name="micro.modelNameExists" xml:space="preserve">
+    <value>模型名称已存在，请使用其他模型名称</value>
+  </data>
+  <data name="micro.pathExists" xml:space="preserve">
+    <value>微应用路径已存在，请使用其他路径</value>
+  </data>
+  <data name="micro.modelImmutable" xml:space="preserve">
+    <value>数据模型创建后不允许修改</value>
+  </data>
+  <data name="micro.createNotSupported" xml:space="preserve">
+    <value>该配置不支持新增操作</value>
+  </data>
+  <data name="micro.updateNotSupported" xml:space="preserve">
+    <value>该配置不支持更新操作</value>
+  </data>
+  <data name="micro.deleteNotSupported" xml:space="preserve">
+    <value>该配置不支持删除操作</value>
+  </data>
+  <data name="micro.batchDeleteNotSupported" xml:space="preserve">
+    <value>该配置不支持批量删除操作</value>
+  </data>
+  <data name="micro.importNotSupported" xml:space="preserve">
+    <value>该配置不支持导入操作</value>
+  </data>
+  <data name="micro.exportNotSupported" xml:space="preserve">
+    <value>该配置不支持导出操作</value>
+  </data>
+  <data name="micro.dataNotFound" xml:space="preserve">
+    <value>数据不存在</value>
+  </data>
+  <data name="micro.selectDeleteData" xml:space="preserve">
+    <value>请选择要删除的数据</value>
+  </data>
+  <data name="micro.noDataToExport" xml:space="preserve">
+    <value>没有可导出的数据</value>
+  </data>
+  <data name="micro.uploadExcel" xml:space="preserve">
+    <value>请上传Excel文件</value>
+  </data>
+  <data name="micro.excelFormatInvalid" xml:space="preserve">
+    <value>文件格式不正确，请上传Excel文件(.xlsx或.xls)</value>
+  </data>
+  <data name="micro.batchDeleteSuccess" xml:space="preserve">
+    <value>删除成功，共删除 {0} 条数据</value>
+  </data>
+  <data name="micro.importSuccess" xml:space="preserve">
+    <value>导入完成！成功: {0}, 失败: {1}</value>
+  </data>
+  <data name="micro.importSuccessWithError" xml:space="preserve">
+    <value>导入完成！成功: {0}, 失败: {1}, 错误详情: {2}</value>
+  </data>
+  <data name="micro.importFailed" xml:space="preserve">
+    <value>导入失败</value>
+  </data>
+  <data name="micro.exportFailed" xml:space="preserve">
+    <value>导出失败</value>
+  </data>
+  <data name="micro.queryFailed" xml:space="preserve">
+    <value>查询失败</value>
+  </data>
+  <data name="micro.detailFailed" xml:space="preserve">
+    <value>获取详情失败</value>
+  </data>
+  <data name="micro.addFailed" xml:space="preserve">
+    <value>添加失败</value>
+  </data>
+  <data name="micro.updateFailed" xml:space="preserve">
+    <value>更新失败</value>
+  </data>
+  <data name="micro.deleteFailed" xml:space="preserve">
+    <value>删除失败</value>
+  </data>
+  <data name="integration.keyName" xml:space="preserve">
+    <value>KeyName</value>
+  </data>
+  <data name="integration.keyNameRequired" xml:space="preserve">
+    <value>KeyName不能为空</value>
+  </data>
+  <data name="integration.keyNameNotFound" xml:space="preserve">
+    <value>KeyName不存在</value>
+  </data>
+  <data name="integration.apiKeyNotFound" xml:space="preserve">
+    <value>API密钥不存在</value>
+  </data>
+  <data name="integration.apiKeyDisabled" xml:space="preserve">
+    <value>API密钥已禁用</value>
+  </data>
+  <data name="integration.apiKeyExpired" xml:space="preserve">
+    <value>API密钥已过期</value>
+  </data>
+  <data name="integration.secretKeyInvalid" xml:space="preserve">
+    <value>SecretKey错误</value>
+  </data>
+  <data name="integration.validateSuccess" xml:space="preserve">
+    <value>验证成功</value>
+  </data>
+  <data name="integration.tokenSuccess" xml:space="preserve">
+    <value>获取Token成功</value>
+  </data>
+  <data name="integration.ssoTokenSuccess" xml:space="preserve">
+    <value>获取SSO Token成功</value>
+  </data>
+  <data name="integration.tokenFailed" xml:space="preserve">
+    <value>获取Token失败</value>
+  </data>
+  <data name="esb.connectionTestSuccess" xml:space="preserve">
+    <value>连接成功</value>
+  </data>
+  <data name="esb.connectionTestFailed" xml:space="preserve">
+    <value>连接失败</value>
+  </data>
+  <data name="micro.subTableNotConfigured" xml:space="preserve">
+    <value>子表{0}未配置</value>
+  </data>
+  <data name="micro.subTableMinRows" xml:space="preserve">
+    <value>{0}不能少于{1}行</value>
+  </data>
+  <data name="micro.subTableMaxRows" xml:space="preserve">
+    <value>{0}不能超过{1}行</value>
+  </data>
+  <data name="micro.rowPrefix" xml:space="preserve">
+    <value>{0}第{1}行</value>
+  </data>
+  <data name="micro.fieldRequired" xml:space="preserve">
+    <value>{0}不能为空</value>
+  </data>
+  <data name="micro.fieldMinLength" xml:space="preserve">
+    <value>{0}不能少于{1}个字符</value>
+  </data>
+  <data name="micro.fieldMaxLength" xml:space="preserve">
+    <value>{0}不能超过{1}个字符</value>
+  </data>
+  <data name="micro.fieldMinValue" xml:space="preserve">
+    <value>{0}不能小于{1}</value>
+  </data>
+  <data name="micro.fieldMaxValue" xml:space="preserve">
+    <value>{0}不能大于{1}</value>
+  </data>
+  <data name="micro.fieldFormatInvalid" xml:space="preserve">
+    <value>{0}格式不正确</value>
+  </data>
+  <data name="micro.modelNameRequired" xml:space="preserve">
+    <value>ModelName不能为空</value>
+  </data>
+  <data name="micro.subTableNameRequired" xml:space="preserve">
+    <value>子表名称不能为空</value>
+  </data>
+  <data name="micro.invalidTableName" xml:space="preserve">
+    <value>表名格式不正确</value>
+  </data>
+  <data name="micro.invalidColumnName" xml:space="preserve">
+    <value>字段 {0} 格式不正确</value>
+  </data>
+  <data name="micro.idColumnMissing" xml:space="preserve">
+    <value>微应用表 {0} 缺少 {1} 主键列，请重新初始化表结构后重试。</value>
+  </data>
+  <data name="micro.idColumnIdentity" xml:space="preserve">
+    <value>微应用表 {0} 的 {1} 是自增列，当前微应用使用雪花ID，不需要数据库自增。请将 {1} 调整为 BIGINT 非自增主键，或在确认无历史数据后重新初始化该微应用表。</value>
+  </data>
+  <data name="jwt.signingKeyMissing" xml:space="preserve">
+    <value>JWT 签名密钥未配置，请配置 Authentication:Jwt:SigningKey。</value>
+  </data>
+  <data name="log.actionLogNotInitialized" xml:space="preserve">
+    <value>SysActionLog 数据集未初始化</value>
+  </data>
+  <data name="integration.secretKeyRequired" xml:space="preserve">
+    <value>SecretKey不能为空</value>
+  </data>
+  <data name="integration.userAccountRequired" xml:space="preserve">
+    <value>UserAccount不能为空</value>
+  </data>
+  <data name="integration.itemIdRequired" xml:space="preserve">
+    <value>ItemId不能为空</value>
+  </data>
+  <data name="integration.keyNameMaxLength" xml:space="preserve">
+    <value>KeyName长度不能超过100个字符</value>
+  </data>
+  <data name="integration.descriptionMaxLength" xml:space="preserve">
+    <value>描述长度不能超过500个字符</value>
+  </data>
+  <data name="dictionary.codeInvalid" xml:space="preserve">
+    <value>字典编码只能包含英文、数字、下划线、中划线和冒号，且以英文开头</value>
+  </data>
+  <data name="micro.modelNameInvalid" xml:space="preserve">
+    <value>模型名称只能包含英文、数字和下划线，且以英文开头</value>
+  </data>
+  <data name="micro.pathInvalid" xml:space="preserve">
+    <value>微应用路径只能包含英文、数字、中划线和下划线，且以英文开头</value>
+  </data>
+  <data name="micro.fieldNameInvalid" xml:space="preserve">
+    <value>字段标识只能包含英文、数字和下划线，且以英文开头</value>
+  </data>
+  <data name="micro.subTableNameInvalid" xml:space="preserve">
+    <value>子表标识只能包含英文、数字和下划线，且以英文开头</value>
+  </data>
+  <data name="esb.connectionCodeInvalid" xml:space="preserve">
+    <value>连接编码只能包含英文、数字、中划线和下划线，且以英文开头</value>
+  </data>
+  <data name="esb.dataSourceCodeInvalid" xml:space="preserve">
+    <value>数据源编码只能包含英文、数字、中划线和下划线，且以英文开头</value>
+  </data>
+  <data name="esb.parameterNameInvalid" xml:space="preserve">
+    <value>参数名只能包含英文、数字和下划线，且以英文开头</value>
+  </data>
+  <data name="common.systemError" xml:space="preserve">
+    <value>系统错误</value>
+  </data>
+  <data name="common.dataSourceNotInitialized" xml:space="preserve">
+    <value>数据访问对象未初始化</value>
+  </data>
+  <data name="common.operationSuccess" xml:space="preserve">
+    <value>操作成功</value>
+  </data>
+  <data name="common.saveSuccess" xml:space="preserve">
+    <value>保存成功</value>
+  </data>
+  <data name="attachment.fileNotRead" xml:space="preserve">
+    <value>未读取到文件</value>
+  </data>
+  <data name="attachment.fileIdRequired" xml:space="preserve">
+    <value>FileID 不能为空</value>
+  </data>
+  <data name="attachment.fileIdNotFound" xml:space="preserve">
+    <value>FileID 不存在</value>
+  </data>
+  <data name="attachment.fileMissing" xml:space="preserve">
+    <value>文件不存在或已被删除</value>
+  </data>
+  <data name="attachment.notFound" xml:space="preserve">
+    <value>未找到相关文件信息</value>
+  </data>
+  <data name="ou.notFound" xml:space="preserve">
+    <value>部门不存在</value>
+  </data>
+  <data name="ou.nameRequired" xml:space="preserve">
+    <value>部门名称不能为空</value>
+  </data>
+  <data name="ou.codeExists" xml:space="preserve">
+    <value>部门编码已存在</value>
+  </data>
+  <data name="ou.hasChildren" xml:space="preserve">
+    <value>存在子部门，不能删除</value>
+  </data>
+  <data name="ou.hasMembers" xml:space="preserve">
+    <value>部门中存在成员，请先移除成员</value>
+  </data>
+  <data name="role.notFound" xml:space="preserve">
+    <value>角色不存在</value>
+  </data>
+  <data name="role.nameRequired" xml:space="preserve">
+    <value>角色名称不能为空</value>
+  </data>
+  <data name="role.exists" xml:space="preserve">
+    <value>角色：{0}已存在</value>
+  </data>
+  <data name="role.systemRoleNotModifiable" xml:space="preserve">
+    <value>系统角色不能修改</value>
+  </data>
+  <data name="role.duplicateOrUnchanged" xml:space="preserve">
+    <value>角色名称重复或者未更新</value>
+  </data>
+  <data name="role.systemRoleNotDeletable" xml:space="preserve">
+    <value>系统角色不能删除</value>
+  </data>
+  <data name="role.administratorOperationForbidden" xml:space="preserve">
+    <value>操作失败：Administrator 不允许操作</value>
+  </data>
+  <data name="menu.userAccRequired" xml:space="preserve">
+    <value>参数 UserAcc 不能为空</value>
+  </data>
+  <data name="menu.pageCodeRequired" xml:space="preserve">
+    <value>PageCode 不能为空</value>
+  </data>
+  <data name="menu.urlNotFound" xml:space="preserve">
+    <value>配置错误，未找到菜单地址</value>
+  </data>
+  <data name="menu.parentIdInvalid" xml:space="preserve">
+    <value>pid 错误</value>
+  </data>
+  <data name="menu.idInvalid" xml:space="preserve">
+    <value>MenuID 错误</value>
+  </data>
+  <data name="menu.hasChildren" xml:space="preserve">
+    <value>操作失败：该菜单下存在子级菜单，请先删除子级菜单</value>
+  </data>
+  <data name="user.userAccInvalid" xml:space="preserve">
+    <value>参数 UserAcc 错误</value>
+  </data>
+  <data name="user.accountInvalid" xml:space="preserve">
+    <value>账号错误</value>
+  </data>
+  <data name="user.notFound" xml:space="preserve">
+    <value>用户不存在</value>
+  </data>
+  <data name="user.accountPasswordRequired" xml:space="preserve">
+    <value>账号和密码不能为空</value>
+  </data>
+  <data name="user.exists" xml:space="preserve">
+    <value>账号：{0}已存在</value>
+  </data>
+  <data name="user.supervisorMaintenanceFailed" xml:space="preserve">
+    <value>主管维护失败</value>
+  </data>
+  <data name="user.roleMembersMustBeRemoved" xml:space="preserve">
+    <value>必须先删除角色成员才能删除</value>
+  </data>
+  <data name="user.noAvatar" xml:space="preserve">
+    <value>用户没有头像</value>
+  </data>
+  <data name="user.passwordResetSuccess" xml:space="preserve">
+    <value>密码重置成功</value>
+  </data>
+  <data name="user.modifyPasswordRequired" xml:space="preserve">
+    <value>修改失败，必要字段不能为空！</value>
+  </data>
+  <data name="user.oldPasswordInvalid" xml:space="preserve">
+    <value>旧密码错误！</value>
+  </data>
+  <data name="user.passwordUpdateSuccess" xml:space="preserve">
+    <value>密码修改成功</value>
+  </data>
+  <data name="user.supervisorCannotSelf" xml:space="preserve">
+    <value>直属主管不能是自己</value>
+  </data>
+  <data name="user.supervisorNotFound" xml:space="preserve">
+    <value>直属主管账号不存在：{0}</value>
+  </data>
+  <data name="user.supervisorCycleDetected" xml:space="preserve">
+    <value>设置失败：会形成循环的主管链</value>
+  </data>
+  <data name="permission.noDelete" xml:space="preserve">
+    <value>该账号没有删除权限</value>
+  </data>
+  <data name="permission.noAddMember" xml:space="preserve">
+    <value>该账号没有添加成员权限</value>
+  </data>
+  <data name="permission.noResetPassword" xml:space="preserve">
+    <value>该账号没有重置密码权限</value>
+  </data>
+  <data name="dictionary.codeAndNameRequired" xml:space="preserve">
+    <value>字典编码和名称不能为空</value>
+  </data>
+  <data name="dictionary.codeExists" xml:space="preserve">
+    <value>字典编码已存在</value>
+  </data>
+  <data name="dictionary.notFound" xml:space="preserve">
+    <value>字典不存在</value>
+  </data>
+  <data name="dictionary.sortDataRequired" xml:space="preserve">
+    <value>排序数据不能为空</value>
+  </data>
+  <data name="dictionary.sortDataDuplicate" xml:space="preserve">
+    <value>排序数据存在重复项</value>
+  </data>
+  <data name="dictionary.sortDataChanged" xml:space="preserve">
+    <value>排序数据已变更，请刷新后重试</value>
+  </data>
+  <data name="dictionary.sortSaveSuccess" xml:space="preserve">
+    <value>排序保存成功</value>
+  </data>
+  <data name="dictionary.codeRequired" xml:space="preserve">
+    <value>字典编码不能为空</value>
+  </data>
+  <data name="dictionary.itemFieldsRequired" xml:space="preserve">
+    <value>字典编码、标签和值不能为空</value>
+  </data>
+  <data name="dictionary.valueExists" xml:space="preserve">
+    <value>字典值已存在</value>
+  </data>
+  <data name="dictionary.itemNotFound" xml:space="preserve">
+    <value>字典项不存在</value>
+  </data>
+  <data name="auth.encryptionParamsRequired" xml:space="preserve">
+    <value>登录加密参数不能为空</value>
+  </data>
+  <data name="auth.encryptionKeyExpired" xml:space="preserve">
+    <value>登录加密公钥已失效，请刷新页面后重试</value>
+  </data>
+  <data name="auth.encryptionContentInvalid" xml:space="preserve">
+    <value>{0} 加密内容格式错误</value>
+  </data>
+  <data name="auth.decryptionFailed" xml:space="preserve">
+    <value>{0} 解密失败</value>
+  </data>
+  <data name="license.fileInvalid" xml:space="preserve">
+    <value>许可文件无效。</value>
+  </data>
+  <data name="license.fileNotFound" xml:space="preserve">
+    <value>许可证文件不存在。</value>
+  </data>
+  <data name="license.invalid" xml:space="preserve">
+    <value>许可证无效。</value>
+  </data>
+  <data name="license.unauthorized" xml:space="preserve">
+    <value>授权异常：{0}</value>
+  </data>
+  <data name="license.expired" xml:space="preserve">
+    <value>许可证已过期。</value>
+  </data>
+  <data name="license.idRequired" xml:space="preserve">
+    <value>许可证编号不能为空。</value>
+  </data>
+  <data name="license.productMismatch" xml:space="preserve">
+    <value>许可证产品不匹配。</value>
+  </data>
+  <data name="license.typeRequired" xml:space="preserve">
+    <value>许可证授权类型不能为空。</value>
+  </data>
+  <data name="license.signatureRequired" xml:space="preserve">
+    <value>许可证签名不能为空。</value>
+  </data>
+  <data name="license.signatureInvalid" xml:space="preserve">
+    <value>许可证签名验证失败。</value>
+  </data>
+  <data name="license.temporaryTypeInvalid" xml:space="preserve">
+    <value>临时许可证不能包含 MAC 地址授权或并发用户数授权。</value>
+  </data>
+  <data name="license.temporaryExpireRequired" xml:space="preserve">
+    <value>临时许可证缺少过期时间。</value>
+  </data>
+  <data name="license.officialMacRequired" xml:space="preserve">
+    <value>正式许可证缺少 MAC 地址授权。</value>
+  </data>
+  <data name="license.officialConcurrentRequired" xml:space="preserve">
+    <value>正式许可证缺少并发用户数授权。</value>
+  </data>
+  <data name="license.macRequired" xml:space="preserve">
+    <value>MAC 地址授权缺少授权地址。</value>
+  </data>
+  <data name="license.macNotAllowed" xml:space="preserve">
+    <value>本机 MAC 地址不在许可证授权范围内。</value>
+  </data>
+  <data name="license.concurrentInvalid" xml:space="preserve">
+    <value>并发用户授权数量必须是 -1 或大于 0 的整数。</value>
+  </data>
+  <data name="license.errorStatus" xml:space="preserve">
+    <value>授权异常</value>
+  </data>
+  <data name="license.authorizedStatus" xml:space="preserve">
+    <value>已授权</value>
+  </data>
+  <data name="license.temporaryTypeName" xml:space="preserve">
+    <value>临时授权</value>
+  </data>
+  <data name="license.officialTypeName" xml:space="preserve">
+    <value>正式授权</value>
+  </data>
+  <data name="license.unlimitedTime" xml:space="preserve">
+    <value>不限时间</value>
+  </data>
+  <data name="license.notControlled" xml:space="preserve">
+    <value>不控制</value>
+  </data>
+  <data name="license.unlimited" xml:space="preserve">
+    <value>不限制</value>
+  </data>
+  <data name="sysConfig.databaseAlreadyInitialized" xml:space="preserve">
+    <value>数据库已存在，跳过初始化！</value>
+  </data>
+  <data name="sysConfig.initializationSuccess" xml:space="preserve">
+    <value>系统初始化成功！</value>
+  </data>
+  <data name="sysConfig.databaseConnectionFailed" xml:space="preserve">
+    <value>数据库连接失败！</value>
+  </data>
+  <data name="openApi.description" xml:space="preserve">
+    <value>引擎服务接口</value>
+  </data>
+  <data name="startup.licenseUnauthorizedEffect" xml:space="preserve">
+    <value>服务继续启动，接口调用会返回授权异常</value>
+  </data>
+  <data name="startup.urlsUnbound" xml:space="preserve">
+    <value>未绑定</value>
+  </data>
+  <data name="startup.apiDocsDisabled" xml:space="preserve">
+    <value>未启用</value>
+  </data>
+  <data name="startup.applicationStartFailed" xml:space="preserve">
+    <value>应用程序启动失败</value>
+  </data>
+  <data name="log.queueFull" xml:space="preserve">
+    <value>日志队列已满，审计日志未入库：{ActionName} {RequestType} {ClientIP}</value>
+  </data>
+  <data name="log.queueProcessError" xml:space="preserve">
+    <value>日志队列处理异常</value>
+  </data>
+  <data name="log.queueFlushSuccess" xml:space="preserve">
+    <value>成功写入 {Count} 条日志</value>
+  </data>
+  <data name="log.queueFlushFailed" xml:space="preserve">
+    <value>批量写入日志失败，共 {Count} 条</value>
+  </data>
+  <data name="log.queueFlushRemaining" xml:space="preserve">
+    <value>服务停止前写入剩余的 {Count} 条日志</value>
+  </data>
+  <data name="micro.tableExistsCheckFailed" xml:space="preserve">
+    <value>检查表存在性时出错：{TableName}</value>
+  </data>
+  <data name="micro.parentIdLabel" xml:space="preserve">
+    <value>主表ID</value>
+  </data>
+  <data name="micro.rowNoLabel" xml:space="preserve">
+    <value>行号</value>
+  </data>
+  <data name="exception.unhandledLog" xml:space="preserve">
+    <value>未处理的异常：{RequestPath}, 用户：{UserAccount}</value>
+  </data>
+  <data name="plugin.serviceRegistrationFailed" xml:space="preserve">
+    <value>插件服务注册失败：{0}</value>
+  </data>
+  <data name="plugin.dependencyMustBeHostLoaded" xml:space="preserve">
+    <value>插件依赖的 {0} 必须由宿主加载，不能从插件目录单独加载。</value>
+  </data>
+  <data name="plugin.directReferenceForbidden" xml:space="preserve">
+    <value>插件只能直接引用 {0}、{1}、{2}，不能直接引用 {3}。</value>
+  </data>
+  <data name="excel.fieldRequiredNull" xml:space="preserve">
+    <value>字段 '{0}' 是必填项，不能为null或空</value>
+  </data>
+  <data name="excel.validationFailed" xml:space="preserve">
+    <value>数据验证失败: {0}</value>
+  </data>
+  <data name="excel.fieldMinLength" xml:space="preserve">
+    <value>字段 '{0}' 不能少于{1}个字符</value>
+  </data>
+  <data name="excel.fieldMaxLength" xml:space="preserve">
+    <value>字段 '{0}' 不能超过{1}个字符</value>
+  </data>
+  <data name="excel.fieldMinValue" xml:space="preserve">
+    <value>字段 '{0}' 不能小于{1}</value>
+  </data>
+  <data name="excel.fieldMaxValue" xml:space="preserve">
+    <value>字段 '{0}' 不能大于{1}</value>
+  </data>
+  <data name="excel.fieldFormatInvalid" xml:space="preserve">
+    <value>字段 '{0}' 格式不正确</value>
+  </data>
+  <data name="sysConfig.loginBackgroundImage" xml:space="preserve">
+    <value>登录背景图</value>
+  </data>
+  <data name="sysConfig.browserTabLogo" xml:space="preserve">
+    <value>Tab 小 Logo</value>
+  </data>
+  <data name="user.systemAdministrator" xml:space="preserve">
+    <value>系统管理员</value>
+  </data>
+  <data name="menu.platform" xml:space="preserve">
+    <value>开发平台</value>
+  </data>
+  <data name="menu.organization" xml:space="preserve">
+    <value>组织权限</value>
+  </data>
+  <data name="menu.systemManagement" xml:space="preserve">
+    <value>系统管理</value>
+  </data>
+  <data name="menu.applicationIntegration" xml:space="preserve">
+    <value>应用集成</value>
+  </data>
+  <data name="menu.welcome" xml:space="preserve">
+    <value>首页</value>
+  </data>
+  <data name="menu.organizationList" xml:space="preserve">
+    <value>组织架构</value>
+  </data>
+  <data name="menu.roles" xml:space="preserve">
+    <value>角色管理</value>
+  </data>
+  <data name="menu.systemSettings" xml:space="preserve">
+    <value>系统设置</value>
+  </data>
+  <data name="menu.systemInfo" xml:space="preserve">
+    <value>系统信息</value>
+  </data>
+  <data name="menu.onlineUsers" xml:space="preserve">
+    <value>在线用户</value>
+  </data>
+  <data name="menu.systemLog" xml:space="preserve">
+    <value>系统日志</value>
+  </data>
+  <data name="menu.dictionaries" xml:space="preserve">
+    <value>数据字典</value>
+  </data>
+  <data name="menu.attachments" xml:space="preserve">
+    <value>附件管理</value>
+  </data>
+  <data name="menu.menus" xml:space="preserve">
+    <value>菜单维护</value>
+  </data>
+  <data name="menu.languages" xml:space="preserve">
+    <value>多语言配置</value>
+  </data>
+  <data name="menu.microAppConfig" xml:space="preserve">
+    <value>微应用配置</value>
+  </data>
+  <data name="menu.esbConnections" xml:space="preserve">
+    <value>ESB 服务连接</value>
+  </data>
+  <data name="menu.esbDataSources" xml:space="preserve">
+    <value>ESB 数据源</value>
+  </data>
+  <data name="menu.apiKeys" xml:space="preserve">
+    <value>第三方集成</value>
+  </data>
+  <data name="language.zhCn" xml:space="preserve">
+    <value>简体中文</value>
+  </data>
+  <data name="language.zhCnNative" xml:space="preserve">
+    <value>简体中文</value>
+  </data>
+  <data name="user.accountRequired" xml:space="preserve">
+    <value>账号不能为空</value>
+  </data>
+  <data name="user.accountDisabled" xml:space="preserve">
+    <value>请求失败，账号已被禁用！</value>
+  </data>
+  <data name="db.providerRequired" xml:space="preserve">
+    <value>数据库提供程序名称不能为空。请指定 'MySql'、'SqlServer'、'Oracle' 或 'PostgreSql'。</value>
+  </data>
+  <data name="db.providerUnsupported" xml:space="preserve">
+    <value>不支持的数据库提供程序：{0}。支持的类型包括：{1}</value>
+  </data>
+  <data name="db.typeRequired" xml:space="preserve">
+    <value>数据库类型不能为空</value>
+  </data>
+  <data name="db.typeUnsupported" xml:space="preserve">
+    <value>不支持的数据库类型：{0}</value>
+  </data>
+  <data name="db.tableNameRequired" xml:space="preserve">
+    <value>表名不能为空。</value>
+  </data>
+  <data name="db.columnNameRequired" xml:space="preserve">
+    <value>列名不能为空。</value>
+  </data>
+  <data name="db.tableNameInvalid" xml:space="preserve">
+    <value>表名格式无效：{0}</value>
+  </data>
+  <data name="db.columnNameInvalid" xml:space="preserve">
+    <value>列名格式无效：{0}</value>
+  </data>
+  <data name="db.databaseNameInvalid" xml:space="preserve">
+    <value>数据库名称格式无效：{0}</value>
+  </data>
+  <data name="db.databaseNameRequiredForTableExists" xml:space="preserve">
+    <value>MySqlProvider 检查表是否存在时需要数据库名称。</value>
+  </data>
+  <data name="db.databaseNameRequiredForColumns" xml:space="preserve">
+    <value>MySqlProvider 查询表字段时需要数据库名称。</value>
+  </data>
+  <data name="db.connectionStringMissing" xml:space="preserve">
+    <value>数据库连接字符串未配置，请配置 ConnectionStrings:Default。</value>
+  </data>
 </root>

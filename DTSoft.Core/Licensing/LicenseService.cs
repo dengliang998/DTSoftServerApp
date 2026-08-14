@@ -1,13 +1,13 @@
+using DTSoft.Core.Localization;
 using System.Net.NetworkInformation;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Globalization;
 
 namespace DTSoft.Core.Licensing;
 
-public sealed class LicenseService
+public sealed class LicenseService(ITextLocalizer localizer)
 {
     private const string LicenseFileName = "license.lic";
     private const string ProductName = "DTSoft";
@@ -38,33 +38,7 @@ public sealed class LicenseService
     public LicenseDocument Current { get; private set; } = new();
     public bool IsValid { get; private set; }
     public string? ErrorMessage { get; private set; }
-    private static string L(string key, params object[] args)
-    {
-        var english = CultureInfo.CurrentUICulture.Name.StartsWith("en", StringComparison.OrdinalIgnoreCase);
-        var text = key switch
-        {
-            "license.fileNotFound" => english ? "License file does not exist." : "许可证文件不存在。",
-            "license.fileInvalid" => english ? "License file is invalid." : "许可文件无效。",
-            "license.invalid" => english ? "License is invalid." : "许可证无效。",
-            "license.unauthorized" => english ? "License error: {0}" : "授权异常：{0}",
-            "license.expired" => english ? "License has expired." : "许可证已过期。",
-            "license.idRequired" => english ? "License ID is required." : "许可证编号不能为空。",
-            "license.productMismatch" => english ? "License product does not match." : "许可证产品不匹配。",
-            "license.typeRequired" => english ? "License authorization type is required." : "许可证授权类型不能为空。",
-            "license.signatureRequired" => english ? "License signature is required." : "许可证签名不能为空。",
-            "license.signatureInvalid" => english ? "License signature verification failed." : "许可证签名验证失败。",
-            "license.temporaryTypeInvalid" => english ? "Temporary licenses cannot contain MAC address or concurrent user authorization." : "临时许可证不能包含 MAC 地址授权或并发用户数授权。",
-            "license.temporaryExpireRequired" => english ? "Temporary license is missing an expiration time." : "临时许可证缺少过期时间。",
-            "license.officialMacRequired" => english ? "Official license is missing MAC address authorization." : "正式许可证缺少 MAC 地址授权。",
-            "license.officialConcurrentRequired" => english ? "Official license is missing concurrent user authorization." : "正式许可证缺少并发用户数授权。",
-            "license.macRequired" => english ? "MAC address authorization is missing authorized addresses." : "MAC 地址授权缺少授权地址。",
-            "license.macNotAllowed" => english ? "This machine's MAC address is not within the licensed range." : "本机 MAC 地址不在许可证授权范围内。",
-            "license.concurrentInvalid" => english ? "Concurrent user authorization count must be -1 or an integer greater than 0." : "并发用户授权数量必须是 -1 或大于 0 的整数。",
-            _ => key
-        };
-
-        return args.Length == 0 ? text : string.Format(CultureInfo.CurrentUICulture, text, args);
-    }
+    private string L(string key, params object[] args) => args.Length == 0 ? localizer[key] : localizer.Format(key, args);
 
     public string LicensePath => Path.Combine(AppContext.BaseDirectory, LicenseFileName);
 

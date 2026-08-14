@@ -8,7 +8,7 @@ namespace DTSoftServerApp.Controllers.Log;
 /// </summary>
 [Authorize]
 [ApiController]
-[Tags("日志管理")]
+[Tags("Log Management")]
 [Route("api/[controller]/[action]")]
 public class LogController : Controller
 {

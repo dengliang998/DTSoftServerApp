@@ -1,4 +1,5 @@
 using DTSoft.Models.Parameter.MicroApp;
+using DTSoft.Core.Localization;
 using System.Text.RegularExpressions;
 
 namespace DTSoft.Core.Common.Excel
@@ -118,7 +119,10 @@ namespace DTSoft.Core.Common.Excel
         /// <param name="fileStream">Excel文件流</param>
         /// <param name="fields">字段配置列表</param>
         /// <returns>转换后的数据列表</returns>
-        public static async Task<List<Dictionary<string, object>>> ImportAndValidateDataAsync(Stream fileStream, List<FieldConfig> fields)
+        public static async Task<List<Dictionary<string, object>>> ImportAndValidateDataAsync(
+            Stream fileStream,
+            List<FieldConfig> fields,
+            ITextLocalizer? localizer = null)
         {
             // 首先导入数据
             var importedData = await ImportFromExcelWithFieldConfigAsync(fileStream, fields);
@@ -140,14 +144,14 @@ namespace DTSoft.Core.Common.Excel
                         // 验证必填字段
                         if (fieldConfig.Required && (string.IsNullOrEmpty(kvp.Value.ToString()) || (kvp.Value.ToString() == "")))
                         {
-                            validationErrors.Add($"字段 '{fieldConfig.Label}' 是必填项，不能为null或空");
+                            validationErrors.Add(Text(localizer, "excel.fieldRequiredNull", fieldConfig.Label));
                             isValid = false;
                         }
                         else
                         {
                             // 根据字段类型转换值
                             var convertedValue = ConvertValueByFieldType(kvp.Value, fieldConfig.FieldType);
-                            var fieldErrors = ValidateFieldValue(convertedValue, fieldConfig);
+                            var fieldErrors = ValidateFieldValue(convertedValue, fieldConfig, localizer);
                             if (fieldErrors.Count > 0)
                             {
                                 validationErrors.AddRange(fieldErrors);
@@ -166,7 +170,7 @@ namespace DTSoft.Core.Common.Excel
                 // 如果验证失败，抛出异常
                 if (!isValid)
                 {
-                    throw new Exception($"数据验证失败: {string.Join("; ", validationErrors)}");
+                    throw new Exception(Text(localizer, "excel.validationFailed", string.Join("; ", validationErrors)));
                 }
 
                 validatedData.Add(validatedRow!);
@@ -265,40 +269,53 @@ namespace DTSoft.Core.Common.Excel
         /// <param name="value">字段值。</param>
         /// <param name="fieldConfig">字段配置。</param>
         /// <returns>校验错误列表。</returns>
-        private static List<string> ValidateFieldValue(object? value, FieldConfig fieldConfig)
+        private static List<string> ValidateFieldValue(
+            object? value,
+            FieldConfig fieldConfig,
+            ITextLocalizer? localizer)
         {
             var errors = new List<string>();
             var stringValue = value?.ToString() ?? string.Empty;
 
             if (fieldConfig.MinLength.HasValue && stringValue.Length < fieldConfig.MinLength.Value)
             {
-                errors.Add($"字段 '{fieldConfig.Label}' 不能少于{fieldConfig.MinLength.Value}个字符");
+                errors.Add(Text(localizer, "excel.fieldMinLength", fieldConfig.Label, fieldConfig.MinLength.Value));
             }
 
             if (fieldConfig.MaxLength.HasValue && stringValue.Length > fieldConfig.MaxLength.Value)
             {
-                errors.Add($"字段 '{fieldConfig.Label}' 不能超过{fieldConfig.MaxLength.Value}个字符");
+                errors.Add(Text(localizer, "excel.fieldMaxLength", fieldConfig.Label, fieldConfig.MaxLength.Value));
             }
 
             if (fieldConfig.FieldType == "number" && decimal.TryParse(stringValue, out var numberValue))
             {
                 if (fieldConfig.MinValue.HasValue && numberValue < fieldConfig.MinValue.Value)
                 {
-                    errors.Add($"字段 '{fieldConfig.Label}' 不能小于{fieldConfig.MinValue.Value}");
+                    errors.Add(Text(localizer, "excel.fieldMinValue", fieldConfig.Label, fieldConfig.MinValue.Value));
                 }
 
                 if (fieldConfig.MaxValue.HasValue && numberValue > fieldConfig.MaxValue.Value)
                 {
-                    errors.Add($"字段 '{fieldConfig.Label}' 不能大于{fieldConfig.MaxValue.Value}");
+                    errors.Add(Text(localizer, "excel.fieldMaxValue", fieldConfig.Label, fieldConfig.MaxValue.Value));
                 }
             }
 
             if (!string.IsNullOrWhiteSpace(fieldConfig.Pattern) && !IsRegexMatch(stringValue, fieldConfig.Pattern))
             {
-                errors.Add($"字段 '{fieldConfig.Label}' 格式不正确");
+                errors.Add(Text(localizer, "excel.fieldFormatInvalid", fieldConfig.Label));
             }
 
             return errors;
+        }
+
+        private static string Text(ITextLocalizer? localizer, string key, params object[] args)
+        {
+            if (localizer is null)
+            {
+                return args.Length == 0 ? key : string.Format(key, args);
+            }
+
+            return args.Length == 0 ? localizer[key] : localizer.Format(key, args);
         }
 
         /// <summary>

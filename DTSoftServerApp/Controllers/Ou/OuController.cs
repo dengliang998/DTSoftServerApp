@@ -10,7 +10,7 @@ namespace DTSoftServerApp.Controllers.Ou;
 /// </summary>
 [Authorize]
 [ApiController]
-[Tags("部门管理")]
+[Tags("Organization Unit")]
 [Route("api/[controller]/[action]")]
 public class OuController : Controller
 {

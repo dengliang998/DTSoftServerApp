@@ -9,7 +9,7 @@ namespace DTSoftServerApp.Controllers.Menu;
 /// </summary>
 [Authorize]
 [ApiController]
-[Tags("菜单管理")]
+[Tags("Menu Management")]
 [Route("api/[controller]/[action]")]
 public class MenuController : Controller
 {

@@ -13,7 +13,7 @@ namespace DTSoftServerApp.Controllers.Auth
     ///授权认证接口
     /// </summary>
     [ApiController]
-    [Tags("授权认证")]
+    [Tags("Authentication")]
     [Route("api/[controller]")]
     public class AuthController(
         JwtService jwtService,

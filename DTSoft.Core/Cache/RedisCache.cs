@@ -175,5 +175,5 @@ public class RedisCache(ILogger<RedisCache> logger, ConfigHelper configHelper) :
         }
     }
 
-    private void LogError(Exception ex) => logger.LogError(new EventId(8099), $"Redis错误：异常：{ex.Message}");
+    private void LogError(Exception ex) => logger.LogError(new EventId(8099), ex, "RedisError");
 }

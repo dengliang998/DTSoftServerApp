@@ -6,7 +6,7 @@ namespace DTSoftServerApp.Controllers.DTSystem;
 
 [Authorize]
 [ApiController]
-[Tags("系统管理")]
+[Tags("System Management")]
 [Route("api/[controller]/[action]")]
 public class LanguageController(LanguageApp languageApp) : ControllerBase
 {

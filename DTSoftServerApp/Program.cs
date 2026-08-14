@@ -3,7 +3,6 @@ using DTSoft.AppService.SysConfig;
 using DTSoft.Core.Common;
 using DTSoft.Core.Licensing;
 using DTSoftServerApp.Extensions;
-using DTSoftServerApp.Helpers;
 using DTSoftServerApp.Middleware;
 using DTSoftServerApp.Plugins;
 using DTSoftServerApp.Services;
@@ -17,6 +16,7 @@ using System.Reflection;
 var builder = WebApplication.CreateBuilder(args);
 var entryAssembly = Assembly.GetEntryAssembly();
 var applicationVersion = entryAssembly?.GetName().Version?.ToString() ?? "-";
+var startupLocalizer = new AppLocalizer();
 
 // =========================================
 // 服务配置区域
@@ -75,10 +75,7 @@ try
         options.InvalidModelStateResponseFactory = context =>
         {
             var localizer = context.HttpContext.RequestServices.GetRequiredService<IAppLocalizer>();
-            var errors = context.ModelState.Values
-                .SelectMany(v => v.Errors)
-                .Select(error => ModelStateLocalizationHelper.Translate(localizer, error.ErrorMessage))
-                .Where(message => !string.IsNullOrWhiteSpace(message))
+            var errors = context.ModelState.GetErrorMessages()
                 .ToArray();
 
             var message = errors.Length == 0
@@ -102,7 +99,7 @@ try
             {
                 Title = "DTSoft Server API",
                 Version = "V1",
-                Description = "引擎服务接口"
+                Description = startupLocalizer["openApi.description"]
             };
             return Task.CompletedTask;
         });
@@ -128,11 +125,13 @@ try
     if (licenseService.IsValid)
     {
         var license = licenseService.Current;
-        var licenseTypes = license.HasType(LicenseType.Temporary) ? "临时授权" : "正式授权";
-        var expireAt = license.ExpireAt?.ToString("yyyy-MM-dd") ?? "不限时间";
+        var licenseTypes = license.HasType(LicenseType.Temporary)
+            ? startupLocalizer["license.temporaryTypeName"]
+            : startupLocalizer["license.officialTypeName"];
+        var expireAt = license.ExpireAt?.ToString("yyyy-MM-dd") ?? startupLocalizer["license.unlimitedTime"];
         var maxConcurrentUsers = license.HasType(LicenseType.Temporary)
-            ? "不控制"
-            : license.MaxConcurrentUsers == -1 ? "不限制" : license.MaxConcurrentUsers?.ToString() ?? "-";
+            ? startupLocalizer["license.notControlled"]
+            : license.MaxConcurrentUsers == -1 ? startupLocalizer["license.unlimited"] : license.MaxConcurrentUsers?.ToString() ?? "-";
 
         Log.Information(
             """
@@ -155,9 +154,10 @@ try
             [LICENSE]
               Status  : Invalid
               Message : {Message}
-              Effect  : 服务继续启动，接口调用会返回授权异常
+              Effect  : {Effect}
             """,
-            licenseService.ErrorMessage);
+            licenseService.ErrorMessage,
+            startupLocalizer["startup.licenseUnauthorizedEffect"]);
     }
 
     if (pluginLoadResult.Plugins.Count > 0)
@@ -224,7 +224,7 @@ try
                   Status  : Completed
                   Message : {Message}
                 """,
-                result["Msg"] ?? "系统初始化成功！");
+                result["Msg"] ?? startupLocalizer["sysConfig.initializationSuccess"]);
         }
     }
 
@@ -274,10 +274,10 @@ try
     // 注册应用程序启动完成回调，输出服务启动摘要
     app.Lifetime.ApplicationStarted.Register(() =>
     {
-        var listeningUrls = app.Urls.Count > 0 ? string.Join(", ", app.Urls) : "未绑定";
+        var listeningUrls = app.Urls.Count > 0 ? string.Join(", ", app.Urls) : startupLocalizer["startup.urlsUnbound"];
         var apiDocUrls = scalarEnabled
             ? string.Join(", ", app.Urls.Select(url => $"{url.TrimEnd('/')}/apidoc"))
-            : "未启用";
+            : startupLocalizer["startup.apiDocsDisabled"];
         var versionText = applicationVersion == "-" ? "-" : $"v{applicationVersion}";
         var startedAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
@@ -306,7 +306,7 @@ try
 }
 catch (Exception ex)
 {
-    Log.Fatal(ex, "[STARTUP] 应用程序启动失败");
+    Log.Fatal(ex, "[STARTUP] {Message}", startupLocalizer["startup.applicationStartFailed"]);
 }
 finally
 {

@@ -17,7 +17,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
     /// </summary>
     [Authorize]
     [ApiController]
-    [Tags("微应用数据")]
+    [Tags("Micro App Data")]
     public class MicroApiController : ControllerBase
     {
         private readonly SysDbContext _context;
@@ -869,7 +869,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
 
                 // 读取并解析Excel文件
                 await using var fileStream = file.OpenReadStream();
-                var importedData = await ExcelImportHelper.ImportAndValidateDataAsync(fileStream, fields!);
+                var importedData = await ExcelImportHelper.ImportAndValidateDataAsync(fileStream, fields!, _localizer);
 
                 // 批量插入数据（优化性能）
                 var successCount = 0;

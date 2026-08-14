@@ -5,22 +5,23 @@ using DTSoft.Core.DbProviders;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using DTSoft.Core.Localization;
 
 namespace DTSoft.Core.DbProviders
 {
     public static class DatabaseConfigurationService
     {
-        public static void ConfigureDatabase(IServiceCollection services, IConfiguration configuration)
+        public static void ConfigureDatabase(IServiceCollection services, IConfiguration configuration, ITextLocalizer? localizer = null)
         {
             var dbType = configuration[AppConfigurationKeys.Database.Provider]
                 ?? configuration[AppConfigurationKeys.Database.LegacyProvider]
                 ?? "SqlServer";
             var connectionString = configuration.GetConnectionString(AppConfigurationKeys.Database.ConnectionName)
                 ?? configuration.GetConnectionString(AppConfigurationKeys.Database.LegacyConnectionName)
-                ?? throw new InvalidOperationException(DbProviderMessages.Text("db.connectionStringMissing"));
+                ?? throw new InvalidOperationException(DbProviderMessages.Text(localizer, "db.connectionStringMissing"));
 
             var databaseName = ExtractDatabaseName(connectionString);
-            var provider = DbProviderFactory.Create(dbType, databaseName);
+            var provider = DbProviderFactory.Create(dbType, databaseName, localizer);
             provider.ConfigureDbContext(services, connectionString);
         }
 

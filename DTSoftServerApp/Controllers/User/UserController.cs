@@ -13,7 +13,7 @@ namespace DTSoftServerApp.Controllers.User;
 /// <param name="user"></param>
 [Authorize]
 [ApiController]
-[Tags("用户管理")]
+[Tags("User Management")]
 [Route("api/[controller]/[action]")]
 public class UserController(UserApp user) : Controller
 {

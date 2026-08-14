@@ -27,8 +27,10 @@ namespace DTSoftServerApp.Middleware
             }
             catch (Exception ex)
             {
+                var localizer = context.RequestServices.GetRequiredService<IAppLocalizer>();
+
                 // 记录异常日志
-                _logger.LogError(ex, "未处理的异常：{RequestPath}, 用户：{UserAccount}", 
+                _logger.LogError(ex, localizer["exception.unhandledLog"],
                     context.Request.Path, 
                     context.User?.Identity?.Name ?? "Anonymous");
 
@@ -86,19 +88,29 @@ namespace DTSoftServerApp.Middleware
                 KeyNotFoundException => (StatusCodes.Status404NotFound, "resource.notFound"),
                 
                 // 409 Conflict - 资源冲突
-                InvalidOperationException when exception.Message.Contains("已存在") => 
+                InvalidOperationException when IsConflictException(exception) =>
                     (StatusCodes.Status409Conflict, "resource.conflict"),
                 
                 // 408 Request Timeout - 请求超时
                 TimeoutException => (StatusCodes.Status408RequestTimeout, "request.timeout"),
                 
                 // 423 Locked - 资源被锁定
-                InvalidOperationException when exception.Message.Contains("锁定") => 
+                InvalidOperationException when IsLockedException(exception) =>
                     (StatusCodes.Status423Locked, "resource.locked"),
                 
                 // 500 Internal Server Error - 服务器内部错误
                 _ => (StatusCodes.Status500InternalServerError, "system.error")
             };
+        }
+
+        private static bool IsConflictException(Exception exception)
+        {
+            return exception.Message.Contains("already exists", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsLockedException(Exception exception)
+        {
+            return exception.Message.Contains("locked", StringComparison.OrdinalIgnoreCase);
         }
     }
 

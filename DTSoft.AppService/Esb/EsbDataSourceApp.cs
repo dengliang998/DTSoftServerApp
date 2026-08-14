@@ -203,11 +203,11 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
         var serviceConnection = await connectionApp.GetEnabledConnection(entity.ConnectionId);
         var dbType = serviceConnection == null
             ? connectionApp.GetDefaultDbType()
-            : EsbDbConnectionFactory.NormalizeDbType(serviceConnection.DbType);
+            : EsbDbConnectionFactory.NormalizeDbType(serviceConnection.DbType, localizer);
 
         var connection = serviceConnection == null
             ? context.Database.GetDbConnection()
-            : EsbDbConnectionFactory.CreateConnection(serviceConnection.DbType, serviceConnection.ConnectionString!);
+            : EsbDbConnectionFactory.CreateConnection(serviceConnection.DbType, serviceConnection.ConnectionString!, localizer);
 
         var ownsConnection = serviceConnection != null;
         var shouldClose = connection.State != ConnectionState.Open;
@@ -219,7 +219,7 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
         try
         {
             await using var command = connection.CreateCommand();
-            var parameterPrefix = EsbDbConnectionFactory.GetParameterPrefix(dbType);
+            var parameterPrefix = EsbDbConnectionFactory.GetParameterPrefix(dbType, localizer);
             command.CommandText = ApplyProviderParameterPrefix(sql, parameterPrefix);
             command.CommandTimeout = NormalizeTimeoutSeconds(entity.TimeoutSeconds);
 

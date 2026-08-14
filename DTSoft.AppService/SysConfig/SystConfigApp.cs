@@ -75,7 +75,7 @@ public class SysConfigApp(
             "1MB",
             LoginImgContentTypes,
             LoginImgExtensions,
-            "登录背景图",
+            localizer["sysConfig.loginBackgroundImage"],
             localizer);
         if (loginImgValidation is not null) return loginImgValidation;
 
@@ -85,7 +85,7 @@ public class SysConfigApp(
             "256KB",
             BrowserLogoContentTypes,
             BrowserLogoExtensions,
-            "Tab 小 Logo",
+            localizer["sysConfig.browserTabLogo"],
             localizer);
         if (browserLogoValidation is not null) return browserLogoValidation;
 
@@ -1032,7 +1032,7 @@ public class SysConfigApp(
         {
             Account = "admin",
             PassWord = Encrypt.HashPassword("admin123"),
-            DisplayName = "系统管理员",
+            DisplayName = localizer["user.systemAdministrator"],
             Disable = false
         };
         dbContext.SysUser.Add(user);
@@ -1071,8 +1071,8 @@ public class SysConfigApp(
             {
                 ItemId = YitterHelper.NewId(),
                 LanguageCode = "zh-CN",
-                LanguageName = "简体中文",
-                NativeName = "简体中文",
+                LanguageName = localizer["language.zhCn"],
+                NativeName = localizer["language.zhCnNative"],
                 IsEnabled = true,
                 IsDefault = true,
                 Sort = 10
@@ -1093,30 +1093,30 @@ public class SysConfigApp(
         var menuList = new List<SysMenu>();
         
         // 一级菜单
-        var platform = new SysMenu { ItemId = YitterHelper.NewId(), Pid = 0, MenuName = "开发平台", I18nKey = "menu.platform", Icon = "Platform", Order = 10, MType = 0 };
-        var organization = new SysMenu { ItemId = YitterHelper.NewId(), Pid = 0, MenuName = "组织权限", I18nKey = "menu.organization", Icon = "UserFilled", Order = 20, MType = 0 };
-        var systemManagement = new SysMenu { ItemId = YitterHelper.NewId(), Pid = 0, MenuName = "系统管理", I18nKey = "menu.systemManagement", Icon = "Setting", Order = 30, MType = 0 };
-        var applicationIntegration = new SysMenu { ItemId = YitterHelper.NewId(), Pid = 0, MenuName = "应用集成", I18nKey = "menu.applicationIntegration", Icon = "Connection", Order = 40, MType = 0 };
+        var platform = new SysMenu { ItemId = YitterHelper.NewId(), Pid = 0, MenuName = localizer["menu.platform"], I18nKey = "menu.platform", Icon = "Platform", Order = 10, MType = 0 };
+        var organization = new SysMenu { ItemId = YitterHelper.NewId(), Pid = 0, MenuName = localizer["menu.organization"], I18nKey = "menu.organization", Icon = "UserFilled", Order = 20, MType = 0 };
+        var systemManagement = new SysMenu { ItemId = YitterHelper.NewId(), Pid = 0, MenuName = localizer["menu.systemManagement"], I18nKey = "menu.systemManagement", Icon = "Setting", Order = 30, MType = 0 };
+        var applicationIntegration = new SysMenu { ItemId = YitterHelper.NewId(), Pid = 0, MenuName = localizer["menu.applicationIntegration"], I18nKey = "menu.applicationIntegration", Icon = "Connection", Order = 40, MType = 0 };
         
         // 二级菜单
-        var platformHome = new SysMenu { ItemId = YitterHelper.NewId(), Pid = platform.ItemId, MenuName = "首页", I18nKey = "menu.welcome", MenuPath = "welcome", Icon = "House", Order = 10, MType = 0 };
+        var platformHome = new SysMenu { ItemId = YitterHelper.NewId(), Pid = platform.ItemId, MenuName = localizer["menu.welcome"], I18nKey = "menu.welcome", MenuPath = "welcome", Icon = "House", Order = 10, MType = 0 };
 
-        var organizationList = new SysMenu { ItemId = YitterHelper.NewId(), Pid = organization.ItemId, MenuName = "组织架构", I18nKey = "menu.organizationList", MenuPath = "user/organization", Icon = "User", Order = 10, MType = 0 };
-        var roleList = new SysMenu { ItemId = YitterHelper.NewId(), Pid = organization.ItemId, MenuName = "角色管理", I18nKey = "menu.roles", MenuPath = "role/rolesmenu", Icon = "UserFilled", Order = 20, MType = 0 };
+        var organizationList = new SysMenu { ItemId = YitterHelper.NewId(), Pid = organization.ItemId, MenuName = localizer["menu.organizationList"], I18nKey = "menu.organizationList", MenuPath = "user/organization", Icon = "User", Order = 10, MType = 0 };
+        var roleList = new SysMenu { ItemId = YitterHelper.NewId(), Pid = organization.ItemId, MenuName = localizer["menu.roles"], I18nKey = "menu.roles", MenuPath = "role/rolesmenu", Icon = "UserFilled", Order = 20, MType = 0 };
 
-        var systemSettingsPage = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemManagement.ItemId, MenuName = "系统设置", I18nKey = "menu.systemSettings", MenuPath = "common/systemsettings", Icon = "Setting", Order = 10, MType = 0 };
-        var systemInfoPage = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemManagement.ItemId, MenuName = "系统信息", I18nKey = "menu.systemInfo", MenuPath = "common/systeminfo", Icon = "Monitor", Order = 20, MType = 0 };
-        var onlineUsers = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemManagement.ItemId, MenuName = "在线用户", I18nKey = "menu.onlineUsers", MenuPath = "common/onlineusers", Icon = "User", Order = 30, MType = 0 };
-        var systemLog = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemManagement.ItemId, MenuName = "系统日志", I18nKey = "menu.systemLog", MenuPath = "log/logaction", Icon = "List", Order = 40, MType = 0 };
-        var dictionaryManagement = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemManagement.ItemId, MenuName = "数据字典", I18nKey = "menu.dictionaries", MenuPath = "common/dictionaries", Icon = "Collection", Order = 50, MType = 0 };
-        var attachmentList = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemManagement.ItemId, MenuName = "附件管理", I18nKey = "menu.attachments", MenuPath = "attachment/attachmentlist", Icon = "Paperclip", Order = 60, MType = 0 };
-        var menuMaintenance = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemManagement.ItemId, MenuName = "菜单维护", I18nKey = "menu.menus", MenuPath = "common/menus", Icon = "Menu", Order = 70, MType = 0 };
-        var languageConfig = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemManagement.ItemId, MenuName = "多语言配置", I18nKey = "menu.languages", MenuPath = "common/languages", Icon = "Tickets", Order = 80, MType = 0 };
+        var systemSettingsPage = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemManagement.ItemId, MenuName = localizer["menu.systemSettings"], I18nKey = "menu.systemSettings", MenuPath = "common/systemsettings", Icon = "Setting", Order = 10, MType = 0 };
+        var systemInfoPage = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemManagement.ItemId, MenuName = localizer["menu.systemInfo"], I18nKey = "menu.systemInfo", MenuPath = "common/systeminfo", Icon = "Monitor", Order = 20, MType = 0 };
+        var onlineUsers = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemManagement.ItemId, MenuName = localizer["menu.onlineUsers"], I18nKey = "menu.onlineUsers", MenuPath = "common/onlineusers", Icon = "User", Order = 30, MType = 0 };
+        var systemLog = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemManagement.ItemId, MenuName = localizer["menu.systemLog"], I18nKey = "menu.systemLog", MenuPath = "log/logaction", Icon = "List", Order = 40, MType = 0 };
+        var dictionaryManagement = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemManagement.ItemId, MenuName = localizer["menu.dictionaries"], I18nKey = "menu.dictionaries", MenuPath = "common/dictionaries", Icon = "Collection", Order = 50, MType = 0 };
+        var attachmentList = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemManagement.ItemId, MenuName = localizer["menu.attachments"], I18nKey = "menu.attachments", MenuPath = "attachment/attachmentlist", Icon = "Paperclip", Order = 60, MType = 0 };
+        var menuMaintenance = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemManagement.ItemId, MenuName = localizer["menu.menus"], I18nKey = "menu.menus", MenuPath = "common/menus", Icon = "Menu", Order = 70, MType = 0 };
+        var languageConfig = new SysMenu { ItemId = YitterHelper.NewId(), Pid = systemManagement.ItemId, MenuName = localizer["menu.languages"], I18nKey = "menu.languages", MenuPath = "common/languages", Icon = "Tickets", Order = 80, MType = 0 };
 
-        var appConfig = new SysMenu { ItemId = YitterHelper.NewId(), Pid = applicationIntegration.ItemId, MenuName = "微应用配置", I18nKey = "menu.microAppConfig", MenuPath = "MicroApp/MicroApiConfig", Icon = "Coin", Order = 10, MType = 0 };
-        var esbServiceConnections = new SysMenu { ItemId = YitterHelper.NewId(), Pid = applicationIntegration.ItemId, MenuName = "ESB 服务连接", I18nKey = "menu.esbConnections", MenuPath = "common/esb-connections", Icon = "Link", Order = 20, MType = 0 };
-        var esbDataSources = new SysMenu { ItemId = YitterHelper.NewId(), Pid = applicationIntegration.ItemId, MenuName = "ESB 数据源", I18nKey = "menu.esbDataSources", MenuPath = "common/esb", Icon = "Connection", Order = 30, MType = 0 };
-        var apiKeyManagement = new SysMenu { ItemId = YitterHelper.NewId(), Pid = applicationIntegration.ItemId, MenuName = "第三方集成", I18nKey = "menu.apiKeys", MenuPath = "integration/api-keys", Icon = "Key", Order = 40, MType = 0 };
+        var appConfig = new SysMenu { ItemId = YitterHelper.NewId(), Pid = applicationIntegration.ItemId, MenuName = localizer["menu.microAppConfig"], I18nKey = "menu.microAppConfig", MenuPath = "MicroApp/MicroApiConfig", Icon = "Coin", Order = 10, MType = 0 };
+        var esbServiceConnections = new SysMenu { ItemId = YitterHelper.NewId(), Pid = applicationIntegration.ItemId, MenuName = localizer["menu.esbConnections"], I18nKey = "menu.esbConnections", MenuPath = "common/esb-connections", Icon = "Link", Order = 20, MType = 0 };
+        var esbDataSources = new SysMenu { ItemId = YitterHelper.NewId(), Pid = applicationIntegration.ItemId, MenuName = localizer["menu.esbDataSources"], I18nKey = "menu.esbDataSources", MenuPath = "common/esb", Icon = "Connection", Order = 30, MType = 0 };
+        var apiKeyManagement = new SysMenu { ItemId = YitterHelper.NewId(), Pid = applicationIntegration.ItemId, MenuName = localizer["menu.apiKeys"], I18nKey = "menu.apiKeys", MenuPath = "integration/api-keys", Icon = "Key", Order = 40, MType = 0 };
         
         menuList.AddRange([platform, platformHome, organization, organizationList, roleList, systemManagement, systemSettingsPage, systemInfoPage, onlineUsers, systemLog, dictionaryManagement, attachmentList, menuMaintenance, languageConfig, applicationIntegration, appConfig, esbServiceConnections, esbDataSources, apiKeyManagement]);
         

@@ -1,3 +1,4 @@
+using DTSoft.AppService.Localization;
 using System.Reflection;
 using System.Runtime.Loader;
 
@@ -8,6 +9,7 @@ internal sealed class DynamicWebApiPluginLoadContext : AssemblyLoadContext
     private const string PluginAbstractionsAssemblyName = "DTSoft.Plugin.Abstractions";
     private const string AppServiceAssemblyName = "DTSoft.AppService";
     private const string ModelsAssemblyName = "DTSoft.Models";
+    private static readonly AppLocalizer Localizer = new();
 
     private readonly AssemblyDependencyResolver _resolver;
 
@@ -23,14 +25,19 @@ internal sealed class DynamicWebApiPluginLoadContext : AssemblyLoadContext
         {
             return TryGetDefaultAssembly(assemblyName.Name)
                    ?? throw new FileLoadException(
-                       $"插件依赖的 {assemblyName.Name} 必须由宿主加载，不能从插件目录单独加载。",
+                       Localizer.Format("plugin.dependencyMustBeHostLoaded", assemblyName.Name ?? string.Empty),
                        assemblyName.Name);
         }
 
         if (IsBlockedDtSoftAssembly(assemblyName.Name))
         {
             throw new FileLoadException(
-                $"插件只能直接引用 {PluginAbstractionsAssemblyName}、{AppServiceAssemblyName}、{ModelsAssemblyName}，不能直接引用 {assemblyName.Name}。",
+                Localizer.Format(
+                    "plugin.directReferenceForbidden",
+                    PluginAbstractionsAssemblyName,
+                    AppServiceAssemblyName,
+                    ModelsAssemblyName,
+                    assemblyName.Name ?? string.Empty),
                 assemblyName.Name);
         }
 

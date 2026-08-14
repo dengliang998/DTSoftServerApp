@@ -18,6 +18,7 @@ using DTSoft.Plugin.Abstractions;
 using DTSoft.Core.Interfaces;
 using DTSoft.Core.DbContexts;
 using DTSoft.Core.Licensing;
+using DTSoft.Core.Localization;
 using DTSoftServerApp.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
@@ -69,7 +70,9 @@ namespace DTSoftServerApp.Extensions
             services.AddScoped<EsbServiceConnectionApp>();
             services.AddScoped<EsbDataSourceApp>();
             services.AddScoped<LanguageApp>();
-            services.AddSingleton<IAppLocalizer, AppLocalizer>();
+            services.AddSingleton<AppLocalizer>();
+            services.AddSingleton<IAppLocalizer>(sp => sp.GetRequiredService<AppLocalizer>());
+            services.AddSingleton<ITextLocalizer>(sp => sp.GetRequiredService<AppLocalizer>());
 
             // 其他服务
             services.AddScoped<JwtService>();
@@ -173,7 +176,7 @@ namespace DTSoftServerApp.Extensions
 
             #region 数据库配置
 
-            DatabaseConfigurationService.ConfigureDatabase(services, configuration);
+            DatabaseConfigurationService.ConfigureDatabase(services, configuration, new AppLocalizer());
             services.AddScoped<IPluginDbContext>(sp => sp.GetRequiredService<SysDbContext>());
 
             #endregion
@@ -249,7 +252,7 @@ namespace DTSoftServerApp.Extensions
             //         {
             //             success = false,
             //             StateCode = (int)DTSoft.Models.Enums.ErrorCode.GeneralError,
-            //             Msg = "请求过于频繁，请稍后再试",
+            //             Msg = "Too many requests. Please try again later.",
             //             Data = (object?)null
             //         };
             //

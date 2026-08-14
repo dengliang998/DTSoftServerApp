@@ -738,4 +738,190 @@
   <data name="sysConfig.databaseConnectionFailed" xml:space="preserve">
     <value>Database connection failed.</value>
   </data>
+  <data name="openApi.description" xml:space="preserve">
+    <value>Engine service API.</value>
+  </data>
+  <data name="startup.licenseUnauthorizedEffect" xml:space="preserve">
+    <value>The service will continue to start. API calls will return a license error.</value>
+  </data>
+  <data name="startup.urlsUnbound" xml:space="preserve">
+    <value>Not bound</value>
+  </data>
+  <data name="startup.apiDocsDisabled" xml:space="preserve">
+    <value>Disabled</value>
+  </data>
+  <data name="startup.applicationStartFailed" xml:space="preserve">
+    <value>Application startup failed</value>
+  </data>
+  <data name="log.queueFull" xml:space="preserve">
+    <value>The log queue is full. The audit log was not saved: {ActionName} {RequestType} {ClientIP}</value>
+  </data>
+  <data name="log.queueProcessError" xml:space="preserve">
+    <value>An error occurred while processing the log queue.</value>
+  </data>
+  <data name="log.queueFlushSuccess" xml:space="preserve">
+    <value>Successfully wrote {Count} log entries.</value>
+  </data>
+  <data name="log.queueFlushFailed" xml:space="preserve">
+    <value>Failed to write {Count} log entries.</value>
+  </data>
+  <data name="log.queueFlushRemaining" xml:space="preserve">
+    <value>Writing {Count} remaining log entries before the service stops.</value>
+  </data>
+  <data name="micro.tableExistsCheckFailed" xml:space="preserve">
+    <value>An error occurred while checking whether the table exists: {TableName}</value>
+  </data>
+  <data name="micro.parentIdLabel" xml:space="preserve">
+    <value>Parent ID</value>
+  </data>
+  <data name="micro.rowNoLabel" xml:space="preserve">
+    <value>Row number</value>
+  </data>
+  <data name="exception.unhandledLog" xml:space="preserve">
+    <value>Unhandled exception: {RequestPath}, user: {UserAccount}</value>
+  </data>
+  <data name="plugin.serviceRegistrationFailed" xml:space="preserve">
+    <value>Plugin service registration failed: {0}</value>
+  </data>
+  <data name="plugin.dependencyMustBeHostLoaded" xml:space="preserve">
+    <value>The plugin dependency {0} must be loaded by the host and cannot be loaded separately from the plugin directory.</value>
+  </data>
+  <data name="plugin.directReferenceForbidden" xml:space="preserve">
+    <value>Plugins may directly reference only {0}, {1}, and {2}; they cannot directly reference {3}.</value>
+  </data>
+  <data name="excel.fieldRequiredNull" xml:space="preserve">
+    <value>Field '{0}' is required and cannot be null or empty.</value>
+  </data>
+  <data name="excel.validationFailed" xml:space="preserve">
+    <value>Data validation failed: {0}</value>
+  </data>
+  <data name="excel.fieldMinLength" xml:space="preserve">
+    <value>Field '{0}' cannot be shorter than {1} characters.</value>
+  </data>
+  <data name="excel.fieldMaxLength" xml:space="preserve">
+    <value>Field '{0}' cannot exceed {1} characters.</value>
+  </data>
+  <data name="excel.fieldMinValue" xml:space="preserve">
+    <value>Field '{0}' cannot be less than {1}.</value>
+  </data>
+  <data name="excel.fieldMaxValue" xml:space="preserve">
+    <value>Field '{0}' cannot be greater than {1}.</value>
+  </data>
+  <data name="excel.fieldFormatInvalid" xml:space="preserve">
+    <value>Field '{0}' format is invalid.</value>
+  </data>
+  <data name="sysConfig.loginBackgroundImage" xml:space="preserve">
+    <value>Login background image</value>
+  </data>
+  <data name="sysConfig.browserTabLogo" xml:space="preserve">
+    <value>Browser tab logo</value>
+  </data>
+  <data name="user.systemAdministrator" xml:space="preserve">
+    <value>System administrator</value>
+  </data>
+  <data name="menu.platform" xml:space="preserve">
+    <value>Development platform</value>
+  </data>
+  <data name="menu.organization" xml:space="preserve">
+    <value>Organization and permissions</value>
+  </data>
+  <data name="menu.systemManagement" xml:space="preserve">
+    <value>System management</value>
+  </data>
+  <data name="menu.applicationIntegration" xml:space="preserve">
+    <value>Application integration</value>
+  </data>
+  <data name="menu.welcome" xml:space="preserve">
+    <value>Home</value>
+  </data>
+  <data name="menu.organizationList" xml:space="preserve">
+    <value>Organization structure</value>
+  </data>
+  <data name="menu.roles" xml:space="preserve">
+    <value>Role management</value>
+  </data>
+  <data name="menu.systemSettings" xml:space="preserve">
+    <value>System settings</value>
+  </data>
+  <data name="menu.systemInfo" xml:space="preserve">
+    <value>System information</value>
+  </data>
+  <data name="menu.onlineUsers" xml:space="preserve">
+    <value>Online users</value>
+  </data>
+  <data name="menu.systemLog" xml:space="preserve">
+    <value>System logs</value>
+  </data>
+  <data name="menu.dictionaries" xml:space="preserve">
+    <value>Data dictionaries</value>
+  </data>
+  <data name="menu.attachments" xml:space="preserve">
+    <value>Attachment management</value>
+  </data>
+  <data name="menu.menus" xml:space="preserve">
+    <value>Menu maintenance</value>
+  </data>
+  <data name="menu.languages" xml:space="preserve">
+    <value>Language settings</value>
+  </data>
+  <data name="menu.microAppConfig" xml:space="preserve">
+    <value>Micro app configuration</value>
+  </data>
+  <data name="menu.esbConnections" xml:space="preserve">
+    <value>ESB service connections</value>
+  </data>
+  <data name="menu.esbDataSources" xml:space="preserve">
+    <value>ESB data sources</value>
+  </data>
+  <data name="menu.apiKeys" xml:space="preserve">
+    <value>Third-party integration</value>
+  </data>
+  <data name="language.zhCn" xml:space="preserve">
+    <value>Chinese (Simplified)</value>
+  </data>
+  <data name="language.zhCnNative" xml:space="preserve">
+    <value>简体中文</value>
+  </data>
+  <data name="user.accountRequired" xml:space="preserve">
+    <value>Account is required.</value>
+  </data>
+  <data name="user.accountDisabled" xml:space="preserve">
+    <value>Request failed. The account has been disabled.</value>
+  </data>
+  <data name="db.providerRequired" xml:space="preserve">
+    <value>Database provider name is required. Specify 'MySql', 'SqlServer', 'Oracle', or 'PostgreSql'.</value>
+  </data>
+  <data name="db.providerUnsupported" xml:space="preserve">
+    <value>Unsupported database provider: {0}. Supported types include: {1}</value>
+  </data>
+  <data name="db.typeRequired" xml:space="preserve">
+    <value>Database type is required.</value>
+  </data>
+  <data name="db.typeUnsupported" xml:space="preserve">
+    <value>Unsupported database type: {0}</value>
+  </data>
+  <data name="db.tableNameRequired" xml:space="preserve">
+    <value>Table name cannot be empty.</value>
+  </data>
+  <data name="db.columnNameRequired" xml:space="preserve">
+    <value>Column name cannot be empty.</value>
+  </data>
+  <data name="db.tableNameInvalid" xml:space="preserve">
+    <value>Invalid table name format: {0}</value>
+  </data>
+  <data name="db.columnNameInvalid" xml:space="preserve">
+    <value>Invalid column name format: {0}</value>
+  </data>
+  <data name="db.databaseNameInvalid" xml:space="preserve">
+    <value>Invalid database name format: {0}</value>
+  </data>
+  <data name="db.databaseNameRequiredForTableExists" xml:space="preserve">
+    <value>MySqlProvider requires database name for table existence check.</value>
+  </data>
+  <data name="db.databaseNameRequiredForColumns" xml:space="preserve">
+    <value>MySqlProvider requires database name for table columns query.</value>
+  </data>
+  <data name="db.connectionStringMissing" xml:space="preserve">
+    <value>Database connection string is not configured. Configure ConnectionStrings:Default.</value>
+  </data>
 </root>

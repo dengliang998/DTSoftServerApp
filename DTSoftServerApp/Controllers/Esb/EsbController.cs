@@ -2,7 +2,7 @@ using DTSoft.AppService.Esb;
 using DTSoft.AppService.Localization;
 using DTSoft.Core.Common;
 using DTSoft.Models.Parameter.Esb;
-using DTSoftServerApp.Helpers;
+using DTSoftServerApp.Extensions;
 
 namespace DTSoftServerApp.Controllers.Esb;
 
@@ -80,7 +80,7 @@ public class EsbController(EsbDataSourceApp esbDataSourceApp, EsbServiceConnecti
         {
             if (!ModelState.IsValid || parameter == null)
             {
-                var errors = ModelStateLocalizationHelper.GetLocalizedErrors(ModelState, localizer);
+                var errors = ModelState.GetErrorMessages();
                 return Ok(new { success = false, msg = string.Join(";", errors.DefaultIfEmpty(localizer["common.argumentMissing"])) });
             }
 
@@ -103,7 +103,7 @@ public class EsbController(EsbDataSourceApp esbDataSourceApp, EsbServiceConnecti
         {
             if (!ModelState.IsValid || parameter == null)
             {
-                var errors = ModelStateLocalizationHelper.GetLocalizedErrors(ModelState, localizer);
+                var errors = ModelState.GetErrorMessages();
                 return Ok(new { success = false, msg = string.Join(";", errors.DefaultIfEmpty(localizer["common.argumentMissing"])) });
             }
 
@@ -213,7 +213,7 @@ public class EsbController(EsbDataSourceApp esbDataSourceApp, EsbServiceConnecti
         {
             if (!ModelState.IsValid || parameter == null)
             {
-                var errors = ModelStateLocalizationHelper.GetLocalizedErrors(ModelState, localizer);
+                var errors = ModelState.GetErrorMessages();
                 return Ok(new { success = false, msg = string.Join(";", errors.DefaultIfEmpty(localizer["common.argumentMissing"])) });
             }
 
@@ -236,7 +236,7 @@ public class EsbController(EsbDataSourceApp esbDataSourceApp, EsbServiceConnecti
         {
             if (!ModelState.IsValid || parameter == null)
             {
-                var errors = ModelStateLocalizationHelper.GetLocalizedErrors(ModelState, localizer);
+                var errors = ModelState.GetErrorMessages();
                 return Ok(new { success = false, msg = string.Join(";", errors.DefaultIfEmpty(localizer["common.argumentMissing"])) });
             }
 

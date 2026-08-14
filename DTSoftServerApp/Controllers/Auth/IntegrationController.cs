@@ -10,7 +10,7 @@ namespace DTSoftServerApp.Controllers.Integration
     /// 集成API密钥接口
     /// </summary>
     [ApiController]
-    [Tags("集成API密钥")]
+    [Tags("Integration API Keys")]
     [Route("api/integration/api-keys")]
     public class IntegrationController(
         JwtService jwtService,

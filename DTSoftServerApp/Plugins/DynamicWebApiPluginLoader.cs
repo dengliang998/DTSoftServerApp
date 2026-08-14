@@ -1,3 +1,4 @@
+using DTSoft.AppService.Localization;
 using DTSoft.Plugin.Abstractions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
@@ -41,6 +42,7 @@ public static class DynamicWebApiPluginLoader
         var assemblies = new List<Assembly>();
         var plugins = new List<DynamicWebApiPluginDescriptor>();
         var failures = new List<DynamicWebApiPluginLoadFailure>();
+        var localizer = new AppLocalizer();
 
         foreach (var filePath in pluginFiles)
         {
@@ -90,7 +92,7 @@ public static class DynamicWebApiPluginLoader
                     {
                         failures.Add(new DynamicWebApiPluginLoadFailure(
                             filePath,
-                            $"插件服务注册失败：{pluginType.FullName}",
+                            localizer.Format("plugin.serviceRegistrationFailed", pluginType.FullName ?? pluginType.Name),
                             ex.GetType().FullName));
                     }
                 }

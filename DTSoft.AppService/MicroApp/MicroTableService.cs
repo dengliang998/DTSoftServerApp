@@ -35,7 +35,7 @@ namespace DTSoft.AppService.MicroApp
         {
             _context = context;
             var databaseName = GetDatabaseName();
-            _provider = Core.DbProviders.DbProviderFactory.Create(_context.Database.ProviderName, databaseName);
+            _provider = Core.DbProviders.DbProviderFactory.Create(_context.Database.ProviderName, databaseName, localizer);
             _logger = logger;
             _cache = cache;
             _localizer = localizer;
@@ -188,7 +188,7 @@ namespace DTSoft.AppService.MicroApp
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "检查表存在性时出错：{TableName}", tableName);
+                _logger.LogError(ex, _localizer["micro.tableExistsCheckFailed"], tableName);
                 throw;
             }
             finally
@@ -1557,13 +1557,13 @@ namespace DTSoft.AppService.MicroApp
             };
         }
 
-        private static List<FieldConfig> BuildSubTableFields(SubTableConfig subTable)
+        private List<FieldConfig> BuildSubTableFields(SubTableConfig subTable)
         {
             var fields = new List<FieldConfig>
             {
                 new()
                 {
-                    Label = "主表ID",
+                    Label = _localizer["micro.parentIdLabel"],
                     FieldName = MicroTableSystemColumns.ParentId,
                     FieldType = "number",
                     Required = true,
@@ -1574,7 +1574,7 @@ namespace DTSoft.AppService.MicroApp
                 },
                 new()
                 {
-                    Label = "行号",
+                    Label = _localizer["micro.rowNoLabel"],
                     FieldName = MicroTableSystemColumns.RowNo,
                     FieldType = "number",
                     Required = false,

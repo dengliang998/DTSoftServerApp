@@ -11,7 +11,7 @@ namespace DTSoftServerApp.Controllers.Role;
 /// </summary>
 [Authorize]
 [ApiController]
-[Tags("角色管理")]
+[Tags("Role Management")]
 [Route("api/[controller]/[action]")]
 public class RoleController : Controller
 {

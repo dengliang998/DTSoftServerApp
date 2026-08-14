@@ -9,7 +9,7 @@ namespace DTSoftServerApp.Controllers.Attachment;
 /// </summary>
 [Authorize]
 [ApiController]
-[Tags("文件管理")]
+[Tags("File Management")]
 [Route("api/[controller]/[action]")]
 public class FileController : Controller
 {

@@ -1,8 +1,8 @@
 using DTSoft.Core.DbContexts;
 using DTSoft.Core.Interfaces;
+using DTSoft.Core.Localization;
 using DTSoft.Plugin.Abstractions;
 using Microsoft.EntityFrameworkCore;
-using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text.Json.Nodes;
@@ -12,7 +12,11 @@ namespace DTSoft.Core.Common;
 /// <summary>
 /// DTSoft系统类
 /// </summary>
-public sealed class DtSoftHelper(SysDbContext dbContext, UserCacheHelper userCacheHelper, IDtSoftCache dtSoftCache) : IDtSoftHelper
+public sealed class DtSoftHelper(
+    SysDbContext dbContext,
+    UserCacheHelper userCacheHelper,
+    IDtSoftCache dtSoftCache,
+    ITextLocalizer localizer) : IDtSoftHelper
 {
     private static string IsAdminCacheKey(string userAcc) => $"Auth:IsAdmin:{userAcc.Trim().ToLowerInvariant()}";
     private static string RoleNameCacheKey(long roleId) => $"Role:Name:{roleId}";
@@ -143,9 +147,7 @@ public sealed class DtSoftHelper(SysDbContext dbContext, UserCacheHelper userCac
         {
             rv["StateCode"] = 0;
             rv["success"] = false;
-            rv["Msg"] = CultureInfo.CurrentUICulture.Name.StartsWith("en", StringComparison.OrdinalIgnoreCase)
-                ? "Account is required."
-                : "账号不能为空";
+            rv["Msg"] = localizer["user.accountRequired"];
             return rv;
         }
 
@@ -154,9 +156,7 @@ public sealed class DtSoftHelper(SysDbContext dbContext, UserCacheHelper userCac
         {
             rv["StateCode"] = 0;
             rv["success"] = false;
-            rv["Msg"] = CultureInfo.CurrentUICulture.Name.StartsWith("en", StringComparison.OrdinalIgnoreCase)
-                ? "Request failed. The account has been disabled."
-                : "请求失败，账号已被禁用！";
+            rv["Msg"] = localizer["user.accountDisabled"];
         }
         else
         {

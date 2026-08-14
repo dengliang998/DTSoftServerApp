@@ -738,4 +738,190 @@
   <data name="sysConfig.databaseConnectionFailed" xml:space="preserve">
     <value>数据库连接失败！</value>
   </data>
+  <data name="openApi.description" xml:space="preserve">
+    <value>引擎服务接口</value>
+  </data>
+  <data name="startup.licenseUnauthorizedEffect" xml:space="preserve">
+    <value>服务继续启动，接口调用会返回授权异常</value>
+  </data>
+  <data name="startup.urlsUnbound" xml:space="preserve">
+    <value>未绑定</value>
+  </data>
+  <data name="startup.apiDocsDisabled" xml:space="preserve">
+    <value>未启用</value>
+  </data>
+  <data name="startup.applicationStartFailed" xml:space="preserve">
+    <value>应用程序启动失败</value>
+  </data>
+  <data name="log.queueFull" xml:space="preserve">
+    <value>日志队列已满，审计日志未入库：{ActionName} {RequestType} {ClientIP}</value>
+  </data>
+  <data name="log.queueProcessError" xml:space="preserve">
+    <value>日志队列处理异常</value>
+  </data>
+  <data name="log.queueFlushSuccess" xml:space="preserve">
+    <value>成功写入 {Count} 条日志</value>
+  </data>
+  <data name="log.queueFlushFailed" xml:space="preserve">
+    <value>批量写入日志失败，共 {Count} 条</value>
+  </data>
+  <data name="log.queueFlushRemaining" xml:space="preserve">
+    <value>服务停止前写入剩余的 {Count} 条日志</value>
+  </data>
+  <data name="micro.tableExistsCheckFailed" xml:space="preserve">
+    <value>检查表存在性时出错：{TableName}</value>
+  </data>
+  <data name="micro.parentIdLabel" xml:space="preserve">
+    <value>主表ID</value>
+  </data>
+  <data name="micro.rowNoLabel" xml:space="preserve">
+    <value>行号</value>
+  </data>
+  <data name="exception.unhandledLog" xml:space="preserve">
+    <value>未处理的异常：{RequestPath}, 用户：{UserAccount}</value>
+  </data>
+  <data name="plugin.serviceRegistrationFailed" xml:space="preserve">
+    <value>插件服务注册失败：{0}</value>
+  </data>
+  <data name="plugin.dependencyMustBeHostLoaded" xml:space="preserve">
+    <value>插件依赖的 {0} 必须由宿主加载，不能从插件目录单独加载。</value>
+  </data>
+  <data name="plugin.directReferenceForbidden" xml:space="preserve">
+    <value>插件只能直接引用 {0}、{1}、{2}，不能直接引用 {3}。</value>
+  </data>
+  <data name="excel.fieldRequiredNull" xml:space="preserve">
+    <value>字段 '{0}' 是必填项，不能为null或空</value>
+  </data>
+  <data name="excel.validationFailed" xml:space="preserve">
+    <value>数据验证失败: {0}</value>
+  </data>
+  <data name="excel.fieldMinLength" xml:space="preserve">
+    <value>字段 '{0}' 不能少于{1}个字符</value>
+  </data>
+  <data name="excel.fieldMaxLength" xml:space="preserve">
+    <value>字段 '{0}' 不能超过{1}个字符</value>
+  </data>
+  <data name="excel.fieldMinValue" xml:space="preserve">
+    <value>字段 '{0}' 不能小于{1}</value>
+  </data>
+  <data name="excel.fieldMaxValue" xml:space="preserve">
+    <value>字段 '{0}' 不能大于{1}</value>
+  </data>
+  <data name="excel.fieldFormatInvalid" xml:space="preserve">
+    <value>字段 '{0}' 格式不正确</value>
+  </data>
+  <data name="sysConfig.loginBackgroundImage" xml:space="preserve">
+    <value>登录背景图</value>
+  </data>
+  <data name="sysConfig.browserTabLogo" xml:space="preserve">
+    <value>Tab 小 Logo</value>
+  </data>
+  <data name="user.systemAdministrator" xml:space="preserve">
+    <value>系统管理员</value>
+  </data>
+  <data name="menu.platform" xml:space="preserve">
+    <value>开发平台</value>
+  </data>
+  <data name="menu.organization" xml:space="preserve">
+    <value>组织权限</value>
+  </data>
+  <data name="menu.systemManagement" xml:space="preserve">
+    <value>系统管理</value>
+  </data>
+  <data name="menu.applicationIntegration" xml:space="preserve">
+    <value>应用集成</value>
+  </data>
+  <data name="menu.welcome" xml:space="preserve">
+    <value>首页</value>
+  </data>
+  <data name="menu.organizationList" xml:space="preserve">
+    <value>组织架构</value>
+  </data>
+  <data name="menu.roles" xml:space="preserve">
+    <value>角色管理</value>
+  </data>
+  <data name="menu.systemSettings" xml:space="preserve">
+    <value>系统设置</value>
+  </data>
+  <data name="menu.systemInfo" xml:space="preserve">
+    <value>系统信息</value>
+  </data>
+  <data name="menu.onlineUsers" xml:space="preserve">
+    <value>在线用户</value>
+  </data>
+  <data name="menu.systemLog" xml:space="preserve">
+    <value>系统日志</value>
+  </data>
+  <data name="menu.dictionaries" xml:space="preserve">
+    <value>数据字典</value>
+  </data>
+  <data name="menu.attachments" xml:space="preserve">
+    <value>附件管理</value>
+  </data>
+  <data name="menu.menus" xml:space="preserve">
+    <value>菜单维护</value>
+  </data>
+  <data name="menu.languages" xml:space="preserve">
+    <value>多语言配置</value>
+  </data>
+  <data name="menu.microAppConfig" xml:space="preserve">
+    <value>微应用配置</value>
+  </data>
+  <data name="menu.esbConnections" xml:space="preserve">
+    <value>ESB 服务连接</value>
+  </data>
+  <data name="menu.esbDataSources" xml:space="preserve">
+    <value>ESB 数据源</value>
+  </data>
+  <data name="menu.apiKeys" xml:space="preserve">
+    <value>第三方集成</value>
+  </data>
+  <data name="language.zhCn" xml:space="preserve">
+    <value>简体中文</value>
+  </data>
+  <data name="language.zhCnNative" xml:space="preserve">
+    <value>简体中文</value>
+  </data>
+  <data name="user.accountRequired" xml:space="preserve">
+    <value>账号不能为空</value>
+  </data>
+  <data name="user.accountDisabled" xml:space="preserve">
+    <value>请求失败，账号已被禁用！</value>
+  </data>
+  <data name="db.providerRequired" xml:space="preserve">
+    <value>数据库提供程序名称不能为空。请指定 'MySql'、'SqlServer'、'Oracle' 或 'PostgreSql'。</value>
+  </data>
+  <data name="db.providerUnsupported" xml:space="preserve">
+    <value>不支持的数据库提供程序：{0}。支持的类型包括：{1}</value>
+  </data>
+  <data name="db.typeRequired" xml:space="preserve">
+    <value>数据库类型不能为空</value>
+  </data>
+  <data name="db.typeUnsupported" xml:space="preserve">
+    <value>不支持的数据库类型：{0}</value>
+  </data>
+  <data name="db.tableNameRequired" xml:space="preserve">
+    <value>表名不能为空。</value>
+  </data>
+  <data name="db.columnNameRequired" xml:space="preserve">
+    <value>列名不能为空。</value>
+  </data>
+  <data name="db.tableNameInvalid" xml:space="preserve">
+    <value>表名格式无效：{0}</value>
+  </data>
+  <data name="db.columnNameInvalid" xml:space="preserve">
+    <value>列名格式无效：{0}</value>
+  </data>
+  <data name="db.databaseNameInvalid" xml:space="preserve">
+    <value>数据库名称格式无效：{0}</value>
+  </data>
+  <data name="db.databaseNameRequiredForTableExists" xml:space="preserve">
+    <value>MySqlProvider 检查表是否存在时需要数据库名称。</value>
+  </data>
+  <data name="db.databaseNameRequiredForColumns" xml:space="preserve">
+    <value>MySqlProvider 查询表字段时需要数据库名称。</value>
+  </data>
+  <data name="db.connectionStringMissing" xml:space="preserve">
+    <value>数据库连接字符串未配置，请配置 ConnectionStrings:Default。</value>
+  </data>
 </root>

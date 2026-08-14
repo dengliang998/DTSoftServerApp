@@ -1,8 +1,7 @@
+using DTSoft.Core.Localization;
+
 namespace DTSoft.AppService.Localization;
 
-public interface IAppLocalizer
+public interface IAppLocalizer : ITextLocalizer
 {
-    string this[string key] { get; }
-
-    string Format(string key, params object[] args);
 }

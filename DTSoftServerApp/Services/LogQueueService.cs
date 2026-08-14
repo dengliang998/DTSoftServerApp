@@ -1,3 +1,4 @@
+using DTSoft.AppService.Localization;
 using DTSoft.Core.DbContexts;
 using DTSoft.Models.Entities;
 using System.Threading.Channels;
@@ -29,13 +30,15 @@ namespace DTSoftServerApp.Services
         private readonly Channel<SysActionLog> _logChannel;
         private readonly ILogger<LogQueueService> _logger;
         private readonly IServiceScopeFactory _scopeFactory;
+        private readonly IAppLocalizer _localizer;
         private const int BatchSize = 100; // 批量写入大小
         private static readonly TimeSpan FlushInterval = TimeSpan.FromSeconds(5); // 最大刷新间隔
 
-        public LogQueueService(ILogger<LogQueueService> logger, IServiceScopeFactory scopeFactory)
+        public LogQueueService(ILogger<LogQueueService> logger, IServiceScopeFactory scopeFactory, IAppLocalizer localizer)
         {
             _logger = logger;
             _scopeFactory = scopeFactory;
+            _localizer = localizer;
             
             // 创建有界 Channel，容量为 10000
             var options = new BoundedChannelOptions(10000)
@@ -56,7 +59,7 @@ namespace DTSoftServerApp.Services
             if (!_logChannel.Writer.TryWrite(logEntry))
             {
                 // 队列已满，记录警告
-                _logger.LogWarning("日志队列已满，审计日志未入库：{ActionName} {RequestType} {ClientIP}", logEntry.ActionName, logEntry.RequestType, logEntry.ClientIP);
+                _logger.LogWarning(_localizer["log.queueFull"], logEntry.ActionName, logEntry.RequestType, logEntry.ClientIP);
             }
         }
 
@@ -138,7 +141,7 @@ namespace DTSoftServerApp.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "日志队列处理异常");
+                _logger.LogError(ex, _localizer["log.queueProcessError"]);
             }
             finally
             {
@@ -167,11 +170,11 @@ namespace DTSoftServerApp.Services
 
                 await dbContext.SaveChangesAsync();
                 
-                _logger.LogDebug("成功写入 {Count} 条日志", logs.Count);
+                _logger.LogDebug(_localizer["log.queueFlushSuccess"], logs.Count);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "批量写入日志失败，共 {Count} 条", logs.Count);
+                _logger.LogError(ex, _localizer["log.queueFlushFailed"], logs.Count);
             }
         }
 
@@ -189,7 +192,7 @@ namespace DTSoftServerApp.Services
 
             if (remainingLogs.Count > 0)
             {
-                _logger.LogInformation("服务停止前写入剩余的 {Count} 条日志", remainingLogs.Count);
+                _logger.LogInformation(_localizer["log.queueFlushRemaining"], remainingLogs.Count);
                 await FlushLogsAsync(remainingLogs);
             }
         }

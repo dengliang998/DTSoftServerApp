@@ -196,7 +196,7 @@ public class EsbServiceConnectionApp(SysDbContext context, IAppLocalizer localiz
 
     public string GetDefaultDbType()
     {
-        return EsbDbConnectionFactory.NormalizeDbType(context.Database.ProviderName ?? "sqlserver");
+        return EsbDbConnectionFactory.NormalizeDbType(context.Database.ProviderName ?? "sqlserver", localizer);
     }
 
     private async Task TestDefaultConnection(int? timeoutSeconds)
@@ -211,7 +211,7 @@ public class EsbServiceConnectionApp(SysDbContext context, IAppLocalizer localiz
         try
         {
             await using var command = connection.CreateCommand();
-            command.CommandText = EsbDbConnectionFactory.GetTestQuery(GetDefaultDbType());
+            command.CommandText = EsbDbConnectionFactory.GetTestQuery(GetDefaultDbType(), localizer);
             command.CommandTimeout = NormalizeTimeoutSeconds(timeoutSeconds);
             await command.ExecuteScalarAsync();
         }
@@ -228,11 +228,11 @@ public class EsbServiceConnectionApp(SysDbContext context, IAppLocalizer localiz
     {
         if (string.IsNullOrWhiteSpace(connectionString)) throw new Exception(L("esb.connectionStringRequired"));
 
-        await using var connection = EsbDbConnectionFactory.CreateConnection(dbType, connectionString);
+        await using var connection = EsbDbConnectionFactory.CreateConnection(dbType, connectionString, localizer);
         await connection.OpenAsync();
 
         await using var command = connection.CreateCommand();
-        command.CommandText = EsbDbConnectionFactory.GetTestQuery(dbType);
+        command.CommandText = EsbDbConnectionFactory.GetTestQuery(dbType, localizer);
         command.CommandTimeout = timeoutSeconds;
         await command.ExecuteScalarAsync();
     }
@@ -284,16 +284,16 @@ public class EsbServiceConnectionApp(SysDbContext context, IAppLocalizer localiz
         return normalized is ServiceTypeDatabase or ServiceTypeWebApi ? normalized : throw new Exception(L("esb.serviceTypeUnsupported"));
     }
 
-    private static string? NormalizeDbType(string? value)
+    private string? NormalizeDbType(string? value)
     {
         if (string.IsNullOrWhiteSpace(value)) return null;
-        return EsbDbConnectionFactory.NormalizeDbType(value);
+        return EsbDbConnectionFactory.NormalizeDbType(value, localizer);
     }
 
     private string NormalizeRequiredDbType(string? value)
     {
         if (string.IsNullOrWhiteSpace(value)) throw new Exception(L("esb.dbTypeRequired"));
-        return EsbDbConnectionFactory.NormalizeDbType(value);
+        return EsbDbConnectionFactory.NormalizeDbType(value, localizer);
     }
 
     private static string? NormalizeConnectionString(string? value)
