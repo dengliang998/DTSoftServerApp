@@ -23,15 +23,15 @@ public class EsbServiceConnectionQueryParameter
 /// </summary>
 public class EsbServiceConnectionAddParameter
 {
-    [Required]
+    [Required(ErrorMessage = "validation.required")]
     [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_-]*$", ErrorMessage = "esb.connectionCodeInvalid")]
     public required string Code { get; set; }
 
-    [Required]
-    [StringLength(100)]
+    [Required(ErrorMessage = "validation.required")]
+    [StringLength(100, ErrorMessage = "validation.stringLength")]
     public required string Name { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "validation.required")]
     public required string ServiceType { get; set; }
 
     public string? DbType { get; set; }
@@ -52,7 +52,6 @@ public class EsbServiceConnectionAddParameter
 /// </summary>
 public class EsbServiceConnectionUpdateParameter : EsbServiceConnectionAddParameter
 {
-    [Required]
     public long ItemId { get; set; }
 }
 
@@ -61,7 +60,6 @@ public class EsbServiceConnectionUpdateParameter : EsbServiceConnectionAddParame
 /// </summary>
 public class EsbServiceConnectionDeleteParameter
 {
-    [Required]
     public long ItemId { get; set; }
 }
 

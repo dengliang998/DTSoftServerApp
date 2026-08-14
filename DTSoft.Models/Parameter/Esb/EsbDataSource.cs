@@ -26,20 +26,20 @@ public class EsbDataSourceQueryParameter
 /// </summary>
 public class EsbDataSourceAddParameter
 {
-    [Required]
+    [Required(ErrorMessage = "validation.required")]
     [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_-]*$", ErrorMessage = "esb.dataSourceCodeInvalid")]
     public required string Code { get; set; }
 
-    [Required]
-    [StringLength(100)]
+    [Required(ErrorMessage = "validation.required")]
+    [StringLength(100, ErrorMessage = "validation.stringLength")]
     public required string Name { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "validation.required")]
     public required string SourceType { get; set; }
 
     public long? ConnectionId { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "validation.required")]
     public required string ExecuteMode { get; set; }
 
     public string? SqlText { get; set; }
@@ -64,7 +64,6 @@ public class EsbDataSourceAddParameter
 /// </summary>
 public class EsbDataSourceUpdateParameter : EsbDataSourceAddParameter
 {
-    [Required]
     public long ItemId { get; set; }
 }
 
@@ -73,7 +72,6 @@ public class EsbDataSourceUpdateParameter : EsbDataSourceAddParameter
 /// </summary>
 public class EsbDataSourceDeleteParameter
 {
-    [Required]
     public long ItemId { get; set; }
 }
 
@@ -82,7 +80,7 @@ public class EsbDataSourceDeleteParameter
 /// </summary>
 public class EsbExecuteRequest
 {
-    [Required]
+    [Required(ErrorMessage = "validation.required")]
     public required string Code { get; set; }
 
     public Dictionary<string, JsonNode?>? Parameters { get; set; }
@@ -97,7 +95,7 @@ public class EsbExecuteRequest
 /// </summary>
 public class EsbParameterConfig
 {
-    [Required]
+    [Required(ErrorMessage = "validation.required")]
     [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_]*$", ErrorMessage = "esb.parameterNameInvalid")]
     public required string Name { get; set; }
 

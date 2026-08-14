@@ -13,15 +13,15 @@ public class DictionaryTypeDto
 {
     public long? ItemId { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "validation.required")]
     [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_:-]*$", ErrorMessage = "dictionary.codeInvalid")]
     public string DictCode { get; set; } = string.Empty;
 
-    [Required]
-    [StringLength(100)]
+    [Required(ErrorMessage = "validation.required")]
+    [StringLength(100, ErrorMessage = "validation.stringLength")]
     public string DictName { get; set; } = string.Empty;
 
-    [StringLength(500)]
+    [StringLength(500, ErrorMessage = "validation.stringLength")]
     public string? Description { get; set; }
 
     public bool Enabled { get; set; } = true;
@@ -42,21 +42,21 @@ public class DictionaryItemDto
 {
     public long? ItemId { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "validation.required")]
     public string DictCode { get; set; } = string.Empty;
 
-    [Required]
-    [StringLength(100)]
+    [Required(ErrorMessage = "validation.required")]
+    [StringLength(100, ErrorMessage = "validation.stringLength")]
     public string ItemLabel { get; set; } = string.Empty;
 
-    [Required]
-    [StringLength(200)]
+    [Required(ErrorMessage = "validation.required")]
+    [StringLength(200, ErrorMessage = "validation.stringLength")]
     public string ItemValue { get; set; } = string.Empty;
 
-    [StringLength(50)]
+    [StringLength(50, ErrorMessage = "validation.stringLength")]
     public string? TagType { get; set; }
 
-    [StringLength(500)]
+    [StringLength(500, ErrorMessage = "validation.stringLength")]
     public string? Remark { get; set; }
 
     public bool Enabled { get; set; } = true;

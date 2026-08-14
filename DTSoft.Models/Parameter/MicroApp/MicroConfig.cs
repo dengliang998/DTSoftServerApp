@@ -43,14 +43,14 @@ namespace DTSoft.Models.Parameter.MicroApp
         /// <summary>
         /// 配置名称
         /// </summary>
-        [Required]
-        [StringLength(20)]
+        [Required(ErrorMessage = "validation.required")]
+        [StringLength(20, ErrorMessage = "validation.stringLength")]
         public required string ConfigName { get; set; }
 
         /// <summary>
         /// 数据模型名称
         /// </summary>
-        [Required]
+        [Required(ErrorMessage = "validation.required")]
         [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_]*$", ErrorMessage = "micro.modelNameInvalid")]
         public required string ModelName { get; set; }
 
@@ -62,43 +62,36 @@ namespace DTSoft.Models.Parameter.MicroApp
         /// <summary>
         /// 状态，1-启用，0-禁用
         /// </summary>
-        [Required]
         public int Status { get; set; }
 
         /// <summary>
         /// 是否支持新增数据
         /// </summary>
-        [Required]
         public bool SupportCreate { get; set; }
 
         /// <summary>
         /// 是否支持修改数据
         /// </summary>
-        [Required]
         public bool SupportUpdate { get; set; }
 
         /// <summary>
         /// 是否支持删除数据
         /// </summary>
-        [Required]
         public bool SupportDelete { get; set; }
 
         /// <summary>
         /// 是否支持批量删除数据
         /// </summary>
-        [Required]
         public bool SupportBatchDelete { get; set; }
 
         /// <summary>
         /// 是否支持导入数据
         /// </summary>
-        [Required]
         public bool SupportImport { get; set; }
 
         /// <summary>
         /// 是否支持导出数据
         /// </summary>
-        [Required]
         public bool SupportExport { get; set; }
 
         /// <summary>
@@ -130,7 +123,7 @@ namespace DTSoft.Models.Parameter.MicroApp
         /// <summary>
         /// 字段配置列表
         /// </summary>
-        [Required]
+        [Required(ErrorMessage = "validation.required")]
         public required List<FieldConfig> Fields { get; set; }
 
         /// <summary>
@@ -147,20 +140,19 @@ namespace DTSoft.Models.Parameter.MicroApp
         /// <summary>
         /// 配置 ID
         /// </summary>
-        [Required]
         public long ItemId { get; set; }
 
         /// <summary>
         /// 配置名称
         /// </summary>
-        [Required]
-        [StringLength(20)]
+        [Required(ErrorMessage = "validation.required")]
+        [StringLength(20, ErrorMessage = "validation.stringLength")]
         public required string ConfigName { get; set; }
 
         /// <summary>
         /// 数据模型名称
         /// </summary>
-        [Required]
+        [Required(ErrorMessage = "validation.required")]
         [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_]*$", ErrorMessage = "micro.modelNameInvalid")]
         public required string ModelName { get; set; }
 
@@ -172,43 +164,36 @@ namespace DTSoft.Models.Parameter.MicroApp
         /// <summary>
         /// 状态，1-启用，0-禁用
         /// </summary>
-        [Required]
         public int Status { get; set; }
 
         /// <summary>
         /// 是否支持新增数据
         /// </summary>
-        [Required]
         public bool SupportCreate { get; set; }
 
         /// <summary>
         /// 是否支持修改数据
         /// </summary>
-        [Required]
         public bool SupportUpdate { get; set; }
 
         /// <summary>
         /// 是否支持删除数据
         /// </summary>
-        [Required]
         public bool SupportDelete { get; set; }
 
         /// <summary>
         /// 是否支持批量删除数据
         /// </summary>
-        [Required]
         public bool SupportBatchDelete { get; set; }
 
         /// <summary>
         /// 是否支持导入数据
         /// </summary>
-        [Required]
         public bool SupportImport { get; set; }
 
         /// <summary>
         /// 是否支持导出数据
         /// </summary>
-        [Required]
         public bool SupportExport { get; set; }
 
         /// <summary>
@@ -240,7 +225,7 @@ namespace DTSoft.Models.Parameter.MicroApp
         /// <summary>
         /// 字段配置列表
         /// </summary>
-        [Required]
+        [Required(ErrorMessage = "validation.required")]
         public required List<FieldConfig> Fields { get; set; }
 
         /// <summary>
@@ -257,7 +242,6 @@ namespace DTSoft.Models.Parameter.MicroApp
         /// <summary>
         /// 配置 ID
         /// </summary>
-        [Required]
         public long ItemId { get; set; }
     }
 
@@ -300,7 +284,7 @@ namespace DTSoft.Models.Parameter.MicroApp
         /// <summary>
         /// 数据 ID 列表
         /// </summary>
-        [Required]
+        [Required(ErrorMessage = "validation.required")]
         public required List<long> Ids { get; set; }
     }
 
@@ -312,38 +296,35 @@ namespace DTSoft.Models.Parameter.MicroApp
         /// <summary>
         /// 字段显示名称
         /// </summary>
-        [Required]
+        [Required(ErrorMessage = "validation.required")]
         public required string Label { get; set; }
 
         /// <summary>
         /// 字段标识
         /// </summary>
-        [Required]
+        [Required(ErrorMessage = "validation.required")]
         [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_]*$", ErrorMessage = "micro.fieldNameInvalid")]
         public required string FieldName { get; set; }
 
         /// <summary>
         /// 字段类型
         /// </summary>
-        [Required]
+        [Required(ErrorMessage = "validation.required")]
         public required string FieldType { get; set; }
 
         /// <summary>
         /// 是否必填
         /// </summary>
-        [Required]
         public bool Required { get; set; }
 
         /// <summary>
         /// 是否显示在列表中
         /// </summary>
-        [Required]
         public bool ShowInList { get; set; }
 
         /// <summary>
         /// 是否可编辑
         /// </summary>
-        [Required]
         public bool Editable { get; set; }
 
         /// <summary>
@@ -490,13 +471,13 @@ namespace DTSoft.Models.Parameter.MicroApp
         /// <summary>
         /// 子表显示名称。
         /// </summary>
-        [Required]
+        [Required(ErrorMessage = "validation.required")]
         public required string Label { get; set; }
 
         /// <summary>
         /// 子表标识，会用于拼接物理表名。
         /// </summary>
-        [Required]
+        [Required(ErrorMessage = "validation.required")]
         [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_]*$", ErrorMessage = "micro.subTableNameInvalid")]
         public required string TableName { get; set; }
 
@@ -548,7 +529,7 @@ namespace DTSoft.Models.Parameter.MicroApp
         /// <summary>
         /// 子表字段配置列表。
         /// </summary>
-        [Required]
+        [Required(ErrorMessage = "validation.required")]
         public required List<FieldConfig> Fields { get; set; }
     }
 

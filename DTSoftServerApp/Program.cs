@@ -56,11 +56,18 @@ try
         ?? builder.Configuration.GetValue<int?>(AppConfigurationKeys.Security.PasswordHashing.LegacyIterations));
 
     // 基础服务
+    builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
+    var appResourceAssemblyName = typeof(AppLocalizer).Assembly.GetName().Name!;
     var mvcBuilder = builder.Services.AddControllers()
         .AddJsonOptions(options =>
         {
             // 保持 PascalCase 命名，不使用默认的 camelCase
             options.JsonSerializerOptions.PropertyNamingPolicy = null;
+        })
+        .AddDataAnnotationsLocalization(options =>
+        {
+            options.DataAnnotationLocalizerProvider = (_, factory) =>
+                factory.Create("DTResource", appResourceAssemblyName);
         });
 
     builder.Services.Configure<ApiBehaviorOptions>(options =>

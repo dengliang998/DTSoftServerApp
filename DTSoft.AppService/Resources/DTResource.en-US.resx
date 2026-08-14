@@ -27,6 +27,12 @@
   <data name="validation.argumentInvalid" xml:space="preserve">
     <value>Parameter format is invalid.</value>
   </data>
+  <data name="validation.required" xml:space="preserve">
+    <value>Required.</value>
+  </data>
+  <data name="validation.stringLength" xml:space="preserve">
+    <value>Cannot exceed {1} characters.</value>
+  </data>
   <data name="resource.notFound" xml:space="preserve">
     <value>The requested resource was not found.</value>
   </data>
