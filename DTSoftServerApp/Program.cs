@@ -16,7 +16,7 @@ using System.Reflection;
 var builder = WebApplication.CreateBuilder(args);
 var entryAssembly = Assembly.GetEntryAssembly();
 var applicationVersion = entryAssembly?.GetName().Version?.ToString() ?? "-";
-var startupLocalizer = new AppLocalizer();
+var startupLocalizer = LocalizationConfigurationExtensions.CreateAppLocalizer(builder.Configuration);
 
 // =========================================
 // 服务配置区域
@@ -57,6 +57,7 @@ try
 
     // 基础服务
     builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
+    builder.Services.AddDtSoftRequestLocalization(builder.Configuration);
     var appResourceAssemblyName = typeof(AppLocalizer).Assembly.GetName().Name!;
     var mvcBuilder = builder.Services.AddControllers()
         .AddJsonOptions(options =>
@@ -107,7 +108,7 @@ try
 
     // 使用扩展方法组织配置
     builder.Services.AddHelpers();              // Helper 工具类
-    builder.Services.AddAppServices();          // App 服务
+    builder.Services.AddAppServices(builder.Configuration);          // App 服务
     builder.Services.AddInfrastructure(builder.Configuration); // 基础设施服务
     var pluginLoadResult = builder.Services.AddDynamicWebApiPlugins(builder.Configuration);
     DynamicWebApiPluginLoader.RegisterApplicationParts(mvcBuilder, pluginLoadResult);
@@ -255,7 +256,7 @@ try
     });
 
     // 全局异常处理（必须在最前面）
-    app.UseRequestLanguage();
+    app.UseDtSoftRequestLocalization();
     app.UseExceptionHandling();
 
     // 业务中间件

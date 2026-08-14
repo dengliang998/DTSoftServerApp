@@ -53,7 +53,7 @@ namespace DTSoftServerApp.Extensions
         /// <summary>
         /// 添加应用服务（Scoped 生命周期）
         /// </summary>
-        public static IServiceCollection AddAppServices(this IServiceCollection services)
+        public static IServiceCollection AddAppServices(this IServiceCollection services, IConfiguration configuration)
         {
             // App 服务
             services.AddScoped<MenuApp>();
@@ -70,7 +70,7 @@ namespace DTSoftServerApp.Extensions
             services.AddScoped<EsbServiceConnectionApp>();
             services.AddScoped<EsbDataSourceApp>();
             services.AddScoped<LanguageApp>();
-            services.AddSingleton<AppLocalizer>();
+            services.AddSingleton(_ => LocalizationConfigurationExtensions.CreateAppLocalizer(configuration));
             services.AddSingleton<IAppLocalizer>(sp => sp.GetRequiredService<AppLocalizer>());
             services.AddSingleton<ITextLocalizer>(sp => sp.GetRequiredService<AppLocalizer>());
 
@@ -116,6 +116,8 @@ namespace DTSoftServerApp.Extensions
 
             #region JWT 认证配置
 
+            var startupLocalizer = LocalizationConfigurationExtensions.CreateAppLocalizer(configuration);
+
             services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -136,7 +138,7 @@ namespace DTSoftServerApp.Extensions
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
                         configuration[AppConfigurationKeys.Authentication.Jwt.SigningKey]
                         ?? configuration[AppConfigurationKeys.Authentication.Jwt.LegacySigningKey]
-                        ?? throw new InvalidOperationException(new AppLocalizer()["jwt.signingKeyMissing"])))
+                        ?? throw new InvalidOperationException(startupLocalizer["jwt.signingKeyMissing"])))
                 };
 
                 options.Events = new JwtBearerEvents
@@ -176,7 +178,7 @@ namespace DTSoftServerApp.Extensions
 
             #region 数据库配置
 
-            DatabaseConfigurationService.ConfigureDatabase(services, configuration, new AppLocalizer());
+            DatabaseConfigurationService.ConfigureDatabase(services, configuration, startupLocalizer);
             services.AddScoped<IPluginDbContext>(sp => sp.GetRequiredService<SysDbContext>());
 
             #endregion

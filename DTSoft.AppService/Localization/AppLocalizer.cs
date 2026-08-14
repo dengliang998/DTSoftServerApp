@@ -10,7 +10,12 @@ public class AppLocalizer : IAppLocalizer
         "DTSoft.AppService.Resources.DTResource",
         Assembly.GetExecutingAssembly());
 
-    private static readonly CultureInfo FallbackCulture = CultureInfo.GetCultureInfo("en-US");
+    private readonly CultureInfo _fallbackCulture;
+
+    public AppLocalizer(string fallbackCultureName = "en-US")
+    {
+        _fallbackCulture = GetCultureOrDefault(fallbackCultureName);
+    }
 
     public string this[string key] => GetString(key);
 
@@ -26,7 +31,24 @@ public class AppLocalizer : IAppLocalizer
         var value = ResourceManager.GetString(key, CultureInfo.CurrentUICulture);
         if (!string.IsNullOrWhiteSpace(value)) return value;
 
-        value = ResourceManager.GetString(key, FallbackCulture);
+        value = ResourceManager.GetString(key, _fallbackCulture);
         return string.IsNullOrWhiteSpace(value) ? key : value;
+    }
+
+    private static CultureInfo GetCultureOrDefault(string? cultureName)
+    {
+        if (string.IsNullOrWhiteSpace(cultureName))
+        {
+            return CultureInfo.GetCultureInfo("en-US");
+        }
+
+        try
+        {
+            return CultureInfo.GetCultureInfo(cultureName.Trim());
+        }
+        catch (CultureNotFoundException)
+        {
+            return CultureInfo.GetCultureInfo("en-US");
+        }
     }
 }

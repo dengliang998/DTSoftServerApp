@@ -118,6 +118,7 @@ namespace DTSoft.Core.Common.Excel
         /// </summary>
         /// <param name="fileStream">Excel文件流</param>
         /// <param name="fields">字段配置列表</param>
+        /// <param name="localizer">本地化工具</param>
         /// <returns>转换后的数据列表</returns>
         public static async Task<List<Dictionary<string, object>>> ImportAndValidateDataAsync(
             Stream fileStream,
@@ -268,6 +269,7 @@ namespace DTSoft.Core.Common.Excel
         /// </summary>
         /// <param name="value">字段值。</param>
         /// <param name="fieldConfig">字段配置。</param>
+        /// <param name="localizer">本地化工具。</param>
         /// <returns>校验错误列表。</returns>
         private static List<string> ValidateFieldValue(
             object? value,

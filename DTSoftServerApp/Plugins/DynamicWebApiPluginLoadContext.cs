@@ -9,14 +9,14 @@ internal sealed class DynamicWebApiPluginLoadContext : AssemblyLoadContext
     private const string PluginAbstractionsAssemblyName = "DTSoft.Plugin.Abstractions";
     private const string AppServiceAssemblyName = "DTSoft.AppService";
     private const string ModelsAssemblyName = "DTSoft.Models";
-    private static readonly AppLocalizer Localizer = new();
-
     private readonly AssemblyDependencyResolver _resolver;
+    private readonly IAppLocalizer _localizer;
 
-    public DynamicWebApiPluginLoadContext(string mainAssemblyPath)
+    public DynamicWebApiPluginLoadContext(string mainAssemblyPath, IAppLocalizer localizer)
         : base($"DTSoft.Plugin:{Path.GetFileNameWithoutExtension(mainAssemblyPath)}", isCollectible: false)
     {
         _resolver = new AssemblyDependencyResolver(mainAssemblyPath);
+        _localizer = localizer;
     }
 
     protected override Assembly? Load(AssemblyName assemblyName)
@@ -25,14 +25,14 @@ internal sealed class DynamicWebApiPluginLoadContext : AssemblyLoadContext
         {
             return TryGetDefaultAssembly(assemblyName.Name)
                    ?? throw new FileLoadException(
-                       Localizer.Format("plugin.dependencyMustBeHostLoaded", assemblyName.Name ?? string.Empty),
+                       _localizer.Format("plugin.dependencyMustBeHostLoaded", assemblyName.Name ?? string.Empty),
                        assemblyName.Name);
         }
 
         if (IsBlockedDtSoftAssembly(assemblyName.Name))
         {
             throw new FileLoadException(
-                Localizer.Format(
+                _localizer.Format(
                     "plugin.directReferenceForbidden",
                     PluginAbstractionsAssemblyName,
                     AppServiceAssemblyName,

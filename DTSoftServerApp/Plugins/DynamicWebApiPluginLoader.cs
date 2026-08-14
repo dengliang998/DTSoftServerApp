@@ -1,5 +1,6 @@
 using DTSoft.AppService.Localization;
 using DTSoft.Plugin.Abstractions;
+using DTSoftServerApp.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Extensions.Configuration;
@@ -42,13 +43,13 @@ public static class DynamicWebApiPluginLoader
         var assemblies = new List<Assembly>();
         var plugins = new List<DynamicWebApiPluginDescriptor>();
         var failures = new List<DynamicWebApiPluginLoadFailure>();
-        var localizer = new AppLocalizer();
+        var localizer = LocalizationConfigurationExtensions.CreateAppLocalizer(configuration);
 
         foreach (var filePath in pluginFiles)
         {
             try
             {
-                var loadContext = new DynamicWebApiPluginLoadContext(filePath);
+                var loadContext = new DynamicWebApiPluginLoadContext(filePath, localizer);
                 var assembly = loadContext.LoadFromAssemblyPath(Path.GetFullPath(filePath));
                 var loadableTypes = GetLoadableTypes(assembly).ToArray();
 
