@@ -23,9 +23,8 @@ public class EsbServiceConnectionQueryParameter
 /// </summary>
 public class EsbServiceConnectionAddParameter
 {
-    [Required(ErrorMessage = "validation.required")]
     [RegularExpression(@"^[a-zA-Z][a-zA-Z0-9_-]*$", ErrorMessage = "esb.connectionCodeInvalid")]
-    public required string Code { get; set; }
+    public string? Code { get; set; }
 
     [Required(ErrorMessage = "validation.required")]
     [StringLength(100, ErrorMessage = "validation.stringLength")]

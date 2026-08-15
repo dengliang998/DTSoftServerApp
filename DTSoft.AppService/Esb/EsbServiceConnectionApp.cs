@@ -77,14 +77,16 @@ public class EsbServiceConnectionApp(SysDbContext context, IAppLocalizer localiz
     {
         NormalizeAndValidate(parameter);
 
-        var duplicated = await context.SysEsbServiceConnection!.AnyAsync(item => item.Code == parameter.Code.Trim());
+        var itemId = YitterHelper.NewId();
+        var code = NormalizeConnectionCode(parameter.Code, itemId);
+        var duplicated = await context.SysEsbServiceConnection!.AnyAsync(item => item.Code == code);
         if (duplicated) throw new Exception(L("esb.connectionCodeExists"));
 
         var now = DateTime.Now;
         var entity = new SysEsbServiceConnection
         {
-            ItemId = YitterHelper.NewId(),
-            Code = parameter.Code.Trim(),
+            ItemId = itemId,
+            Code = code,
             Name = parameter.Name.Trim(),
             ServiceType = parameter.ServiceType,
             DbType = parameter.DbType,
@@ -109,11 +111,15 @@ public class EsbServiceConnectionApp(SysDbContext context, IAppLocalizer localiz
         var entity = await context.SysEsbServiceConnection!.FirstOrDefaultAsync(item => item.ItemId == parameter.ItemId);
         if (entity == null) throw new Exception(L("esb.connectionNotFound"));
 
-        var duplicated = await context.SysEsbServiceConnection!
-            .AnyAsync(item => item.Code == parameter.Code.Trim() && item.ItemId != parameter.ItemId);
-        if (duplicated) throw new Exception(L("esb.connectionCodeExists"));
+        var code = NormalizeConnectionCode(parameter.Code, entity.ItemId, entity.Code);
+        if (!string.Equals(code, entity.Code, StringComparison.Ordinal))
+        {
+            var duplicated = await context.SysEsbServiceConnection!
+                .AnyAsync(item => item.Code == code && item.ItemId != parameter.ItemId);
+            if (duplicated) throw new Exception(L("esb.connectionCodeExists"));
+        }
 
-        entity.Code = parameter.Code.Trim();
+        entity.Code = code;
         entity.Name = parameter.Name.Trim();
         entity.ServiceType = parameter.ServiceType;
         entity.DbType = parameter.DbType;
@@ -294,6 +300,13 @@ public class EsbServiceConnectionApp(SysDbContext context, IAppLocalizer localiz
     {
         if (string.IsNullOrWhiteSpace(value)) throw new Exception(L("esb.dbTypeRequired"));
         return EsbDbConnectionFactory.NormalizeDbType(value, localizer);
+    }
+
+    private static string NormalizeConnectionCode(string? value, long itemId, string? fallback = null)
+    {
+        if (!string.IsNullOrWhiteSpace(value)) return value.Trim();
+        if (!string.IsNullOrWhiteSpace(fallback)) return fallback.Trim();
+        return $"conn_{itemId}";
     }
 
     private static string? NormalizeConnectionString(string? value)
