@@ -113,7 +113,6 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
             SqlText = parameter.SourceType == SourceTypeSql ? NormalizeSql(parameter.SqlText) : null,
             HttpConfig = parameter.SourceType == SourceTypeRestful ? NormalizeHttpConfig(parameter.HttpConfig) : null,
             ParameterConfig = SerializeParameters(parameter.Parameters),
-            ResultMapping = SerializeResultMapping(parameter.ResultMapping),
             Status = NormalizeStatus(parameter.Status),
             MaxRows = NormalizeMaxRows(parameter.MaxRows),
             TimeoutSeconds = NormalizeTimeoutSeconds(parameter.TimeoutSeconds),
@@ -149,7 +148,7 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
         entity.SqlText = parameter.SourceType == SourceTypeSql ? NormalizeSql(parameter.SqlText) : null;
         entity.HttpConfig = parameter.SourceType == SourceTypeRestful ? NormalizeHttpConfig(parameter.HttpConfig) : null;
         entity.ParameterConfig = SerializeParameters(parameter.Parameters);
-        entity.ResultMapping = SerializeResultMapping(parameter.ResultMapping);
+        entity.ResultMapping = null;
         entity.Status = NormalizeStatus(parameter.Status);
         entity.MaxRows = NormalizeMaxRows(parameter.MaxRows);
         entity.TimeoutSeconds = NormalizeTimeoutSeconds(parameter.TimeoutSeconds);
@@ -267,21 +266,20 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
                 rows.Add(row);
             }
 
-            var mappedRows = ApplyResultMapping(rows, DeserializeResultMapping(entity.ResultMapping));
             if (pageNum is > 0 && pageSize is > 0)
             {
                 var normalizedPageNum = pageNum.Value;
                 var normalizedPageSize = Math.Clamp(pageSize.Value, 1, 200);
                 return new EsbPagedExecuteResponse
                 {
-                    List = mappedRows.Skip((normalizedPageNum - 1) * normalizedPageSize).Take(normalizedPageSize).ToList(),
-                    Total = mappedRows.Count,
+                    List = rows.Skip((normalizedPageNum - 1) * normalizedPageSize).Take(normalizedPageSize).ToList(),
+                    Total = rows.Count,
                     PageNum = normalizedPageNum,
                     PageSize = normalizedPageSize
                 };
             }
 
-            return mappedRows;
+            return rows;
         }
         finally
         {
@@ -343,23 +341,22 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
         var root = ParseJsonResponse(responseText);
         var dataNode = SelectJsonPath(root, requestConfig.ResultPath) ?? root;
         var rows = ConvertJsonNodeToRows(dataNode, NormalizeMaxRows(entity.MaxRows));
-        var mappedRows = ApplyResultMapping(rows, DeserializeResultMapping(entity.ResultMapping));
 
         if (pageNum is > 0 && pageSize is > 0)
         {
             var normalizedPageNum = pageNum.Value;
             var normalizedPageSize = Math.Clamp(pageSize.Value, 1, 200);
-            var total = ReadJsonPathAsInt(root, requestConfig.TotalPath) ?? mappedRows.Count;
+            var total = ReadJsonPathAsInt(root, requestConfig.TotalPath) ?? rows.Count;
             return new EsbPagedExecuteResponse
             {
-                List = mappedRows.Skip((normalizedPageNum - 1) * normalizedPageSize).Take(normalizedPageSize).ToList(),
+                List = rows.Skip((normalizedPageNum - 1) * normalizedPageSize).Take(normalizedPageSize).ToList(),
                 Total = total,
                 PageNum = normalizedPageNum,
                 PageSize = normalizedPageSize
             };
         }
 
-        return mappedRows;
+        return rows;
     }
 
     private async Task<Dictionary<string, string>> BuildVariableContext(string userAccount)
@@ -434,37 +431,6 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
             var key = $"{match.Groups[1].Value}.{match.Groups[2].Value}";
             return variableContext.TryGetValue(key, out var resolved) ? resolved : string.Empty;
         });
-    }
-
-    private static List<Dictionary<string, object?>> ApplyResultMapping(List<Dictionary<string, object?>> rows, EsbResultMapping? mapping)
-    {
-        var labelField = NormalizeMappingField(mapping?.LabelField);
-        var valueField = NormalizeMappingField(mapping?.ValueField);
-
-        if (labelField == null && valueField == null)
-        {
-            return rows;
-        }
-
-        foreach (var row in rows)
-        {
-            if (labelField != null)
-            {
-                row["Label"] = row.TryGetValue(labelField, out var label) ? label : null;
-            }
-
-            if (valueField != null)
-            {
-                row["Value"] = row.TryGetValue(valueField, out var value) ? value : null;
-            }
-        }
-
-        return rows;
-    }
-
-    private static string? NormalizeMappingField(string? value)
-    {
-        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
     private async Task ValidateConnection(EsbDataSourceAddParameter parameter)
@@ -653,11 +619,6 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
         return JsonSerializer.Serialize(parameters ?? []);
     }
 
-    private static string? SerializeResultMapping(EsbResultMapping? mapping)
-    {
-        return mapping == null ? null : JsonSerializer.Serialize(mapping);
-    }
-
     private static List<EsbParameterConfig> DeserializeParameters(string? json)
     {
         if (string.IsNullOrWhiteSpace(json)) return [];
@@ -668,19 +629,6 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
         catch
         {
             return [];
-        }
-    }
-
-    private static EsbResultMapping? DeserializeResultMapping(string? json)
-    {
-        if (string.IsNullOrWhiteSpace(json)) return null;
-        try
-        {
-            return JsonSerializer.Deserialize<EsbResultMapping>(json);
-        }
-        catch
-        {
-            return null;
         }
     }
 
@@ -1058,7 +1006,6 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
             SqlText = entity.SqlText,
             HttpConfig = entity.HttpConfig,
             Parameters = DeserializeParameters(entity.ParameterConfig),
-            ResultMapping = DeserializeResultMapping(entity.ResultMapping),
             Status = entity.Status,
             MaxRows = entity.MaxRows,
             TimeoutSeconds = entity.TimeoutSeconds,

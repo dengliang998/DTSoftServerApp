@@ -48,8 +48,6 @@ public class EsbDataSourceAddParameter
 
     public List<EsbParameterConfig>? Parameters { get; set; }
 
-    public EsbResultMapping? ResultMapping { get; set; }
-
     public int Status { get; set; } = 1;
 
     public int? MaxRows { get; set; }
@@ -109,16 +107,6 @@ public class EsbParameterConfig
 }
 
 /// <summary>
-/// ESB 返回映射。
-/// </summary>
-public class EsbResultMapping
-{
-    public string? LabelField { get; set; }
-
-    public string? ValueField { get; set; }
-}
-
-/// <summary>
 /// ESB 数据源响应。
 /// </summary>
 public class EsbDataSourceResponse
@@ -142,8 +130,6 @@ public class EsbDataSourceResponse
     public string? HttpConfig { get; set; }
 
     public List<EsbParameterConfig> Parameters { get; set; } = [];
-
-    public EsbResultMapping? ResultMapping { get; set; }
 
     public int Status { get; set; }
 

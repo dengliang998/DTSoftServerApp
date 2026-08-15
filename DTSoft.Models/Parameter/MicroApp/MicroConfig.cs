@@ -433,6 +433,16 @@ namespace DTSoft.Models.Parameter.MicroApp
         public string? EsbParams { get; set; }
 
         /// <summary>
+        /// ESB 选项显示字段。
+        /// </summary>
+        public string? EsbLabelField { get; set; }
+
+        /// <summary>
+        /// ESB 选项值字段。
+        /// </summary>
+        public string? EsbValueField { get; set; }
+
+        /// <summary>
         /// 开窗查询数据源编码。
         /// </summary>
         public string? LookupDataSourceCode { get; set; }
