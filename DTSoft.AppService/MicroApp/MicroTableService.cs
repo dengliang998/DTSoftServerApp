@@ -30,6 +30,7 @@ namespace DTSoft.AppService.MicroApp
         private const string MicroConfigTableName = "sys_microappconfig";
         private const string MicroConfigSubTablesColumnName = "SubTables";
         private const string MicroConfigShowSubTablesInListColumnName = "ShowSubTablesInList";
+        private const string MicroConfigSubTableListLayoutColumnName = "SubTableListLayout";
 
         public MicroTableService(SysDbContext context, ILogger<MicroTableService> logger, IMemoryCache cache, IAppLocalizer localizer)
         {
@@ -133,7 +134,7 @@ namespace DTSoft.AppService.MicroApp
 
         public async Task EnsureMicroConfigSubTablesColumnAsync()
         {
-            var cacheKey = "MicroConfig:DynamicConfigColumnsEnsured";
+            var cacheKey = "MicroConfig:DynamicConfigColumnsEnsured:v2";
             if (_cache.TryGetValue(cacheKey, out bool ensured) && ensured)
             {
                 return;
@@ -157,6 +158,13 @@ namespace DTSoft.AppService.MicroApp
             {
                 var sql =
                     $"ALTER TABLE {_provider.QuoteTableName(MicroConfigTableName)} ADD {_provider.QuoteColumnName(MicroConfigShowSubTablesInListColumnName)} {_provider.MapFieldTypeToDbType("boolean")} NOT NULL DEFAULT {GetBooleanTrueLiteral()}";
+                await _context.Database.ExecuteSqlRawAsync(sql);
+            }
+
+            if (!columns.ContainsKey(MicroConfigSubTableListLayoutColumnName))
+            {
+                var sql =
+                    $"ALTER TABLE {_provider.QuoteTableName(MicroConfigTableName)} ADD {_provider.QuoteColumnName(MicroConfigSubTableListLayoutColumnName)} {_provider.MapFieldTypeToDbType("string")} NULL";
                 await _context.Database.ExecuteSqlRawAsync(sql);
             }
 

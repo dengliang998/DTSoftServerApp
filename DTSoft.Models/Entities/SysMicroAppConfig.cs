@@ -86,6 +86,13 @@ namespace DTSoft.Models.Entities
         public bool ShowSubTablesInList { get; set; } = true;
 
         /// <summary>
+        /// 列表页子表关联数据布局，vertical-上下布局，horizontal-左右布局
+        /// </summary>
+        [Column("SubTableListLayout")]
+        [StringLength(20)]
+        public string? SubTableListLayout { get; set; } = "vertical";
+
+        /// <summary>
         /// 数据权限范围，all-全部数据，self-本人数据，department-部门数据
         /// </summary>
         [Column("DataScope")]

@@ -33,6 +33,7 @@ public static class MicroConfigSchema
             SupportImport = config.SupportImport,
             SupportExport = config.SupportExport,
             ShowSubTablesInList = config.ShowSubTablesInList,
+            SubTableListLayout = NormalizeSubTableListLayout(config.SubTableListLayout),
             DataScope = NormalizeDataScope(config.DataScope),
             FormColumns = NormalizeFormColumns(config.FormColumns),
             QueryColumns = NormalizeQueryColumns(config.QueryColumns),
@@ -87,6 +88,15 @@ public static class MicroConfigSchema
             "self" => "self",
             "department" => "department",
             _ => "all"
+        };
+    }
+
+    public static string NormalizeSubTableListLayout(string? layout)
+    {
+        return layout?.Trim().ToLowerInvariant() switch
+        {
+            "horizontal" => "horizontal",
+            _ => "vertical"
         };
     }
 

@@ -100,6 +100,11 @@ namespace DTSoft.Models.Parameter.MicroApp
         public bool ShowSubTablesInList { get; set; } = true;
 
         /// <summary>
+        /// 列表页子表关联数据布局，vertical-上下布局，horizontal-左右布局
+        /// </summary>
+        public string? SubTableListLayout { get; set; } = "vertical";
+
+        /// <summary>
         /// 数据权限范围，all-全部数据，self-本人数据，department-部门数据
         /// </summary>
         public string? DataScope { get; set; }
@@ -200,6 +205,11 @@ namespace DTSoft.Models.Parameter.MicroApp
         /// 列表页是否显示子表关联数据
         /// </summary>
         public bool ShowSubTablesInList { get; set; } = true;
+
+        /// <summary>
+        /// 列表页子表关联数据布局，vertical-上下布局，horizontal-左右布局
+        /// </summary>
+        public string? SubTableListLayout { get; set; } = "vertical";
 
         /// <summary>
         /// 数据权限范围，all-全部数据，self-本人数据，department-部门数据
@@ -649,6 +659,11 @@ namespace DTSoft.Models.Parameter.MicroApp
         /// 列表页是否显示子表关联数据
         /// </summary>
         public bool ShowSubTablesInList { get; set; } = true;
+
+        /// <summary>
+        /// 列表页子表关联数据布局，vertical-上下布局，horizontal-左右布局
+        /// </summary>
+        public string? SubTableListLayout { get; set; } = "vertical";
 
         /// <summary>
         /// 数据权限范围，all-全部数据，self-本人数据，department-部门数据

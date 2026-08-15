@@ -130,6 +130,7 @@ public class MicroConfigApp(SysDbContext context, MicroTableService microTableSe
                 SupportImport = parameter.SupportImport,
                 SupportExport = parameter.SupportExport,
                 ShowSubTablesInList = parameter.ShowSubTablesInList,
+                SubTableListLayout = MicroConfigSchema.NormalizeSubTableListLayout(parameter.SubTableListLayout),
                 DataScope = MicroConfigSchema.NormalizeDataScope(parameter.DataScope),
                 FormColumns = MicroConfigSchema.NormalizeFormColumns(parameter.FormColumns),
                 QueryColumns = MicroConfigSchema.NormalizeQueryColumns(parameter.QueryColumns),
@@ -202,6 +203,7 @@ public class MicroConfigApp(SysDbContext context, MicroTableService microTableSe
             existingConfig.SupportImport = parameter.SupportImport;
             existingConfig.SupportExport = parameter.SupportExport;
             existingConfig.ShowSubTablesInList = parameter.ShowSubTablesInList;
+            existingConfig.SubTableListLayout = MicroConfigSchema.NormalizeSubTableListLayout(parameter.SubTableListLayout);
             existingConfig.DataScope = MicroConfigSchema.NormalizeDataScope(parameter.DataScope);
             existingConfig.FormColumns = MicroConfigSchema.NormalizeFormColumns(parameter.FormColumns);
             existingConfig.QueryColumns = MicroConfigSchema.NormalizeQueryColumns(parameter.QueryColumns);
