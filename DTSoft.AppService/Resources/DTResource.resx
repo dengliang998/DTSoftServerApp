@@ -205,7 +205,10 @@
     <value>数据库连接字符串不能为空</value>
   </data>
   <data name="esb.webApiConfigRequired" xml:space="preserve">
-    <value>WebApi 配置不能为空</value>
+    <value>RESTful 配置不能为空</value>
+  </data>
+  <data name="esb.webApiConfigInvalid" xml:space="preserve">
+    <value>RESTful 配置格式不正确</value>
   </data>
   <data name="esb.serviceTypeUnsupported" xml:space="preserve">
     <value>不支持的服务连接类型</value>
@@ -237,11 +240,41 @@
   <data name="esb.onlySqlDataSourceSupported" xml:space="preserve">
     <value>当前版本仅支持 SQL 数据源</value>
   </data>
+  <data name="esb.sourceTypeUnsupported" xml:space="preserve">
+    <value>不支持的 ESB 数据源类型</value>
+  </data>
   <data name="esb.queryModeOnly" xml:space="preserve">
     <value>ESB 数据源仅支持查询模式</value>
   </data>
   <data name="esb.sqlRequiresDatabaseConnection" xml:space="preserve">
     <value>SQL 数据源只能绑定数据库服务连接</value>
+  </data>
+  <data name="esb.webApiRequiresWebApiConnection" xml:space="preserve">
+    <value>RESTful 数据源只能绑定 RESTful 服务连接</value>
+  </data>
+  <data name="esb.webApiBaseUrlRequired" xml:space="preserve">
+    <value>RESTful 服务连接 BaseUrl 不能为空且必须是有效地址</value>
+  </data>
+  <data name="esb.webApiPathRequired" xml:space="preserve">
+    <value>RESTful 请求路径不能为空</value>
+  </data>
+  <data name="esb.webApiMethodUnsupported" xml:space="preserve">
+    <value>当前版本仅支持 GET 和 POST 请求</value>
+  </data>
+  <data name="esb.webApiRequestFailed" xml:space="preserve">
+    <value>RESTful 请求失败，状态码：{0} {1}</value>
+  </data>
+  <data name="esb.webApiTokenUrlRequired" xml:space="preserve">
+    <value>Bearer Token 接口不能为空</value>
+  </data>
+  <data name="esb.webApiTokenRequestFailed" xml:space="preserve">
+    <value>Bearer Token 请求失败，状态码：{0} {1}</value>
+  </data>
+  <data name="esb.webApiTokenNotFound" xml:space="preserve">
+    <value>未能从 Token 接口响应中读取到 token</value>
+  </data>
+  <data name="esb.webApiInvalidJson" xml:space="preserve">
+    <value>RESTful 响应不是有效 JSON</value>
   </data>
   <data name="esb.selectOnly" xml:space="preserve">
     <value>ESB 数据源仅允许 SELECT 查询</value>

@@ -1,5 +1,8 @@
+using System.Collections.Concurrent;
 using System.Data;
 using System.Globalization;
+using System.Net.Http.Headers;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -20,8 +23,16 @@ namespace DTSoft.AppService.Esb;
 public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp connectionApp, IAppLocalizer localizer)
 {
     private const string SourceTypeSql = "sql";
+    private const string SourceTypeRestful = "restful";
     private const string ExecuteModeQuery = "query";
+    private static readonly ConcurrentDictionary<string, EsbCachedToken> TokenCache = new();
+    private static readonly ConcurrentDictionary<string, SemaphoreSlim> TokenLocks = new();
+    private static readonly JsonSerializerOptions CaseInsensitiveJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
     private static readonly Regex VariablePattern = new(@"\$\{\s*(currentUser|loginUser|user)\.(account|userAcc|name|displayName|email)\s*\}", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex TemplateParameterPattern = new(@"\{\{\s*([a-zA-Z][a-zA-Z0-9_]*(?:\.[a-zA-Z][a-zA-Z0-9_]*)?)\s*\}\}", RegexOptions.Compiled);
     private static readonly Regex SqlParameterPattern = new(@"(?<!@)@([a-zA-Z][a-zA-Z0-9_]*)", RegexOptions.Compiled);
     private static readonly Regex UnsafeSqlKeywordPattern = new(
         @"\b(insert|update|delete|merge|drop|alter|create|truncate|exec|execute|grant|revoke|into|call|copy|replace|load|set|use|backup|restore)\b",
@@ -99,8 +110,8 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
             ConnectionId = NormalizeConnectionId(parameter.ConnectionId),
             SourceType = NormalizeSourceType(parameter.SourceType),
             ExecuteMode = NormalizeExecuteMode(parameter.ExecuteMode),
-            SqlText = NormalizeSql(parameter.SqlText),
-            HttpConfig = parameter.HttpConfig,
+            SqlText = parameter.SourceType == SourceTypeSql ? NormalizeSql(parameter.SqlText) : null,
+            HttpConfig = parameter.SourceType == SourceTypeRestful ? NormalizeHttpConfig(parameter.HttpConfig) : null,
             ParameterConfig = SerializeParameters(parameter.Parameters),
             ResultMapping = SerializeResultMapping(parameter.ResultMapping),
             Status = NormalizeStatus(parameter.Status),
@@ -135,8 +146,8 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
         entity.ConnectionId = NormalizeConnectionId(parameter.ConnectionId);
         entity.SourceType = NormalizeSourceType(parameter.SourceType);
         entity.ExecuteMode = NormalizeExecuteMode(parameter.ExecuteMode);
-        entity.SqlText = NormalizeSql(parameter.SqlText);
-        entity.HttpConfig = parameter.HttpConfig;
+        entity.SqlText = parameter.SourceType == SourceTypeSql ? NormalizeSql(parameter.SqlText) : null;
+        entity.HttpConfig = parameter.SourceType == SourceTypeRestful ? NormalizeHttpConfig(parameter.HttpConfig) : null;
         entity.ParameterConfig = SerializeParameters(parameter.Parameters);
         entity.ResultMapping = SerializeResultMapping(parameter.ResultMapping);
         entity.Status = NormalizeStatus(parameter.Status);
@@ -168,14 +179,24 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
             .FirstOrDefaultAsync(item => item.Code == request.Code.Trim() && item.Status == 1);
         if (entity == null) throw new Exception(L("esb.dataSourceEnabledNotFound"));
 
-        if (!string.Equals(entity.SourceType, SourceTypeSql, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new Exception(L("esb.onlySqlDataSourceSupported"));
-        }
-
         if (!string.Equals(entity.ExecuteMode, ExecuteModeQuery, StringComparison.OrdinalIgnoreCase))
         {
             throw new Exception(L("esb.queryModeOnly"));
+        }
+
+        if (string.Equals(entity.SourceType, SourceTypeRestful, StringComparison.OrdinalIgnoreCase))
+        {
+            return await ExecuteWebApiQuery(
+                entity,
+                request.Parameters ?? new Dictionary<string, JsonNode?>(),
+                userAccount,
+                request.PageNum,
+                request.PageSize);
+        }
+
+        if (!string.Equals(entity.SourceType, SourceTypeSql, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new Exception(L("esb.sourceTypeUnsupported"));
         }
 
         return await ExecuteSqlQuery(
@@ -274,6 +295,71 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
                 await connection.DisposeAsync();
             }
         }
+    }
+
+    private async Task<object> ExecuteWebApiQuery(
+        SysEsbDataSource entity,
+        Dictionary<string, JsonNode?> inputParameters,
+        string userAccount,
+        int? pageNum,
+        int? pageSize)
+    {
+        var serviceConnection = await connectionApp.GetEnabledConnection(entity.ConnectionId);
+        if (serviceConnection == null || !string.Equals(serviceConnection.ServiceType, SourceTypeRestful, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new Exception(L("esb.webApiRequiresWebApiConnection"));
+        }
+
+        var connectionConfig = DeserializeWebApiConnectionConfig(serviceConnection.WebApiConfig);
+        var requestConfig = DeserializeWebApiRequestConfig(entity.HttpConfig);
+        ValidateWebApiConfig(connectionConfig, requestConfig);
+
+        var declaredParameters = DeserializeParameters(entity.ParameterConfig);
+        var variableContext = await BuildVariableContext(userAccount);
+        var templateContext = BuildTemplateContext(declaredParameters, inputParameters, variableContext);
+        var requestUri = BuildWebApiRequestUri(connectionConfig, requestConfig, templateContext);
+
+        using var client = new HttpClient();
+        client.Timeout = TimeSpan.FromSeconds(NormalizeTimeoutSeconds(entity.TimeoutSeconds));
+
+        using var request = new HttpRequestMessage(CreateHttpMethod(requestConfig.Method), requestUri);
+        ApplyHeaders(request, connectionConfig.Headers, templateContext);
+        ApplyHeaders(request, requestConfig.Headers, templateContext);
+        await ApplyAuthentication(request, connectionConfig, templateContext, requestUri, client);
+
+        var body = RenderTemplate(requestConfig.Body, templateContext);
+        if (!string.IsNullOrWhiteSpace(body) && request.Method != HttpMethod.Get)
+        {
+            request.Content = new StringContent(body, Encoding.UTF8, string.IsNullOrWhiteSpace(requestConfig.ContentType) ? "application/json" : requestConfig.ContentType.Trim());
+        }
+
+        using var response = await client.SendAsync(request);
+        var responseText = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new Exception(L("esb.webApiRequestFailed", (int)response.StatusCode, response.ReasonPhrase ?? string.Empty));
+        }
+
+        var root = ParseJsonResponse(responseText);
+        var dataNode = SelectJsonPath(root, requestConfig.ResultPath) ?? root;
+        var rows = ConvertJsonNodeToRows(dataNode, NormalizeMaxRows(entity.MaxRows));
+        var mappedRows = ApplyResultMapping(rows, DeserializeResultMapping(entity.ResultMapping));
+
+        if (pageNum is > 0 && pageSize is > 0)
+        {
+            var normalizedPageNum = pageNum.Value;
+            var normalizedPageSize = Math.Clamp(pageSize.Value, 1, 200);
+            var total = ReadJsonPathAsInt(root, requestConfig.TotalPath) ?? mappedRows.Count;
+            return new EsbPagedExecuteResponse
+            {
+                List = mappedRows.Skip((normalizedPageNum - 1) * normalizedPageSize).Take(normalizedPageSize).ToList(),
+                Total = total,
+                PageNum = normalizedPageNum,
+                PageSize = normalizedPageSize
+            };
+        }
+
+        return mappedRows;
     }
 
     private async Task<Dictionary<string, string>> BuildVariableContext(string userAccount)
@@ -383,12 +469,23 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
 
     private async Task ValidateConnection(EsbDataSourceAddParameter parameter)
     {
-        if (!string.Equals(parameter.SourceType, SourceTypeSql, StringComparison.OrdinalIgnoreCase)) return;
-
         var connection = await connectionApp.GetEnabledConnection(parameter.ConnectionId);
-        if (connection != null && !string.Equals(connection.ServiceType, "database", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(parameter.SourceType, SourceTypeSql, StringComparison.OrdinalIgnoreCase))
         {
-            throw new Exception(L("esb.sqlRequiresDatabaseConnection"));
+            if (connection != null && !string.Equals(connection.ServiceType, "database", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new Exception(L("esb.sqlRequiresDatabaseConnection"));
+            }
+
+            return;
+        }
+
+        if (string.Equals(parameter.SourceType, SourceTypeRestful, StringComparison.OrdinalIgnoreCase))
+        {
+            if (connection == null || !string.Equals(connection.ServiceType, SourceTypeRestful, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new Exception(L("esb.webApiRequiresWebApiConnection"));
+            }
         }
     }
 
@@ -451,19 +548,27 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
         parameter.SourceType = NormalizeSourceType(parameter.SourceType);
         parameter.ExecuteMode = NormalizeExecuteMode(parameter.ExecuteMode);
 
-        if (!string.Equals(parameter.SourceType, SourceTypeSql, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new Exception(L("esb.onlySqlDataSourceSupported"));
-        }
-
         if (!string.Equals(parameter.ExecuteMode, ExecuteModeQuery, StringComparison.OrdinalIgnoreCase))
         {
             throw new Exception(L("esb.queryModeOnly"));
         }
 
-        var sql = NormalizeSql(parameter.SqlText);
-        ValidateSafeQuerySql(sql);
-        ValidateSqlParameters(sql, parameter.Parameters ?? []);
+        if (string.Equals(parameter.SourceType, SourceTypeSql, StringComparison.OrdinalIgnoreCase))
+        {
+            var sql = NormalizeSql(parameter.SqlText);
+            ValidateSafeQuerySql(sql);
+            ValidateSqlParameters(sql, parameter.Parameters ?? []);
+            return;
+        }
+
+        if (string.Equals(parameter.SourceType, SourceTypeRestful, StringComparison.OrdinalIgnoreCase))
+        {
+            var requestConfig = DeserializeWebApiRequestConfig(parameter.HttpConfig);
+            ValidateWebApiRequestConfig(requestConfig);
+            return;
+        }
+
+        throw new Exception(L("esb.sourceTypeUnsupported"));
     }
 
     private void ValidateSafeQuerySql(string sql)
@@ -507,8 +612,8 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
 
     private static string NormalizeSourceType(string? value)
     {
-        var normalized = string.IsNullOrWhiteSpace(value) ? SourceTypeSql : value.Trim();
-        return normalized.Equals(SourceTypeSql, StringComparison.OrdinalIgnoreCase) ? SourceTypeSql : normalized;
+        var normalized = string.IsNullOrWhiteSpace(value) ? SourceTypeSql : value.Trim().ToLowerInvariant();
+        return normalized is SourceTypeSql or SourceTypeRestful ? normalized : normalized;
     }
 
     private static string NormalizeExecuteMode(string? value)
@@ -520,6 +625,12 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
     private string NormalizeSql(string? value)
     {
         if (string.IsNullOrWhiteSpace(value)) throw new Exception(L("esb.sqlRequired"));
+        return value.Trim();
+    }
+
+    private string NormalizeHttpConfig(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) throw new Exception(L("esb.webApiConfigRequired"));
         return value.Trim();
     }
 
@@ -573,6 +684,344 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
         }
     }
 
+    private EsbWebApiConnectionConfig DeserializeWebApiConnectionConfig(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return new EsbWebApiConnectionConfig();
+        try
+        {
+            return JsonSerializer.Deserialize<EsbWebApiConnectionConfig>(json, CaseInsensitiveJsonOptions) ?? new EsbWebApiConnectionConfig();
+        }
+        catch (JsonException)
+        {
+            throw new Exception(L("esb.webApiConfigInvalid"));
+        }
+    }
+
+    private EsbWebApiRequestConfig DeserializeWebApiRequestConfig(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return new EsbWebApiRequestConfig();
+        try
+        {
+            return JsonSerializer.Deserialize<EsbWebApiRequestConfig>(json, CaseInsensitiveJsonOptions) ?? new EsbWebApiRequestConfig();
+        }
+        catch (JsonException)
+        {
+            throw new Exception(L("esb.webApiConfigInvalid"));
+        }
+    }
+
+    private void ValidateWebApiConfig(EsbWebApiConnectionConfig connectionConfig, EsbWebApiRequestConfig requestConfig)
+    {
+        if (string.IsNullOrWhiteSpace(connectionConfig.BaseUrl)) throw new Exception(L("esb.webApiBaseUrlRequired"));
+        if (!Uri.TryCreate(connectionConfig.BaseUrl, UriKind.Absolute, out _)) throw new Exception(L("esb.webApiBaseUrlRequired"));
+        ValidateWebApiRequestConfig(requestConfig);
+    }
+
+    private void ValidateWebApiRequestConfig(EsbWebApiRequestConfig requestConfig)
+    {
+        if (string.IsNullOrWhiteSpace(requestConfig.Path)) throw new Exception(L("esb.webApiPathRequired"));
+        _ = CreateHttpMethod(requestConfig.Method);
+    }
+
+    private HttpMethod CreateHttpMethod(string? method)
+    {
+        var normalized = string.IsNullOrWhiteSpace(method) ? "GET" : method.Trim().ToUpperInvariant();
+        return normalized switch
+        {
+            "GET" => HttpMethod.Get,
+            "POST" => HttpMethod.Post,
+            _ => throw new Exception(L("esb.webApiMethodUnsupported"))
+        };
+    }
+
+    private static Dictionary<string, string> BuildTemplateContext(
+        List<EsbParameterConfig> declaredParameters,
+        Dictionary<string, JsonNode?> inputParameters,
+        Dictionary<string, string> variableContext)
+    {
+        var context = new Dictionary<string, string>(variableContext, StringComparer.OrdinalIgnoreCase);
+        foreach (var parameter in declaredParameters)
+        {
+            inputParameters.TryGetValue(parameter.Name, out var valueNode);
+            valueNode ??= parameter.DefaultValue;
+            context[parameter.Name] = valueNode == null ? string.Empty : ReadJsonNodeAsString(valueNode);
+        }
+
+        foreach (var pair in inputParameters)
+        {
+            context[pair.Key] = pair.Value == null ? string.Empty : ReadJsonNodeAsString(pair.Value);
+        }
+
+        return context;
+    }
+
+    private static string RenderTemplate(string? value, Dictionary<string, string> templateContext)
+    {
+        var resolved = ResolveVariables(value ?? string.Empty, templateContext);
+        return TemplateParameterPattern.Replace(resolved, match =>
+            templateContext.TryGetValue(match.Groups[1].Value, out var parameterValue) ? parameterValue : string.Empty);
+    }
+
+    private static Uri BuildWebApiRequestUri(
+        EsbWebApiConnectionConfig connectionConfig,
+        EsbWebApiRequestConfig requestConfig,
+        Dictionary<string, string> templateContext)
+    {
+        var baseUri = new Uri(connectionConfig.BaseUrl!.Trim().TrimEnd('/') + "/");
+        var path = RenderTemplate(requestConfig.Path, templateContext).TrimStart('/');
+        var builder = new UriBuilder(new Uri(baseUri, path));
+        var queryItems = new List<string>();
+        if (!string.IsNullOrWhiteSpace(builder.Query))
+        {
+            queryItems.Add(builder.Query.TrimStart('?'));
+        }
+
+        foreach (var pair in requestConfig.Query ?? new Dictionary<string, string>())
+        {
+            var value = RenderTemplate(pair.Value, templateContext);
+            if (string.IsNullOrEmpty(value)) continue;
+            queryItems.Add($"{Uri.EscapeDataString(pair.Key)}={Uri.EscapeDataString(value)}");
+        }
+
+        builder.Query = string.Join("&", queryItems.Where(item => !string.IsNullOrWhiteSpace(item)));
+        return builder.Uri;
+    }
+
+    private static void ApplyHeaders(HttpRequestMessage request, Dictionary<string, string>? headers, Dictionary<string, string> templateContext)
+    {
+        foreach (var pair in headers ?? new Dictionary<string, string>())
+        {
+            var value = RenderTemplate(pair.Value, templateContext);
+            if (string.IsNullOrWhiteSpace(pair.Key) || string.IsNullOrWhiteSpace(value)) continue;
+            request.Headers.TryAddWithoutValidation(pair.Key, value);
+        }
+    }
+
+    private async Task ApplyAuthentication(
+        HttpRequestMessage request,
+        EsbWebApiConnectionConfig connectionConfig,
+        Dictionary<string, string> templateContext,
+        Uri requestUri,
+        HttpClient client)
+    {
+        var authType = (connectionConfig.AuthType ?? "none").Trim().ToLowerInvariant();
+        if (authType == "bearer")
+        {
+            var token = await ResolveBearerToken(connectionConfig, templateContext, client);
+            if (!string.IsNullOrWhiteSpace(token)) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            return;
+        }
+
+        if (authType != "apikey") return;
+
+        var apiKeyName = RenderTemplate(connectionConfig.ApiKeyName, templateContext);
+        var apiKeyValue = RenderTemplate(connectionConfig.ApiKeyValue, templateContext);
+        if (string.IsNullOrWhiteSpace(apiKeyName) || string.IsNullOrWhiteSpace(apiKeyValue)) return;
+
+        if (string.Equals(connectionConfig.ApiKeyIn, "query", StringComparison.OrdinalIgnoreCase))
+        {
+            var builder = new UriBuilder(requestUri);
+            var prefix = string.IsNullOrWhiteSpace(builder.Query) ? string.Empty : builder.Query.TrimStart('?') + "&";
+            builder.Query = prefix + $"{Uri.EscapeDataString(apiKeyName)}={Uri.EscapeDataString(apiKeyValue)}";
+            request.RequestUri = builder.Uri;
+            return;
+        }
+
+        request.Headers.TryAddWithoutValidation(apiKeyName, apiKeyValue);
+    }
+
+    private async Task<string> ResolveBearerToken(
+        EsbWebApiConnectionConfig connectionConfig,
+        Dictionary<string, string> templateContext,
+        HttpClient client)
+    {
+        var tokenUrlText = RenderTemplate(connectionConfig.TokenUrl, templateContext);
+        if (string.IsNullOrWhiteSpace(tokenUrlText)) throw new Exception(L("esb.webApiTokenUrlRequired"));
+
+        var tokenUri = Uri.TryCreate(tokenUrlText, UriKind.Absolute, out var absoluteUri)
+            ? absoluteUri
+            : new Uri(new Uri(connectionConfig.BaseUrl!.Trim().TrimEnd('/') + "/"), tokenUrlText.TrimStart('/'));
+        var body = RenderTemplate(connectionConfig.TokenBody, templateContext);
+        var cacheKey = BuildTokenCacheKey(connectionConfig, tokenUri, body);
+        var refreshSkewSeconds = Math.Clamp(connectionConfig.TokenRefreshSkewSeconds ?? 60, 0, 3600);
+        if (TokenCache.TryGetValue(cacheKey, out var cachedToken) &&
+            cachedToken.ExpiresAt > DateTimeOffset.UtcNow.AddSeconds(refreshSkewSeconds))
+        {
+            return cachedToken.Token;
+        }
+
+        var tokenLock = TokenLocks.GetOrAdd(cacheKey, _ => new SemaphoreSlim(1, 1));
+        await tokenLock.WaitAsync();
+        try
+        {
+            if (TokenCache.TryGetValue(cacheKey, out cachedToken) &&
+                cachedToken.ExpiresAt > DateTimeOffset.UtcNow.AddSeconds(refreshSkewSeconds))
+            {
+                return cachedToken.Token;
+            }
+
+            using var tokenRequest = new HttpRequestMessage(CreateHttpMethod(connectionConfig.TokenMethod), tokenUri);
+            ApplyHeaders(tokenRequest, connectionConfig.TokenHeaders, templateContext);
+
+            if (!string.IsNullOrWhiteSpace(body) && tokenRequest.Method != HttpMethod.Get)
+            {
+                tokenRequest.Content = new StringContent(body, Encoding.UTF8, "application/json");
+            }
+
+            using var response = await client.SendAsync(tokenRequest);
+            var responseText = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new Exception(L("esb.webApiTokenRequestFailed", (int)response.StatusCode, response.ReasonPhrase ?? string.Empty));
+            }
+
+            var root = ParseJsonResponse(responseText);
+            var tokenNode = SelectJsonPath(root, connectionConfig.TokenPath) ?? SelectJsonPath(root, "$.access_token");
+            var token = tokenNode == null ? null : ReadJsonNodeAsString(tokenNode);
+            if (string.IsNullOrWhiteSpace(token)) throw new Exception(L("esb.webApiTokenNotFound"));
+
+            TokenCache[cacheKey] = new EsbCachedToken(token, ResolveTokenExpiresAt(root, connectionConfig));
+            return token;
+        }
+        finally
+        {
+            tokenLock.Release();
+        }
+    }
+
+    private static string BuildTokenCacheKey(EsbWebApiConnectionConfig connectionConfig, Uri tokenUri, string body)
+    {
+        var rawKey = JsonSerializer.Serialize(new
+        {
+            connectionConfig.BaseUrl,
+            connectionConfig.AuthType,
+            TokenUrl = tokenUri.ToString(),
+            connectionConfig.TokenMethod,
+            connectionConfig.TokenHeaders,
+            Body = body,
+            connectionConfig.TokenPath,
+            connectionConfig.TokenExpiresInPath,
+            connectionConfig.TokenExpiresAtPath
+        });
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawKey)));
+    }
+
+    private static DateTimeOffset ResolveTokenExpiresAt(JsonNode root, EsbWebApiConnectionConfig connectionConfig)
+    {
+        var expiresAtNode = SelectJsonPath(root, connectionConfig.TokenExpiresAtPath);
+        if (expiresAtNode != null)
+        {
+            var expiresAtText = ReadJsonNodeAsString(expiresAtNode);
+            if (DateTimeOffset.TryParse(expiresAtText, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var expiresAt))
+            {
+                return expiresAt.ToUniversalTime();
+            }
+        }
+
+        var expiresInNode = SelectJsonPath(root, connectionConfig.TokenExpiresInPath) ?? SelectJsonPath(root, "$.expires_in");
+        if (expiresInNode != null)
+        {
+            var expiresInText = ReadJsonNodeAsString(expiresInNode);
+            if (int.TryParse(expiresInText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var expiresInSeconds) &&
+                expiresInSeconds > 0)
+            {
+                return DateTimeOffset.UtcNow.AddSeconds(expiresInSeconds);
+            }
+        }
+
+        return DateTimeOffset.UtcNow.AddMinutes(5);
+    }
+
+    private JsonNode ParseJsonResponse(string responseText)
+    {
+        try
+        {
+            return JsonNode.Parse(responseText) ?? new JsonObject();
+        }
+        catch (JsonException)
+        {
+            throw new Exception(L("esb.webApiInvalidJson"));
+        }
+    }
+
+    private static JsonNode? SelectJsonPath(JsonNode? root, string? path)
+    {
+        if (root == null || string.IsNullOrWhiteSpace(path) || path.Trim() == "$") return root;
+        var segments = path.Trim().TrimStart('$').TrimStart('.').Split('.', StringSplitOptions.RemoveEmptyEntries);
+        var current = root;
+        foreach (var rawSegment in segments)
+        {
+            var segment = rawSegment.Trim();
+            if (current is JsonObject obj)
+            {
+                current = obj.FirstOrDefault(item => string.Equals(item.Key, segment, StringComparison.OrdinalIgnoreCase)).Value;
+                continue;
+            }
+
+            if (current is JsonArray array && int.TryParse(segment.Trim('[', ']'), out var index) && index >= 0 && index < array.Count)
+            {
+                current = array[index];
+                continue;
+            }
+
+            return null;
+        }
+
+        return current;
+    }
+
+    private static int? ReadJsonPathAsInt(JsonNode root, string? path)
+    {
+        var node = SelectJsonPath(root, path);
+        if (node is JsonValue value)
+        {
+            if (value.TryGetValue<int>(out var intValue)) return intValue;
+            if (value.TryGetValue<long>(out var longValue)) return (int)Math.Min(int.MaxValue, longValue);
+            if (value.TryGetValue<string>(out var stringValue) && int.TryParse(stringValue, out var parsed)) return parsed;
+        }
+
+        return null;
+    }
+
+    private static List<Dictionary<string, object?>> ConvertJsonNodeToRows(JsonNode? node, int maxRows)
+    {
+        if (node is JsonArray array)
+        {
+            return array.Take(maxRows).Select(ConvertJsonNodeToRow).ToList();
+        }
+
+        return [ConvertJsonNodeToRow(node)];
+    }
+
+    private static Dictionary<string, object?> ConvertJsonNodeToRow(JsonNode? node)
+    {
+        if (node is JsonObject obj)
+        {
+            return obj.ToDictionary(item => item.Key, item => ConvertJsonValue(item.Value), StringComparer.OrdinalIgnoreCase);
+        }
+
+        return new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Value"] = ConvertJsonValue(node)
+        };
+    }
+
+    private static object? ConvertJsonValue(JsonNode? node)
+    {
+        if (node == null) return null;
+        if (node is JsonValue value)
+        {
+            if (value.TryGetValue<string>(out var stringValue)) return stringValue;
+            if (value.TryGetValue<int>(out var intValue)) return intValue;
+            if (value.TryGetValue<long>(out var longValue)) return longValue;
+            if (value.TryGetValue<decimal>(out var decimalValue)) return decimalValue;
+            if (value.TryGetValue<double>(out var doubleValue)) return doubleValue;
+            if (value.TryGetValue<bool>(out var boolValue)) return boolValue;
+        }
+
+        return node.ToJsonString();
+    }
+
     private async Task<Dictionary<long, string>> BuildConnectionNameMap(IEnumerable<long?> connectionIds)
     {
         var ids = connectionIds
@@ -618,4 +1067,58 @@ public class EsbDataSourceApp(SysDbContext context, EsbServiceConnectionApp conn
             UpdateTime = entity.UpdateTime
         };
     }
+
+    private sealed class EsbWebApiConnectionConfig
+    {
+        public string? BaseUrl { get; set; }
+
+        public string? AuthType { get; set; }
+
+        public string? Token { get; set; }
+
+        public string? TokenUrl { get; set; }
+
+        public string? TokenMethod { get; set; }
+
+        public Dictionary<string, string>? TokenHeaders { get; set; }
+
+        public string? TokenBody { get; set; }
+
+        public string? TokenPath { get; set; }
+
+        public string? TokenExpiresInPath { get; set; }
+
+        public string? TokenExpiresAtPath { get; set; }
+
+        public int? TokenRefreshSkewSeconds { get; set; }
+
+        public string? ApiKeyName { get; set; }
+
+        public string? ApiKeyValue { get; set; }
+
+        public string? ApiKeyIn { get; set; }
+
+        public Dictionary<string, string>? Headers { get; set; }
+    }
+
+    private sealed class EsbWebApiRequestConfig
+    {
+        public string? Method { get; set; }
+
+        public string? Path { get; set; }
+
+        public Dictionary<string, string>? Query { get; set; }
+
+        public Dictionary<string, string>? Headers { get; set; }
+
+        public string? Body { get; set; }
+
+        public string? ContentType { get; set; }
+
+        public string? ResultPath { get; set; }
+
+        public string? TotalPath { get; set; }
+    }
+
+    private sealed record EsbCachedToken(string Token, DateTimeOffset ExpiresAt);
 }

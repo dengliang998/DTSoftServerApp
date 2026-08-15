@@ -205,7 +205,10 @@
     <value>Database connection string is required.</value>
   </data>
   <data name="esb.webApiConfigRequired" xml:space="preserve">
-    <value>Web API configuration is required.</value>
+    <value>RESTful configuration is required.</value>
+  </data>
+  <data name="esb.webApiConfigInvalid" xml:space="preserve">
+    <value>RESTful configuration format is invalid.</value>
   </data>
   <data name="esb.serviceTypeUnsupported" xml:space="preserve">
     <value>Unsupported service connection type.</value>
@@ -237,11 +240,41 @@
   <data name="esb.onlySqlDataSourceSupported" xml:space="preserve">
     <value>This version only supports SQL data sources.</value>
   </data>
+  <data name="esb.sourceTypeUnsupported" xml:space="preserve">
+    <value>Unsupported ESB data source type.</value>
+  </data>
   <data name="esb.queryModeOnly" xml:space="preserve">
     <value>ESB data sources only support query mode.</value>
   </data>
   <data name="esb.sqlRequiresDatabaseConnection" xml:space="preserve">
     <value>SQL data sources can only bind to database service connections.</value>
+  </data>
+  <data name="esb.webApiRequiresWebApiConnection" xml:space="preserve">
+    <value>RESTful data sources can only bind to RESTful service connections.</value>
+  </data>
+  <data name="esb.webApiBaseUrlRequired" xml:space="preserve">
+    <value>RESTful service connection BaseUrl is required and must be a valid URL.</value>
+  </data>
+  <data name="esb.webApiPathRequired" xml:space="preserve">
+    <value>RESTful request path is required.</value>
+  </data>
+  <data name="esb.webApiMethodUnsupported" xml:space="preserve">
+    <value>This version only supports GET and POST requests.</value>
+  </data>
+  <data name="esb.webApiRequestFailed" xml:space="preserve">
+    <value>RESTful request failed. Status code: {0} {1}</value>
+  </data>
+  <data name="esb.webApiTokenUrlRequired" xml:space="preserve">
+    <value>Bearer token URL is required.</value>
+  </data>
+  <data name="esb.webApiTokenRequestFailed" xml:space="preserve">
+    <value>Bearer token request failed. Status code: {0} {1}</value>
+  </data>
+  <data name="esb.webApiTokenNotFound" xml:space="preserve">
+    <value>Token was not found in the token endpoint response.</value>
+  </data>
+  <data name="esb.webApiInvalidJson" xml:space="preserve">
+    <value>RESTful response is not valid JSON.</value>
   </data>
   <data name="esb.selectOnly" xml:space="preserve">
     <value>ESB data sources only allow SELECT queries.</value>

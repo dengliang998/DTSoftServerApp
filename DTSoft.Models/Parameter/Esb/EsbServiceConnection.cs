@@ -75,6 +75,8 @@ public class EsbServiceConnectionTestParameter
 
     public string? ConnectionString { get; set; }
 
+    public string? WebApiConfig { get; set; }
+
     public int? TimeoutSeconds { get; set; }
 }
 

@@ -33,7 +33,7 @@ public class SysEsbDataSource
     public long? ConnectionId { get; set; }
 
     /// <summary>
-    /// 数据源类型：sql/http。
+    /// 数据源类型：sql/restful。
     /// </summary>
     [StringLength(20)]
     public required string SourceType { get; set; }

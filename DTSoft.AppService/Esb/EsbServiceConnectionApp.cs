@@ -1,4 +1,7 @@
 using System.Data;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using DTSoft.AppService.Localization;
 using DTSoft.Core.Common;
 using DTSoft.Core.DbContexts;
@@ -15,7 +18,7 @@ namespace DTSoft.AppService.Esb;
 public class EsbServiceConnectionApp(SysDbContext context, IAppLocalizer localizer)
 {
     private const string ServiceTypeDatabase = "database";
-    private const string ServiceTypeWebApi = "webapi";
+    private const string ServiceTypeRestful = "restful";
     private string L(string key, params object[] args) => args.Length == 0 ? localizer[key] : localizer.Format(key, args);
 
     public async Task<(List<EsbServiceConnectionResponse> Data, int Total)> GetConnections(EsbServiceConnectionQueryParameter parameter)
@@ -149,13 +152,16 @@ public class EsbServiceConnectionApp(SysDbContext context, IAppLocalizer localiz
     public async Task TestConnection(EsbServiceConnectionTestParameter parameter)
     {
         var serviceType = NormalizeServiceType(parameter.ServiceType);
-        if (serviceType != ServiceTypeDatabase)
-        {
-            throw new Exception(L("esb.onlyDatabaseTestSupported"));
-        }
-
         if (parameter.ItemId is null or <= 0)
         {
+            if (serviceType == ServiceTypeRestful)
+            {
+                var webApiConfig = NormalizeWebApiConfig(parameter.WebApiConfig);
+                if (string.IsNullOrWhiteSpace(webApiConfig)) throw new Exception(L("esb.webApiConfigRequired"));
+                await TestRestfulConnection(webApiConfig, NormalizeTimeoutSeconds(parameter.TimeoutSeconds));
+                return;
+            }
+
             if (!string.IsNullOrWhiteSpace(parameter.DbType) || !string.IsNullOrWhiteSpace(parameter.ConnectionString))
             {
                 var dbType = NormalizeRequiredDbType(parameter.DbType);
@@ -174,9 +180,24 @@ public class EsbServiceConnectionApp(SysDbContext context, IAppLocalizer localiz
 
         if (entity == null)
         {
+            if (serviceType == ServiceTypeRestful)
+            {
+                var webApiConfig = NormalizeWebApiConfig(parameter.WebApiConfig);
+                if (string.IsNullOrWhiteSpace(webApiConfig)) throw new Exception(L("esb.webApiConfigRequired"));
+                await TestRestfulConnection(webApiConfig, NormalizeTimeoutSeconds(parameter.TimeoutSeconds));
+                return;
+            }
+
             var dbType = NormalizeDbType(parameter.DbType);
             var connectionString = NormalizeConnectionString(parameter.ConnectionString);
             await TestExternalConnection(dbType, connectionString, NormalizeTimeoutSeconds(parameter.TimeoutSeconds));
+            return;
+        }
+
+        if (entity.ServiceType == ServiceTypeRestful)
+        {
+            if (string.IsNullOrWhiteSpace(entity.WebApiConfig)) throw new Exception(L("esb.webApiConfigRequired"));
+            await TestRestfulConnection(entity.WebApiConfig, entity.TimeoutSeconds);
             return;
         }
 
@@ -186,6 +207,105 @@ public class EsbServiceConnectionApp(SysDbContext context, IAppLocalizer localiz
         }
 
         await TestExternalConnection(entity.DbType, entity.ConnectionString, entity.TimeoutSeconds);
+    }
+
+    private async Task TestRestfulConnection(string config, int timeoutSeconds)
+    {
+        var configObject = ValidateWebApiConfig(config);
+        var baseUrl = configObject["BaseUrl"]?.ToString() ?? configObject["baseUrl"]?.ToString() ?? string.Empty;
+        var authType = configObject["AuthType"]?.ToString() ?? configObject["authType"]?.ToString() ?? "none";
+
+        using var client = new HttpClient
+        {
+            Timeout = TimeSpan.FromSeconds(timeoutSeconds)
+        };
+
+        if (string.Equals(authType, "bearer", StringComparison.OrdinalIgnoreCase))
+        {
+            await TestBearerToken(configObject, baseUrl, client);
+            return;
+        }
+
+        using var response = await client.GetAsync(baseUrl);
+    }
+
+    private async Task TestBearerToken(JsonObject configObject, string baseUrl, HttpClient client)
+    {
+        var tokenUrl = configObject["TokenUrl"]?.ToString() ?? configObject["tokenUrl"]?.ToString();
+        if (string.IsNullOrWhiteSpace(tokenUrl)) throw new Exception(L("esb.webApiTokenUrlRequired"));
+
+        var tokenUri = Uri.TryCreate(tokenUrl, UriKind.Absolute, out var absoluteUri)
+            ? absoluteUri
+            : new Uri(new Uri(baseUrl.Trim().TrimEnd('/') + "/"), tokenUrl.TrimStart('/'));
+        var tokenMethod = configObject["TokenMethod"]?.ToString() ?? configObject["tokenMethod"]?.ToString() ?? "POST";
+        using var request = new HttpRequestMessage(CreateHttpMethod(tokenMethod), tokenUri);
+
+        ApplyHeaders(request, (configObject["TokenHeaders"] as JsonObject) ?? (configObject["tokenHeaders"] as JsonObject));
+        var body = configObject["TokenBody"]?.ToString() ?? configObject["tokenBody"]?.ToString();
+        if (!string.IsNullOrWhiteSpace(body) && request.Method != HttpMethod.Get)
+        {
+            request.Content = new StringContent(body, Encoding.UTF8, "application/json");
+        }
+
+        using var response = await client.SendAsync(request);
+        var responseText = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new Exception(L("esb.webApiTokenRequestFailed", (int)response.StatusCode, response.ReasonPhrase ?? string.Empty));
+        }
+
+        JsonNode? root;
+        try
+        {
+            root = JsonNode.Parse(responseText);
+        }
+        catch (JsonException)
+        {
+            throw new Exception(L("esb.webApiInvalidJson"));
+        }
+
+        var tokenPath = configObject["TokenPath"]?.ToString() ?? configObject["tokenPath"]?.ToString() ?? "$.access_token";
+        var token = SelectJsonPath(root, tokenPath)?.ToString();
+        if (string.IsNullOrWhiteSpace(token)) throw new Exception(L("esb.webApiTokenNotFound"));
+    }
+
+    private static void ApplyHeaders(HttpRequestMessage request, JsonObject? headers)
+    {
+        if (headers == null) return;
+        foreach (var header in headers)
+        {
+            var value = header.Value?.ToString();
+            if (!string.IsNullOrWhiteSpace(header.Key) && !string.IsNullOrWhiteSpace(value))
+            {
+                request.Headers.TryAddWithoutValidation(header.Key, value);
+            }
+        }
+    }
+
+    private HttpMethod CreateHttpMethod(string? method)
+    {
+        var normalized = string.IsNullOrWhiteSpace(method) ? "GET" : method.Trim().ToUpperInvariant();
+        return normalized switch
+        {
+            "GET" => HttpMethod.Get,
+            "POST" => HttpMethod.Post,
+            _ => throw new Exception(L("esb.webApiMethodUnsupported"))
+        };
+    }
+
+    private static JsonNode? SelectJsonPath(JsonNode? root, string? path)
+    {
+        if (root == null || string.IsNullOrWhiteSpace(path) || path.Trim() == "$") return root;
+        var segments = path.Trim().TrimStart('$').TrimStart('.').Split('.', StringSplitOptions.RemoveEmptyEntries);
+        var current = root;
+        foreach (var rawSegment in segments)
+        {
+            if (current is not JsonObject obj) return null;
+            var segment = rawSegment.Trim();
+            current = obj.FirstOrDefault(item => string.Equals(item.Key, segment, StringComparison.OrdinalIgnoreCase)).Value;
+        }
+
+        return current;
     }
 
     public async Task<SysEsbServiceConnection?> GetEnabledConnection(long? connectionId)
@@ -275,9 +395,10 @@ public class EsbServiceConnectionApp(SysDbContext context, IAppLocalizer localiz
             return;
         }
 
-        if (parameter.ServiceType == ServiceTypeWebApi)
+        if (parameter.ServiceType == ServiceTypeRestful)
         {
             if (string.IsNullOrWhiteSpace(parameter.WebApiConfig)) throw new Exception(L("esb.webApiConfigRequired"));
+            _ = ValidateWebApiConfig(parameter.WebApiConfig);
             return;
         }
 
@@ -287,7 +408,7 @@ public class EsbServiceConnectionApp(SysDbContext context, IAppLocalizer localiz
     private string NormalizeServiceType(string? value)
     {
         var normalized = string.IsNullOrWhiteSpace(value) ? ServiceTypeDatabase : value.Trim().ToLowerInvariant();
-        return normalized is ServiceTypeDatabase or ServiceTypeWebApi ? normalized : throw new Exception(L("esb.serviceTypeUnsupported"));
+        return normalized is ServiceTypeDatabase or ServiceTypeRestful ? normalized : throw new Exception(L("esb.serviceTypeUnsupported"));
     }
 
     private string? NormalizeDbType(string? value)
@@ -317,6 +438,42 @@ public class EsbServiceConnectionApp(SysDbContext context, IAppLocalizer localiz
     private static string? NormalizeWebApiConfig(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private JsonObject ValidateWebApiConfig(string config)
+    {
+        JsonNode? node;
+        try
+        {
+            node = JsonNode.Parse(config);
+        }
+        catch (JsonException)
+        {
+            throw new Exception(L("esb.webApiConfigInvalid"));
+        }
+
+        if (node is not JsonObject configObject)
+        {
+            throw new Exception(L("esb.webApiConfigInvalid"));
+        }
+
+        var baseUrl = configObject["BaseUrl"]?.ToString() ?? configObject["baseUrl"]?.ToString();
+        if (string.IsNullOrWhiteSpace(baseUrl) || !Uri.TryCreate(baseUrl, UriKind.Absolute, out _))
+        {
+            throw new Exception(L("esb.webApiBaseUrlRequired"));
+        }
+
+        var authType = configObject["AuthType"]?.ToString() ?? configObject["authType"]?.ToString();
+        if (string.Equals(authType, "bearer", StringComparison.OrdinalIgnoreCase))
+        {
+            var tokenUrl = configObject["TokenUrl"]?.ToString() ?? configObject["tokenUrl"]?.ToString();
+            if (string.IsNullOrWhiteSpace(tokenUrl))
+            {
+                throw new Exception(L("esb.webApiTokenUrlRequired"));
+            }
+        }
+
+        return configObject;
     }
 
     private static int NormalizeStatus(int value) => value == 1 ? 1 : 0;

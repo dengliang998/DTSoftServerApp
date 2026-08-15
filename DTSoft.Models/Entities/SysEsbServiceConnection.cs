@@ -28,7 +28,7 @@ public class SysEsbServiceConnection
     public required string Name { get; set; }
 
     /// <summary>
-    /// 服务类型：database/webapi。
+    /// 服务类型：database/restful。
     /// </summary>
     [StringLength(20)]
     public required string ServiceType { get; set; }
@@ -45,7 +45,7 @@ public class SysEsbServiceConnection
     public string? ConnectionString { get; set; }
 
     /// <summary>
-    /// WebApi 配置，预留。
+    /// RESTful 配置，预留。
     /// </summary>
     public string? WebApiConfig { get; set; }
 
