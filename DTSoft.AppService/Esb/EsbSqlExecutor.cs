@@ -13,6 +13,7 @@ namespace DTSoft.AppService.Esb;
 public class EsbSqlExecutor(IAppLocalizer localizer)
 {
     private string L(string key, params object[] args) => args.Length == 0 ? localizer[key] : localizer.Format(key, args);
+    private DtSoftException BadRequest(string key, params object[] args) => DtSoftException.BadRequest(L(key, args), key);
 
     public async Task<object> Execute(
         SysEsbDataSource entity,
@@ -110,27 +111,27 @@ public class EsbSqlExecutor(IAppLocalizer localizer)
 
         if (valueNode == null)
         {
-            if (config.Required) throw DtSoftException.BadRequest(L("esb.parameterRequired", config.Name), "esb.parameterRequired");
+            if (config.Required) throw BadRequest("esb.parameterRequired", config.Name);
             return DBNull.Value;
         }
 
         var text = EsbTemplateRenderer.ResolveVariables(EsbJsonHelper.ReadJsonNodeAsString(valueNode), variableContext);
-        if (config.Required && string.IsNullOrWhiteSpace(text)) throw DtSoftException.BadRequest(L("esb.parameterRequired", config.Name), "esb.parameterRequired");
+        if (config.Required && string.IsNullOrWhiteSpace(text)) throw BadRequest("esb.parameterRequired", config.Name);
 
         return NormalizeParameterType(config.Type) switch
         {
             "number" => decimal.TryParse(text, NumberStyles.Number, CultureInfo.InvariantCulture, out var number)
                 ? number
-                : throw DtSoftException.BadRequest(L("esb.parameterNumber", config.Name), "esb.parameterNumber"),
-            "boolean" => bool.TryParse(text, out var boolean) ? boolean : throw DtSoftException.BadRequest(L("esb.parameterBoolean", config.Name), "esb.parameterBoolean"),
-            "datetime" => DateTime.TryParse(text, out var dateTime) ? dateTime : throw DtSoftException.BadRequest(L("esb.parameterDateTime", config.Name), "esb.parameterDateTime"),
+                : throw BadRequest("esb.parameterNumber", config.Name),
+            "boolean" => bool.TryParse(text, out var boolean) ? boolean : throw BadRequest("esb.parameterBoolean", config.Name),
+            "datetime" => DateTime.TryParse(text, out var dateTime) ? dateTime : throw BadRequest("esb.parameterDateTime", config.Name),
             _ => text
         };
     }
 
     private string NormalizeSql(string? value)
     {
-        if (string.IsNullOrWhiteSpace(value)) throw DtSoftException.BadRequest(L("esb.sqlRequired"), "esb.sqlRequired");
+        if (string.IsNullOrWhiteSpace(value)) throw BadRequest("esb.sqlRequired");
         return value.Trim();
     }
 

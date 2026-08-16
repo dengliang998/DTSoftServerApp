@@ -1,4 +1,5 @@
 using DTSoft.Models.Parameter.MicroApp;
+using DTSoft.Core.Exceptions;
 using DTSoft.Core.Localization;
 using System.Text.RegularExpressions;
 
@@ -171,7 +172,9 @@ namespace DTSoft.Core.Common.Excel
                 // 如果验证失败，抛出异常
                 if (!isValid)
                 {
-                    throw new Exception(Text(localizer, "excel.validationFailed", string.Join("; ", validationErrors)));
+                    throw DtSoftException.BadRequest(
+                        Text(localizer, "excel.validationFailed", string.Join("; ", validationErrors)),
+                        "excel.validationFailed");
                 }
 
                 validatedData.Add(validatedRow!);

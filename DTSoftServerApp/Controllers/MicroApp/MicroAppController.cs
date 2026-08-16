@@ -56,12 +56,12 @@ namespace DTSoftServerApp.Controllers.MicroApp
         /// <param name="parameter">添加参数</param>
         /// <returns>添加的微应用配置</returns>
         [HttpPost("AddMicroAppConfig")]
-        public async Task<IActionResult> AddMicroAppConfig([FromBody] MicroConfigAddParameter parameter)
+        public async Task<IActionResult> AddMicroAppConfig([FromBody] MicroConfigAddParameter? parameter)
         {
             try
             {
                 // 验证参数
-                if (!ModelState.IsValid)
+                if (!ModelState.IsValid || parameter == null)
                 {
                     return InvalidArguments();
                 }
@@ -82,12 +82,12 @@ namespace DTSoftServerApp.Controllers.MicroApp
         /// <param name="parameter">更新参数</param>
         /// <returns>更新结果</returns>
         [HttpPost("UpdateMicroAppConfig")]
-        public async Task<IActionResult> UpdateMicroAppConfig([FromBody] MicroConfigUpdateParameter parameter)
+        public async Task<IActionResult> UpdateMicroAppConfig([FromBody] MicroConfigUpdateParameter? parameter)
         {
             try
             {
                 // 验证参数
-                if (!ModelState.IsValid)
+                if (!ModelState.IsValid || parameter == null)
                 {
                     return InvalidArguments();
                 }
@@ -108,12 +108,12 @@ namespace DTSoftServerApp.Controllers.MicroApp
         /// <param name="parameter">删除参数</param>
         /// <returns>删除结果</returns>
         [HttpPost("DeleteMicroAppConfig")]
-        public async Task<IActionResult> DeleteMicroAppConfig([FromBody] MicroConfigDeleteParameter parameter)
+        public async Task<IActionResult> DeleteMicroAppConfig([FromBody] MicroConfigDeleteParameter? parameter)
         {
             try
             {
                 // 验证参数
-                if (!ModelState.IsValid)
+                if (!ModelState.IsValid || parameter == null)
                 {
                     return InvalidArguments();
                 }

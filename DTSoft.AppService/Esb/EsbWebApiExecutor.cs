@@ -23,6 +23,8 @@ public class EsbWebApiExecutor(IAppLocalizer localizer)
     };
 
     private string L(string key, params object[] args) => args.Length == 0 ? localizer[key] : localizer.Format(key, args);
+    private DtSoftException BadRequest(string key, params object[] args) => DtSoftException.BadRequest(L(key, args), key);
+    private DtSoftException BadGateway(string key, params object[] args) => DtSoftException.BadGateway(L(key, args), key);
 
     public void ValidateRequestConfig(string? httpConfig)
     {
@@ -41,7 +43,7 @@ public class EsbWebApiExecutor(IAppLocalizer localizer)
     {
         if (!string.Equals(serviceConnection.ServiceType, SourceTypeRestful, StringComparison.OrdinalIgnoreCase))
         {
-            throw DtSoftException.BadRequest(L("esb.webApiRequiresWebApiConnection"), "esb.webApiRequiresWebApiConnection");
+            throw BadRequest("esb.webApiRequiresWebApiConnection");
         }
 
         var connectionConfig = DeserializeWebApiConnectionConfig(serviceConnection.WebApiConfig);
@@ -69,10 +71,7 @@ public class EsbWebApiExecutor(IAppLocalizer localizer)
         var responseText = await response.Content.ReadAsStringAsync();
         if (!response.IsSuccessStatusCode)
         {
-            throw new DtSoftException(
-                L("esb.webApiRequestFailed", (int)response.StatusCode, response.ReasonPhrase ?? string.Empty),
-                502,
-                "esb.webApiRequestFailed");
+            throw BadGateway("esb.webApiRequestFailed", (int)response.StatusCode, response.ReasonPhrase ?? string.Empty);
         }
 
         var root = ParseJsonResponse(responseText);
@@ -105,7 +104,7 @@ public class EsbWebApiExecutor(IAppLocalizer localizer)
         }
         catch (JsonException)
         {
-            throw DtSoftException.BadRequest(L("esb.webApiConfigInvalid"), "esb.webApiConfigInvalid");
+            throw BadRequest("esb.webApiConfigInvalid");
         }
     }
 
@@ -118,20 +117,20 @@ public class EsbWebApiExecutor(IAppLocalizer localizer)
         }
         catch (JsonException)
         {
-            throw DtSoftException.BadRequest(L("esb.webApiConfigInvalid"), "esb.webApiConfigInvalid");
+            throw BadRequest("esb.webApiConfigInvalid");
         }
     }
 
     private void ValidateWebApiConfig(EsbWebApiConnectionConfig connectionConfig, EsbWebApiRequestConfig requestConfig)
     {
-        if (string.IsNullOrWhiteSpace(connectionConfig.BaseUrl)) throw DtSoftException.BadRequest(L("esb.webApiBaseUrlRequired"), "esb.webApiBaseUrlRequired");
-        if (!Uri.TryCreate(connectionConfig.BaseUrl, UriKind.Absolute, out _)) throw DtSoftException.BadRequest(L("esb.webApiBaseUrlRequired"), "esb.webApiBaseUrlRequired");
+        if (string.IsNullOrWhiteSpace(connectionConfig.BaseUrl)) throw BadRequest("esb.webApiBaseUrlRequired");
+        if (!Uri.TryCreate(connectionConfig.BaseUrl, UriKind.Absolute, out _)) throw BadRequest("esb.webApiBaseUrlRequired");
         ValidateWebApiRequestConfig(requestConfig);
     }
 
     private void ValidateWebApiRequestConfig(EsbWebApiRequestConfig requestConfig)
     {
-        if (string.IsNullOrWhiteSpace(requestConfig.Path)) throw DtSoftException.BadRequest(L("esb.webApiPathRequired"), "esb.webApiPathRequired");
+        if (string.IsNullOrWhiteSpace(requestConfig.Path)) throw BadRequest("esb.webApiPathRequired");
         _ = CreateHttpMethod(requestConfig.Method);
     }
 
@@ -142,7 +141,7 @@ public class EsbWebApiExecutor(IAppLocalizer localizer)
         {
             "GET" => HttpMethod.Get,
             "POST" => HttpMethod.Post,
-            _ => throw DtSoftException.BadRequest(L("esb.webApiMethodUnsupported"), "esb.webApiMethodUnsupported")
+            _ => throw BadRequest("esb.webApiMethodUnsupported")
         };
     }
 
@@ -210,7 +209,7 @@ public class EsbWebApiExecutor(IAppLocalizer localizer)
         HttpClient client)
     {
         var tokenUrlText = EsbTemplateRenderer.RenderTemplate(connectionConfig.TokenUrl, templateContext);
-        if (string.IsNullOrWhiteSpace(tokenUrlText)) throw DtSoftException.BadRequest(L("esb.webApiTokenUrlRequired"), "esb.webApiTokenUrlRequired");
+        if (string.IsNullOrWhiteSpace(tokenUrlText)) throw BadRequest("esb.webApiTokenUrlRequired");
 
         var tokenUri = Uri.TryCreate(tokenUrlText, UriKind.Absolute, out var absoluteUri)
             ? absoluteUri
@@ -246,16 +245,13 @@ public class EsbWebApiExecutor(IAppLocalizer localizer)
             var responseText = await response.Content.ReadAsStringAsync();
             if (!response.IsSuccessStatusCode)
             {
-                throw new DtSoftException(
-                    L("esb.webApiTokenRequestFailed", (int)response.StatusCode, response.ReasonPhrase ?? string.Empty),
-                    502,
-                    "esb.webApiTokenRequestFailed");
+                throw BadGateway("esb.webApiTokenRequestFailed", (int)response.StatusCode, response.ReasonPhrase ?? string.Empty);
             }
 
             var root = ParseJsonResponse(responseText);
             var tokenNode = EsbJsonHelper.SelectJsonPath(root, connectionConfig.TokenPath) ?? EsbJsonHelper.SelectJsonPath(root, "$.access_token");
             var token = tokenNode == null ? null : EsbJsonHelper.ReadJsonNodeAsString(tokenNode);
-            if (string.IsNullOrWhiteSpace(token)) throw new DtSoftException(L("esb.webApiTokenNotFound"), 502, "esb.webApiTokenNotFound");
+            if (string.IsNullOrWhiteSpace(token)) throw BadGateway("esb.webApiTokenNotFound");
 
             TokenCache[cacheKey] = new EsbCachedToken(token, ResolveTokenExpiresAt(root, connectionConfig));
             return token;
@@ -317,7 +313,7 @@ public class EsbWebApiExecutor(IAppLocalizer localizer)
         }
         catch (JsonException)
         {
-            throw new DtSoftException(L("esb.webApiInvalidJson"), 502, "esb.webApiInvalidJson");
+            throw BadGateway("esb.webApiInvalidJson");
         }
     }
 

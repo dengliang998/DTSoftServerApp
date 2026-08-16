@@ -28,4 +28,7 @@ public class DtSoftException : Exception
 
     public static DtSoftException Forbidden(string message, string errorCode = "business.forbidden")
         => new(message, 403, errorCode);
+
+    public static DtSoftException BadGateway(string message, string errorCode = "business.badGateway")
+        => new(message, 502, errorCode);
 }

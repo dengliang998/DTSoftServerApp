@@ -6,6 +6,7 @@ using DTSoft.AppService.Localization;
 using DTSoft.Core.Common;
 using DTSoft.Core.DbContexts;
 using DTSoft.Core.DbProviders;
+using DTSoft.Core.Exceptions;
 using DTSoft.Models.Entities;
 using DTSoft.Models.Parameter.Esb;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +21,9 @@ public class EsbServiceConnectionApp(SysDbContext context, IAppLocalizer localiz
     private const string ServiceTypeDatabase = "database";
     private const string ServiceTypeRestful = "restful";
     private string L(string key, params object[] args) => args.Length == 0 ? localizer[key] : localizer.Format(key, args);
+    private DtSoftException BadRequest(string key, params object[] args) => DtSoftException.BadRequest(L(key, args), key);
+    private DtSoftException NotFound(string key, params object[] args) => DtSoftException.NotFound(L(key, args), key);
+    private DtSoftException Conflict(string key, params object[] args) => DtSoftException.Conflict(L(key, args), key);
 
     public async Task<(List<EsbServiceConnectionResponse> Data, int Total)> GetConnections(EsbServiceConnectionQueryParameter parameter)
     {
@@ -83,7 +87,7 @@ public class EsbServiceConnectionApp(SysDbContext context, IAppLocalizer localiz
         var itemId = YitterHelper.NewId();
         var code = NormalizeConnectionCode(parameter.Code, itemId);
         var duplicated = await context.SysEsbServiceConnection!.AnyAsync(item => item.Code == code);
-        if (duplicated) throw new Exception(L("esb.connectionCodeExists"));
+        if (duplicated) throw Conflict("esb.connectionCodeExists");
 
         var now = DateTime.Now;
         var entity = new SysEsbServiceConnection
@@ -112,14 +116,14 @@ public class EsbServiceConnectionApp(SysDbContext context, IAppLocalizer localiz
         NormalizeAndValidate(parameter);
 
         var entity = await context.SysEsbServiceConnection!.FirstOrDefaultAsync(item => item.ItemId == parameter.ItemId);
-        if (entity == null) throw new Exception(L("esb.connectionNotFound"));
+        if (entity == null) throw NotFound("esb.connectionNotFound");
 
         var code = NormalizeConnectionCode(parameter.Code, entity.ItemId, entity.Code);
         if (!string.Equals(code, entity.Code, StringComparison.Ordinal))
         {
             var duplicated = await context.SysEsbServiceConnection!
                 .AnyAsync(item => item.Code == code && item.ItemId != parameter.ItemId);
-            if (duplicated) throw new Exception(L("esb.connectionCodeExists"));
+            if (duplicated) throw Conflict("esb.connectionCodeExists");
         }
 
         entity.Code = code;
@@ -140,10 +144,10 @@ public class EsbServiceConnectionApp(SysDbContext context, IAppLocalizer localiz
     public async Task DeleteConnection(long id)
     {
         var entity = await context.SysEsbServiceConnection!.FirstOrDefaultAsync(item => item.ItemId == id);
-        if (entity == null) throw new Exception(L("esb.connectionNotFound"));
+        if (entity == null) throw NotFound("esb.connectionNotFound");
 
         var used = await context.SysEsbDataSource!.AnyAsync(item => item.ConnectionId == id);
-        if (used) throw new Exception(L("esb.connectionInUse"));
+        if (used) throw Conflict("esb.connectionInUse");
 
         context.SysEsbServiceConnection!.Remove(entity);
         await context.SaveChangesAsync();
@@ -157,7 +161,7 @@ public class EsbServiceConnectionApp(SysDbContext context, IAppLocalizer localiz
             if (serviceType == ServiceTypeRestful)
             {
                 var webApiConfig = NormalizeWebApiConfig(parameter.WebApiConfig);
-                if (string.IsNullOrWhiteSpace(webApiConfig)) throw new Exception(L("esb.webApiConfigRequired"));
+                if (string.IsNullOrWhiteSpace(webApiConfig)) throw BadRequest("esb.webApiConfigRequired");
                 await TestRestfulConnection(webApiConfig, NormalizeTimeoutSeconds(parameter.TimeoutSeconds));
                 return;
             }
@@ -183,7 +187,7 @@ public class EsbServiceConnectionApp(SysDbContext context, IAppLocalizer localiz
             if (serviceType == ServiceTypeRestful)
             {
                 var webApiConfig = NormalizeWebApiConfig(parameter.WebApiConfig);
-                if (string.IsNullOrWhiteSpace(webApiConfig)) throw new Exception(L("esb.webApiConfigRequired"));
+                if (string.IsNullOrWhiteSpace(webApiConfig)) throw BadRequest("esb.webApiConfigRequired");
                 await TestRestfulConnection(webApiConfig, NormalizeTimeoutSeconds(parameter.TimeoutSeconds));
                 return;
             }
@@ -196,14 +200,14 @@ public class EsbServiceConnectionApp(SysDbContext context, IAppLocalizer localiz
 
         if (entity.ServiceType == ServiceTypeRestful)
         {
-            if (string.IsNullOrWhiteSpace(entity.WebApiConfig)) throw new Exception(L("esb.webApiConfigRequired"));
+            if (string.IsNullOrWhiteSpace(entity.WebApiConfig)) throw BadRequest("esb.webApiConfigRequired");
             await TestRestfulConnection(entity.WebApiConfig, entity.TimeoutSeconds);
             return;
         }
 
         if (entity.ServiceType != ServiceTypeDatabase)
         {
-            throw new Exception(L("esb.onlyDatabaseTestSupported"));
+            throw BadRequest("esb.onlyDatabaseTestSupported");
         }
 
         await TestExternalConnection(entity.DbType, entity.ConnectionString, entity.TimeoutSeconds);
@@ -232,7 +236,7 @@ public class EsbServiceConnectionApp(SysDbContext context, IAppLocalizer localiz
     private async Task TestBearerToken(JsonObject configObject, string baseUrl, HttpClient client)
     {
         var tokenUrl = configObject["TokenUrl"]?.ToString() ?? configObject["tokenUrl"]?.ToString();
-        if (string.IsNullOrWhiteSpace(tokenUrl)) throw new Exception(L("esb.webApiTokenUrlRequired"));
+        if (string.IsNullOrWhiteSpace(tokenUrl)) throw BadRequest("esb.webApiTokenUrlRequired");
 
         var tokenUri = Uri.TryCreate(tokenUrl, UriKind.Absolute, out var absoluteUri)
             ? absoluteUri
@@ -251,7 +255,7 @@ public class EsbServiceConnectionApp(SysDbContext context, IAppLocalizer localiz
         var responseText = await response.Content.ReadAsStringAsync();
         if (!response.IsSuccessStatusCode)
         {
-            throw new Exception(L("esb.webApiTokenRequestFailed", (int)response.StatusCode, response.ReasonPhrase ?? string.Empty));
+            throw BadRequest("esb.webApiTokenRequestFailed", (int)response.StatusCode, response.ReasonPhrase ?? string.Empty);
         }
 
         JsonNode? root;
@@ -261,12 +265,12 @@ public class EsbServiceConnectionApp(SysDbContext context, IAppLocalizer localiz
         }
         catch (JsonException)
         {
-            throw new Exception(L("esb.webApiInvalidJson"));
+            throw BadRequest("esb.webApiInvalidJson");
         }
 
         var tokenPath = configObject["TokenPath"]?.ToString() ?? configObject["tokenPath"]?.ToString() ?? "$.access_token";
         var token = SelectJsonPath(root, tokenPath)?.ToString();
-        if (string.IsNullOrWhiteSpace(token)) throw new Exception(L("esb.webApiTokenNotFound"));
+        if (string.IsNullOrWhiteSpace(token)) throw BadRequest("esb.webApiTokenNotFound");
     }
 
     private static void ApplyHeaders(HttpRequestMessage request, JsonObject? headers)
@@ -289,7 +293,7 @@ public class EsbServiceConnectionApp(SysDbContext context, IAppLocalizer localiz
         {
             "GET" => HttpMethod.Get,
             "POST" => HttpMethod.Post,
-            _ => throw new Exception(L("esb.webApiMethodUnsupported"))
+            _ => throw BadRequest("esb.webApiMethodUnsupported")
         };
     }
 
@@ -315,7 +319,7 @@ public class EsbServiceConnectionApp(SysDbContext context, IAppLocalizer localiz
         var entity = await context.SysEsbServiceConnection!
             .AsNoTracking()
             .FirstOrDefaultAsync(item => item.ItemId == connectionId.Value && item.Status == 1);
-        if (entity == null) throw new Exception(L("esb.enabledConnectionNotFound"));
+        if (entity == null) throw NotFound("esb.enabledConnectionNotFound");
 
         return entity;
     }
@@ -352,7 +356,7 @@ public class EsbServiceConnectionApp(SysDbContext context, IAppLocalizer localiz
 
     private async Task TestExternalConnection(string? dbType, string? connectionString, int timeoutSeconds)
     {
-        if (string.IsNullOrWhiteSpace(connectionString)) throw new Exception(L("esb.connectionStringRequired"));
+        if (string.IsNullOrWhiteSpace(connectionString)) throw BadRequest("esb.connectionStringRequired");
 
         await using var connection = EsbDbConnectionFactory.CreateConnection(dbType, connectionString, localizer);
         await connection.OpenAsync();
@@ -391,24 +395,24 @@ public class EsbServiceConnectionApp(SysDbContext context, IAppLocalizer localiz
         if (parameter.ServiceType == ServiceTypeDatabase)
         {
             parameter.DbType = NormalizeRequiredDbType(parameter.DbType);
-            if (string.IsNullOrWhiteSpace(parameter.ConnectionString)) throw new Exception(L("esb.connectionStringRequired"));
+            if (string.IsNullOrWhiteSpace(parameter.ConnectionString)) throw BadRequest("esb.connectionStringRequired");
             return;
         }
 
         if (parameter.ServiceType == ServiceTypeRestful)
         {
-            if (string.IsNullOrWhiteSpace(parameter.WebApiConfig)) throw new Exception(L("esb.webApiConfigRequired"));
+            if (string.IsNullOrWhiteSpace(parameter.WebApiConfig)) throw BadRequest("esb.webApiConfigRequired");
             _ = ValidateWebApiConfig(parameter.WebApiConfig);
             return;
         }
 
-        throw new Exception(L("esb.serviceTypeUnsupported"));
+        throw BadRequest("esb.serviceTypeUnsupported");
     }
 
     private string NormalizeServiceType(string? value)
     {
         var normalized = string.IsNullOrWhiteSpace(value) ? ServiceTypeDatabase : value.Trim().ToLowerInvariant();
-        return normalized is ServiceTypeDatabase or ServiceTypeRestful ? normalized : throw new Exception(L("esb.serviceTypeUnsupported"));
+        return normalized is ServiceTypeDatabase or ServiceTypeRestful ? normalized : throw BadRequest("esb.serviceTypeUnsupported");
     }
 
     private string? NormalizeDbType(string? value)
@@ -419,7 +423,7 @@ public class EsbServiceConnectionApp(SysDbContext context, IAppLocalizer localiz
 
     private string NormalizeRequiredDbType(string? value)
     {
-        if (string.IsNullOrWhiteSpace(value)) throw new Exception(L("esb.dbTypeRequired"));
+        if (string.IsNullOrWhiteSpace(value)) throw BadRequest("esb.dbTypeRequired");
         return EsbDbConnectionFactory.NormalizeDbType(value, localizer);
     }
 
@@ -449,18 +453,18 @@ public class EsbServiceConnectionApp(SysDbContext context, IAppLocalizer localiz
         }
         catch (JsonException)
         {
-            throw new Exception(L("esb.webApiConfigInvalid"));
+            throw BadRequest("esb.webApiConfigInvalid");
         }
 
         if (node is not JsonObject configObject)
         {
-            throw new Exception(L("esb.webApiConfigInvalid"));
+            throw BadRequest("esb.webApiConfigInvalid");
         }
 
         var baseUrl = configObject["BaseUrl"]?.ToString() ?? configObject["baseUrl"]?.ToString();
         if (string.IsNullOrWhiteSpace(baseUrl) || !Uri.TryCreate(baseUrl, UriKind.Absolute, out _))
         {
-            throw new Exception(L("esb.webApiBaseUrlRequired"));
+            throw BadRequest("esb.webApiBaseUrlRequired");
         }
 
         var authType = configObject["AuthType"]?.ToString() ?? configObject["authType"]?.ToString();
@@ -469,7 +473,7 @@ public class EsbServiceConnectionApp(SysDbContext context, IAppLocalizer localiz
             var tokenUrl = configObject["TokenUrl"]?.ToString() ?? configObject["tokenUrl"]?.ToString();
             if (string.IsNullOrWhiteSpace(tokenUrl))
             {
-                throw new Exception(L("esb.webApiTokenUrlRequired"));
+                throw BadRequest("esb.webApiTokenUrlRequired");
             }
         }
 

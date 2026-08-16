@@ -274,7 +274,7 @@ public class EsbController(
     {
         try
         {
-            if (request == null) return InvalidArguments();
+            if (!ModelState.IsValid || request == null) return InvalidArguments();
 
             var result = await esbDataSourceApp.Execute(request, DtSoftHelper.GetLoginUserAccount(User));
             return Success(Localizer["common.executeSuccess"], result);

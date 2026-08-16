@@ -24,6 +24,9 @@ public class EsbDataSourceApp(
     private const string SourceTypeRestful = "restful";
     private const string ExecuteModeQuery = "query";
     private string L(string key, params object[] args) => args.Length == 0 ? localizer[key] : localizer.Format(key, args);
+    private DtSoftException BadRequest(string key, params object[] args) => DtSoftException.BadRequest(L(key, args), key);
+    private DtSoftException NotFound(string key, params object[] args) => DtSoftException.NotFound(L(key, args), key);
+    private DtSoftException Conflict(string key, params object[] args) => DtSoftException.Conflict(L(key, args), key);
 
     public async Task<(List<EsbDataSourceResponse> Data, int Total)> GetDataSources(EsbDataSourceQueryParameter parameter)
     {
@@ -73,7 +76,7 @@ public class EsbDataSourceApp(
     public async Task<EsbDataSourceResponse> GetDataSourceById(long id)
     {
         var entity = await context.SysEsbDataSource!.AsNoTracking().FirstOrDefaultAsync(item => item.ItemId == id);
-        if (entity == null) throw new Exception(L("esb.dataSourceNotFound"));
+        if (entity == null) throw NotFound("esb.dataSourceNotFound");
         var connectionNames = await BuildConnectionNameMap([entity.ConnectionId]);
         return ToResponse(entity, ResolveConnectionName(entity.ConnectionId, connectionNames));
     }
@@ -85,7 +88,7 @@ public class EsbDataSourceApp(
 
         var code = parameter.Code.Trim();
         var duplicated = await context.SysEsbDataSource!.AnyAsync(item => item.Code == code);
-        if (duplicated) throw new Exception(L("esb.dataSourceCodeExists"));
+        if (duplicated) throw Conflict("esb.dataSourceCodeExists");
 
         var now = DateTime.Now;
         var entity = new SysEsbDataSource
@@ -119,12 +122,12 @@ public class EsbDataSourceApp(
         await ValidateConnection(parameter);
 
         var entity = await context.SysEsbDataSource!.FirstOrDefaultAsync(item => item.ItemId == parameter.ItemId);
-        if (entity == null) throw new Exception(L("esb.dataSourceNotFound"));
+        if (entity == null) throw NotFound("esb.dataSourceNotFound");
 
         var code = parameter.Code.Trim();
         var duplicated = await context.SysEsbDataSource!
             .AnyAsync(item => item.Code == code && item.ItemId != parameter.ItemId);
-        if (duplicated) throw new Exception(L("esb.dataSourceCodeExists"));
+        if (duplicated) throw Conflict("esb.dataSourceCodeExists");
 
         entity.Code = code;
         entity.Name = parameter.Name.Trim();
@@ -149,7 +152,7 @@ public class EsbDataSourceApp(
     public async Task DeleteDataSource(long id)
     {
         var entity = await context.SysEsbDataSource!.FirstOrDefaultAsync(item => item.ItemId == id);
-        if (entity == null) throw new Exception(L("esb.dataSourceNotFound"));
+        if (entity == null) throw NotFound("esb.dataSourceNotFound");
 
         context.SysEsbDataSource!.Remove(entity);
         await context.SaveChangesAsync();
@@ -157,16 +160,16 @@ public class EsbDataSourceApp(
 
     public async Task<object> Execute(EsbExecuteRequest request, string userAccount)
     {
-        if (string.IsNullOrWhiteSpace(request.Code)) throw DtSoftException.BadRequest(L("esb.dataSourceCodeRequired"), "esb.dataSourceCodeRequired");
+        if (string.IsNullOrWhiteSpace(request.Code)) throw BadRequest("esb.dataSourceCodeRequired");
 
         var entity = await context.SysEsbDataSource!
             .AsNoTracking()
             .FirstOrDefaultAsync(item => item.Code == request.Code.Trim() && item.Status == 1);
-        if (entity == null) throw DtSoftException.NotFound(L("esb.dataSourceEnabledNotFound"), "esb.dataSourceEnabledNotFound");
+        if (entity == null) throw NotFound("esb.dataSourceEnabledNotFound");
 
         if (!string.Equals(entity.ExecuteMode, ExecuteModeQuery, StringComparison.OrdinalIgnoreCase))
         {
-            throw DtSoftException.BadRequest(L("esb.queryModeOnly"), "esb.queryModeOnly");
+            throw BadRequest("esb.queryModeOnly");
         }
 
         var inputParameters = request.Parameters ?? new Dictionary<string, JsonNode?>();
@@ -178,7 +181,7 @@ public class EsbDataSourceApp(
         {
             if (serviceConnection == null || !string.Equals(serviceConnection.ServiceType, SourceTypeRestful, StringComparison.OrdinalIgnoreCase))
             {
-                throw DtSoftException.BadRequest(L("esb.webApiRequiresWebApiConnection"), "esb.webApiRequiresWebApiConnection");
+                throw BadRequest("esb.webApiRequiresWebApiConnection");
             }
 
             return await webApiExecutor.Execute(
@@ -205,7 +208,7 @@ public class EsbDataSourceApp(
                 request.PageSize);
         }
 
-        throw DtSoftException.BadRequest(L("esb.sourceTypeUnsupported"), "esb.sourceTypeUnsupported");
+        throw BadRequest("esb.sourceTypeUnsupported");
     }
 
     private async Task<Dictionary<string, string>> BuildVariableContext(string userAccount)
@@ -253,7 +256,7 @@ public class EsbDataSourceApp(
         {
             if (connection != null && !string.Equals(connection.ServiceType, "database", StringComparison.OrdinalIgnoreCase))
             {
-                throw DtSoftException.BadRequest(L("esb.sqlRequiresDatabaseConnection"), "esb.sqlRequiresDatabaseConnection");
+                throw BadRequest("esb.sqlRequiresDatabaseConnection");
             }
 
             return;
@@ -263,7 +266,7 @@ public class EsbDataSourceApp(
         {
             if (connection == null || !string.Equals(connection.ServiceType, SourceTypeRestful, StringComparison.OrdinalIgnoreCase))
             {
-                throw DtSoftException.BadRequest(L("esb.webApiRequiresWebApiConnection"), "esb.webApiRequiresWebApiConnection");
+                throw BadRequest("esb.webApiRequiresWebApiConnection");
             }
         }
     }
@@ -275,7 +278,7 @@ public class EsbDataSourceApp(
 
         if (!string.Equals(parameter.ExecuteMode, ExecuteModeQuery, StringComparison.OrdinalIgnoreCase))
         {
-            throw DtSoftException.BadRequest(L("esb.queryModeOnly"), "esb.queryModeOnly");
+            throw BadRequest("esb.queryModeOnly");
         }
 
         if (string.Equals(parameter.SourceType, SourceTypeSql, StringComparison.OrdinalIgnoreCase))
@@ -292,7 +295,7 @@ public class EsbDataSourceApp(
             return;
         }
 
-        throw DtSoftException.BadRequest(L("esb.sourceTypeUnsupported"), "esb.sourceTypeUnsupported");
+        throw BadRequest("esb.sourceTypeUnsupported");
     }
 
     private static string NormalizeSourceType(string? value)
@@ -309,13 +312,13 @@ public class EsbDataSourceApp(
 
     private string NormalizeSql(string? value)
     {
-        if (string.IsNullOrWhiteSpace(value)) throw DtSoftException.BadRequest(L("esb.sqlRequired"), "esb.sqlRequired");
+        if (string.IsNullOrWhiteSpace(value)) throw BadRequest("esb.sqlRequired");
         return value.Trim();
     }
 
     private string NormalizeHttpConfig(string? value)
     {
-        if (string.IsNullOrWhiteSpace(value)) throw DtSoftException.BadRequest(L("esb.webApiConfigRequired"), "esb.webApiConfigRequired");
+        if (string.IsNullOrWhiteSpace(value)) throw BadRequest("esb.webApiConfigRequired");
         return value.Trim();
     }
 
