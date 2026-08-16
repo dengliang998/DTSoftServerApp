@@ -1,7 +1,6 @@
 using DTSoft.AppService.MicroApp;
 using DTSoft.AppService.Localization;
 using DTSoft.Models.Parameter.MicroApp;
-using DTSoftServerApp.Extensions;
 
 namespace DTSoftServerApp.Controllers.MicroApp
 {
@@ -14,7 +13,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
     [ApiController]
     [Tags("Micro App")]
     [Route("api/[controller]")]
-    public class MicroAppController(MicroConfigApp microConfigApp, IAppLocalizer localizer) : ControllerBase
+    public class MicroAppController(MicroConfigApp microConfigApp, IAppLocalizer localizer) : DtSoftControllerBase(localizer)
     {
 
         /// <summary>
@@ -43,11 +42,11 @@ namespace DTSoftServerApp.Controllers.MicroApp
 
                 var result = await microConfigApp.GetMicroAppConfigs(parameter);
 
-                return Ok(new { success = true, msg = localizer["common.fetchSuccess"], data = result.Data, total = result.Total });
+                return Success(Localizer["common.fetchSuccess"], result.Data, result.Total);
             }
             catch (Exception ex)
             {
-                return Ok(new { success = false, msg = $"{localizer["common.fetchFailed"]}: {ex.Message}" });
+                return Failure(Localizer["common.fetchFailed"], ex);
             }
         }
 
@@ -64,26 +63,16 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 // 验证参数
                 if (!ModelState.IsValid)
                 {
-                    var errors = ModelState.GetErrorMessages();
-                    return Ok(new { success = false, msg = string.Join(";", errors.DefaultIfEmpty(localizer["common.argumentMissing"])) });
+                    return InvalidArguments();
                 }
 
                 var result = await microConfigApp.AddMicroAppConfig(parameter);
 
-                return Ok(new
-                {
-                    success = true,
-                    msg = localizer["common.addSuccess"],
-                    data = result
-                });
+                return Success(Localizer["common.addSuccess"], result);
             }
             catch (Exception ex)
             {
-                return Ok(new
-                {
-                    success = false,
-                    msg = $"{localizer["common.addFailed"]}: {ex.Message}"
-                });
+                return Failure(Localizer["common.addFailed"], ex);
             }
         }
 
@@ -100,26 +89,16 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 // 验证参数
                 if (!ModelState.IsValid)
                 {
-                    var errors = ModelState.GetErrorMessages();
-                    return Ok(new { success = false, msg = string.Join(";", errors.DefaultIfEmpty(localizer["common.argumentMissing"])) });
+                    return InvalidArguments();
                 }
 
                 var result = await microConfigApp.UpdateMicroAppConfig(parameter);
 
-                return Ok(new
-                {
-                    success = true,
-                    msg = localizer["common.updateSuccess"],
-                    data = result
-                });
+                return Success(Localizer["common.updateSuccess"], result);
             }
             catch (Exception ex)
             {
-                return Ok(new
-                {
-                    success = false,
-                    msg = $"{localizer["common.updateFailed"]}: {ex.Message}"
-                });
+                return Failure(Localizer["common.updateFailed"], ex);
             }
         }
 
@@ -136,25 +115,16 @@ namespace DTSoftServerApp.Controllers.MicroApp
                 // 验证参数
                 if (!ModelState.IsValid)
                 {
-                    var errors = ModelState.GetErrorMessages();
-                    return Ok(new { success = false, msg = string.Join(";", errors.DefaultIfEmpty(localizer["common.argumentMissing"])) });
+                    return InvalidArguments();
                 }
 
                 await microConfigApp.DeleteMicroAppConfig(parameter);
 
-                return Ok(new
-                {
-                    success = true,
-                    msg = localizer["common.deleteSuccess"]
-                });
+                return Success(Localizer["common.deleteSuccess"]);
             }
             catch (Exception ex)
             {
-                return Ok(new
-                {
-                    success = false,
-                    msg = $"{localizer["common.deleteFailed"]}: {ex.Message}"
-                });
+                return Failure(Localizer["common.deleteFailed"], ex);
             }
         }
     }

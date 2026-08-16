@@ -159,6 +159,9 @@
   <data name="common.operationFailed" xml:space="preserve">
     <value>Operation failed.</value>
   </data>
+  <data name="common.failedWithReason" xml:space="preserve">
+    <value>{0}: {1}</value>
+  </data>
   <data name="common.notFound" xml:space="preserve">
     <value>The corresponding data was not found.</value>
   </data>

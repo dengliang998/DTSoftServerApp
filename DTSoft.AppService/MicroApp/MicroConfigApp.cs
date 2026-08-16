@@ -1,5 +1,6 @@
 using DTSoft.Core.Common;
 using DTSoft.Core.DbContexts;
+using DTSoft.Core.Exceptions;
 using DTSoft.Core.Interfaces;
 using DTSoft.AppService.Localization;
 using DTSoft.Models.Entities;
@@ -80,7 +81,7 @@ public class MicroConfigApp(SysDbContext context, MicroTableService microTableSe
             var config = context.SysMicroAppConfig!.FirstOrDefault(c => c.ItemId == id);
             if (config == null)
             {
-                throw new Exception(L("micro.configNotFound"));
+                throw DtSoftException.NotFound(L("micro.configNotFound"), "micro.configNotFound");
             }
 
             return MicroConfigSchema.ToResponse(config);
@@ -96,20 +97,20 @@ public class MicroConfigApp(SysDbContext context, MicroTableService microTableSe
             await _microTableService.EnsureMicroConfigSubTablesColumnAsync();
 
             // 验证模型名称是否已存在
-            var existingConfig = context.SysMicroAppConfig!
-                .FirstOrDefault(c => c.ModelName == parameter.ModelName);
+            var existingConfig = await context.SysMicroAppConfig!
+                .FirstOrDefaultAsync(c => c.ModelName == parameter.ModelName);
             if (existingConfig != null)
             {
-                throw new Exception(L("micro.modelNameExists"));
+                throw DtSoftException.Conflict(L("micro.modelNameExists"), "micro.modelNameExists");
             }
         
             if (!string.IsNullOrWhiteSpace(parameter.MicroAppPath))
             {
-                var existingPathConfig = context.SysMicroAppConfig!
-                    .FirstOrDefault(c => c.ApiPrefix == parameter.MicroAppPath);
+                var existingPathConfig = await context.SysMicroAppConfig!
+                    .FirstOrDefaultAsync(c => c.ApiPrefix == parameter.MicroAppPath);
                 if (existingPathConfig != null)
                 {
-                    throw new Exception(L("micro.pathExists"));
+                    throw DtSoftException.Conflict(L("micro.pathExists"), "micro.pathExists");
                 }
             }
 
@@ -167,27 +168,27 @@ public class MicroConfigApp(SysDbContext context, MicroTableService microTableSe
             await _microTableService.EnsureMicroConfigSubTablesColumnAsync();
 
             // 查找要更新的配置
-            var existingConfig = context.SysMicroAppConfig!
-                .FirstOrDefault(c => c.ItemId == parameter.ItemId);
+            var existingConfig = await context.SysMicroAppConfig!
+                .FirstOrDefaultAsync(c => c.ItemId == parameter.ItemId);
             if (existingConfig == null)
             {
-                throw new Exception(L("micro.configNotFound"));
+                throw DtSoftException.NotFound(L("micro.configNotFound"), "micro.configNotFound");
             }
 
             if (!string.Equals(existingConfig.ModelName, parameter.ModelName, StringComparison.Ordinal))
             {
-                throw new Exception(L("micro.modelImmutable"));
+                throw DtSoftException.BadRequest(L("micro.modelImmutable"), "micro.modelImmutable");
             }
 
             var targetMicroAppPath = string.IsNullOrWhiteSpace(parameter.MicroAppPath)
                 ? parameter.ModelName
                 : parameter.MicroAppPath;
 
-            var duplicatePathConfig = context.SysMicroAppConfig!
-                .FirstOrDefault(c => c.ApiPrefix == targetMicroAppPath && c.ItemId != parameter.ItemId);
+            var duplicatePathConfig = await context.SysMicroAppConfig!
+                .FirstOrDefaultAsync(c => c.ApiPrefix == targetMicroAppPath && c.ItemId != parameter.ItemId);
             if (duplicatePathConfig != null)
             {
-                throw new Exception(L("micro.pathExists"));
+                throw DtSoftException.Conflict(L("micro.pathExists"), "micro.pathExists");
             }
 
             var normalizedSubTables = MicroConfigSchema.NormalizeSubTables(parameter.SubTables);
@@ -237,11 +238,11 @@ public class MicroConfigApp(SysDbContext context, MicroTableService microTableSe
             await _microTableService.EnsureMicroConfigSubTablesColumnAsync();
 
             // 查找要删除的配置
-            var existingConfig = context.SysMicroAppConfig!
-                .FirstOrDefault(c => c.ItemId == parameter.ItemId);
+            var existingConfig = await context.SysMicroAppConfig!
+                .FirstOrDefaultAsync(c => c.ItemId == parameter.ItemId);
             if (existingConfig == null)
             {
-                throw new Exception(L("micro.configNotFound"));
+                throw DtSoftException.NotFound(L("micro.configNotFound"), "micro.configNotFound");
             }
 
             var modelName = existingConfig.ModelName;

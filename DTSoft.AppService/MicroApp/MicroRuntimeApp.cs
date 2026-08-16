@@ -36,11 +36,9 @@ public class MicroRuntimeApp(
     {
         try
         {
-            var config = await GetActiveConfigAsync(modelName);
-            if (config == null)
-            {
-                return Failure("micro.configNotFound");
-            }
+            var resolution = await ResolveConfigAsync(modelName);
+            if (resolution.Failure != null) return resolution.Failure;
+            var config = resolution.Config!;
 
             await microTableService.EnsureTableExistsAsync(config);
             var result = await microTableService.ExecuteMicroQueryAsync(
@@ -65,11 +63,9 @@ public class MicroRuntimeApp(
     {
         try
         {
-            var config = await GetActiveConfigAsync(modelName);
-            if (config == null)
-            {
-                return Failure("micro.configNotFound");
-            }
+            var resolution = await ResolveConfigAsync(modelName);
+            if (resolution.Failure != null) return resolution.Failure;
+            var config = resolution.Config!;
 
             await microTableService.EnsureTableExistsAsync(config);
             var result = await microTableService.ExecuteMicroDetailWithSubTablesAsync(config, id, userAccount);
@@ -85,16 +81,9 @@ public class MicroRuntimeApp(
     {
         try
         {
-            var config = await GetActiveConfigAsync(modelName);
-            if (config == null)
-            {
-                return Failure("micro.configNotFound");
-            }
-
-            if (!config.SupportCreate)
-            {
-                return Failure("micro.createNotSupported");
-            }
+            var resolution = await ResolveConfigAsync(modelName, c => c.SupportCreate, "micro.createNotSupported");
+            if (resolution.Failure != null) return resolution.Failure;
+            var config = resolution.Config!;
 
             await microTableService.EnsureTableExistsAsync(config);
             var dataDict = ConvertObjectToDictionary(data);
@@ -103,7 +92,7 @@ public class MicroRuntimeApp(
             validationErrors.AddRange(ValidateMicroSubTableData(config, subTableData));
             if (validationErrors.Count > 0)
             {
-                return new MicroRuntimeResult(false, string.Join("；", validationErrors));
+                return ValidationFailure(validationErrors);
             }
 
             var result = await microTableService.ExecuteMicroInsertWithSubTablesAsync(
@@ -124,16 +113,9 @@ public class MicroRuntimeApp(
     {
         try
         {
-            var config = await GetActiveConfigAsync(modelName);
-            if (config == null)
-            {
-                return Failure("micro.configNotFound");
-            }
-
-            if (!config.SupportUpdate)
-            {
-                return Failure("micro.updateNotSupported");
-            }
+            var resolution = await ResolveConfigAsync(modelName, c => c.SupportUpdate, "micro.updateNotSupported");
+            if (resolution.Failure != null) return resolution.Failure;
+            var config = resolution.Config!;
 
             await microTableService.EnsureTableExistsAsync(config);
             var dataDict = ConvertObjectToDictionary(data);
@@ -142,7 +124,7 @@ public class MicroRuntimeApp(
             validationErrors.AddRange(ValidateMicroSubTableData(config, subTableData));
             if (validationErrors.Count > 0)
             {
-                return new MicroRuntimeResult(false, string.Join("；", validationErrors));
+                return ValidationFailure(validationErrors);
             }
 
             var result = await microTableService.ExecuteMicroUpdateWithSubTablesAsync(
@@ -164,16 +146,9 @@ public class MicroRuntimeApp(
     {
         try
         {
-            var config = await GetActiveConfigAsync(modelName);
-            if (config == null)
-            {
-                return Failure("micro.configNotFound");
-            }
-
-            if (!config.SupportDelete)
-            {
-                return Failure("micro.deleteNotSupported");
-            }
+            var resolution = await ResolveConfigAsync(modelName, c => c.SupportDelete, "micro.deleteNotSupported");
+            if (resolution.Failure != null) return resolution.Failure;
+            var config = resolution.Config!;
 
             await microTableService.EnsureTableExistsAsync(config);
             var result = await microTableService.ExecuteMicroDeleteWithSubTablesAsync(config, id, userAccount);
@@ -192,16 +167,12 @@ public class MicroRuntimeApp(
     {
         try
         {
-            var config = await GetActiveConfigAsync(modelName);
-            if (config == null)
-            {
-                return Failure("micro.configNotFound");
-            }
-
-            if (!config.SupportDelete || !config.SupportBatchDelete)
-            {
-                return Failure("micro.batchDeleteNotSupported");
-            }
+            var resolution = await ResolveConfigAsync(
+                modelName,
+                c => c.SupportDelete && c.SupportBatchDelete,
+                "micro.batchDeleteNotSupported");
+            if (resolution.Failure != null) return resolution.Failure;
+            var config = resolution.Config!;
 
             if (parameter.Ids.Count == 0)
             {
@@ -214,7 +185,7 @@ public class MicroRuntimeApp(
                 parameter.Ids,
                 userAccount);
 
-            return new MicroRuntimeResult(true, L("micro.batchDeleteSuccess", rowsAffected), new { deleted = rowsAffected });
+            return SuccessMessage(L("micro.batchDeleteSuccess", rowsAffected), new { deleted = rowsAffected });
         }
         catch (Exception ex)
         {
@@ -272,7 +243,7 @@ public class MicroRuntimeApp(
         }
         catch (Exception ex)
         {
-            return new MicroRuntimeExportResult(false, $"{L("micro.exportFailed")}：{ex.Message}");
+            return ExportFailureWithException("micro.exportFailed", ex);
         }
     }
 
@@ -291,16 +262,9 @@ public class MicroRuntimeApp(
                 return Failure("micro.excelFormatInvalid");
             }
 
-            var config = await GetActiveConfigAsync(modelName);
-            if (config == null)
-            {
-                return Failure("micro.configNotFound");
-            }
-
-            if (!config.SupportImport)
-            {
-                return Failure("micro.importNotSupported");
-            }
+            var resolution = await ResolveConfigAsync(modelName, c => c.SupportImport, "micro.importNotSupported");
+            if (resolution.Failure != null) return resolution.Failure;
+            var config = resolution.Config!;
 
             await microTableService.EnsureTableExistsAsync(config);
             var fields = string.IsNullOrEmpty(config.Fields)
@@ -319,7 +283,7 @@ public class MicroRuntimeApp(
             catch (Exception ex)
             {
                 errorCount = importedData.Count;
-                errorMessages.Add($"{L("micro.importFailed")}: {ex.Message}");
+                errorMessages.Add(FailureMessage("micro.importFailed", ex));
             }
 
             var total = importedData.Count;
@@ -329,7 +293,7 @@ public class MicroRuntimeApp(
                 resultMsg = L("micro.importSuccessWithError", successCount, errorCount, string.Join("; ", errorMessages.Take(5)));
             }
 
-            return new MicroRuntimeResult(true, resultMsg, new { total, success = successCount, failed = errorCount });
+            return SuccessMessage(resultMsg, new { total, success = successCount, failed = errorCount });
         }
         catch (Exception ex)
         {
@@ -372,6 +336,25 @@ public class MicroRuntimeApp(
         }
 
         return config;
+    }
+
+    private async Task<(SysMicroAppConfig? Config, MicroRuntimeResult? Failure)> ResolveConfigAsync(
+        string modelName,
+        Func<SysMicroAppConfig, bool>? isSupported = null,
+        string? unsupportedKey = null)
+    {
+        var config = await GetActiveConfigAsync(modelName);
+        if (config == null)
+        {
+            return (null, Failure("micro.configNotFound"));
+        }
+
+        if (isSupported != null && !isSupported(config))
+        {
+            return (null, Failure(unsupportedKey ?? "common.operationFailed"));
+        }
+
+        return (config, null);
     }
 
     private Dictionary<string, object> ConvertObjectToDictionary(object obj)
@@ -593,11 +576,19 @@ public class MicroRuntimeApp(
 
     private MicroRuntimeResult Success(string key, object? data = null) => new(true, L(key), data);
 
+    private MicroRuntimeResult SuccessMessage(string message, object? data = null) => new(true, message, data);
+
     private MicroRuntimeResult Failure(string key) => new(false, L(key));
 
-    private MicroRuntimeResult FailureWithException(string key, Exception ex) => new(false, $"{L(key)}: {ex.Message}");
+    private MicroRuntimeResult ValidationFailure(IEnumerable<string> errors) => new(false, string.Join("；", errors));
+
+    private MicroRuntimeResult FailureWithException(string key, Exception ex) => new(false, FailureMessage(key, ex));
 
     private MicroRuntimeExportResult ExportFailure(string key) => new(false, L(key));
+
+    private MicroRuntimeExportResult ExportFailureWithException(string key, Exception ex) => new(false, FailureMessage(key, ex));
+
+    private string FailureMessage(string key, Exception ex) => L("common.failedWithReason", L(key), ex.Message);
 }
 
 public sealed record MicroRuntimeResult(bool Success, string Msg, object? Data = null);

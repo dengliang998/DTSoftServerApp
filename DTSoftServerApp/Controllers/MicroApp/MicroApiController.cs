@@ -11,7 +11,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
     [Authorize]
     [ApiController]
     [Tags("Micro App Data")]
-    public class MicroApiController(MicroRuntimeApp microRuntimeApp, IAppLocalizer localizer) : ControllerBase
+    public class MicroApiController(MicroRuntimeApp microRuntimeApp, IAppLocalizer localizer) : DtSoftControllerBase(localizer)
     {
         /// <summary>
         /// 查询微应用数据列表
@@ -53,8 +53,13 @@ namespace DTSoftServerApp.Controllers.MicroApp
         /// 新增微应用数据
         /// </summary>
         [HttpPost("/api/{modelName}")]
-        public async Task<IActionResult> Create(string modelName, [FromBody] object data)
+        public async Task<IActionResult> Create(string modelName, [FromBody] object? data)
         {
+            if (data == null)
+            {
+                return Failure(Localizer["common.argumentMissing"]);
+            }
+
             var result = await microRuntimeApp.Create(modelName, data, GetLoginUserAccount());
             return ToJsonResult(result);
         }
@@ -63,8 +68,13 @@ namespace DTSoftServerApp.Controllers.MicroApp
         /// 更新微应用数据
         /// </summary>
         [HttpPut("/api/{modelName}/{id:long}")]
-        public async Task<IActionResult> Update(string modelName, long id, [FromBody] object data)
+        public async Task<IActionResult> Update(string modelName, long id, [FromBody] object? data)
         {
+            if (data == null)
+            {
+                return Failure(Localizer["common.argumentMissing"]);
+            }
+
             var result = await microRuntimeApp.Update(modelName, id, data, GetLoginUserAccount());
             return ToJsonResult(result);
         }
@@ -83,8 +93,13 @@ namespace DTSoftServerApp.Controllers.MicroApp
         /// 批量删除微应用数据
         /// </summary>
         [HttpPost("/api/{modelName}/batch-delete")]
-        public async Task<IActionResult> BatchDelete(string modelName, [FromBody] MicroBatchDeleteParameter parameter)
+        public async Task<IActionResult> BatchDelete(string modelName, [FromBody] MicroBatchDeleteParameter? parameter)
         {
+            if (!ModelState.IsValid || parameter == null)
+            {
+                return InvalidArguments();
+            }
+
             var result = await microRuntimeApp.BatchDelete(modelName, parameter, GetLoginUserAccount());
             return ToJsonResult(result);
         }
@@ -110,11 +125,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
 
             if (!result.Success)
             {
-                return Ok(new
-                {
-                    success = false,
-                    msg = result.Msg
-                });
+                return Failure(result.Msg);
             }
 
             return File(
@@ -132,11 +143,7 @@ namespace DTSoftServerApp.Controllers.MicroApp
         {
             if (file == null || file.Length == 0)
             {
-                return Ok(new
-                {
-                    success = false,
-                    msg = localizer["micro.uploadExcel"]
-                });
+                return Failure(Localizer["micro.uploadExcel"]);
             }
 
             await using var fileStream = file.OpenReadStream();
@@ -151,23 +158,14 @@ namespace DTSoftServerApp.Controllers.MicroApp
 
         private string GetLoginUserAccount() => DtSoftHelper.GetLoginUserAccount(User);
 
-        private static IActionResult ToJsonResult(MicroRuntimeResult result)
+        private IActionResult ToJsonResult(MicroRuntimeResult result)
         {
             if (result.Data == null)
             {
-                return new OkObjectResult(new
-                {
-                    success = result.Success,
-                    msg = result.Msg
-                });
+                return result.Success ? Success(result.Msg) : Failure(result.Msg);
             }
 
-            return new OkObjectResult(new
-            {
-                success = result.Success,
-                msg = result.Msg,
-                data = result.Data
-            });
+            return ApiResponse(result.Success, result.Msg, result.Data);
         }
     }
 }

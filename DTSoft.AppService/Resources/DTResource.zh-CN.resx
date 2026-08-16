@@ -159,6 +159,9 @@
   <data name="common.operationFailed" xml:space="preserve">
     <value>操作失败</value>
   </data>
+  <data name="common.failedWithReason" xml:space="preserve">
+    <value>{0}：{1}</value>
+  </data>
   <data name="common.notFound" xml:space="preserve">
     <value>未找到对应数据</value>
   </data>
