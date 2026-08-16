@@ -74,11 +74,11 @@ public class MicroConfigApp(SysDbContext context, MicroTableService microTableSe
         /// </summary>
         /// <param name="id">配置 ID</param>
         /// <returns>微应用配置详情</returns>
-        public MicroConfigResponse GetMicroConfigById(long id)
+        public async Task<MicroConfigResponse> GetMicroConfigById(long id)
         {
-            _microTableService.EnsureMicroConfigSubTablesColumnAsync().GetAwaiter().GetResult();
+            await _microTableService.EnsureMicroConfigSubTablesColumnAsync();
 
-            var config = context.SysMicroAppConfig!.FirstOrDefault(c => c.ItemId == id);
+            var config = await context.SysMicroAppConfig!.FirstOrDefaultAsync(c => c.ItemId == id);
             if (config == null)
             {
                 throw DtSoftException.NotFound(L("micro.configNotFound"), "micro.configNotFound");
