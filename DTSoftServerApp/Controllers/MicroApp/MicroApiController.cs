@@ -1,14 +1,7 @@
-using DTSoft.AppService.MicroApp;
 using DTSoft.AppService.Localization;
+using DTSoft.AppService.MicroApp;
 using DTSoft.Core.Common;
-using DTSoft.Core.Common.Excel;
-using DTSoft.Core.DbContexts;
-using DTSoft.Core.Interfaces;
-using DTSoft.Models.Entities;
 using DTSoft.Models.Parameter.MicroApp;
-using Microsoft.EntityFrameworkCore;
-using System.Text.Json;
-using System.Text.RegularExpressions;
 
 namespace DTSoftServerApp.Controllers.MicroApp
 {
@@ -18,72 +11,11 @@ namespace DTSoftServerApp.Controllers.MicroApp
     [Authorize]
     [ApiController]
     [Tags("Micro App Data")]
-    public class MicroApiController : ControllerBase
+    public class MicroApiController(MicroRuntimeApp microRuntimeApp, IAppLocalizer localizer) : ControllerBase
     {
-        private readonly SysDbContext _context;
-        private readonly MicroTableService _microTableService;
-        private readonly IDtSoftCache _dtSoftCache;
-        private readonly IAppLocalizer _localizer;
-        private const string RuntimeSubTablesKey = "__subTables";
-
-        public MicroApiController(SysDbContext context, MicroTableService microTableService, IDtSoftCache dtSoftCache, IAppLocalizer localizer)
-        {
-            _context = context;
-            _microTableService = microTableService;
-            _dtSoftCache = dtSoftCache;
-            _localizer = localizer;
-        }
-
-        private string L(string key, params object[] args) => args.Length == 0 ? _localizer[key] : _localizer.Format(key, args);
-
-        private async Task<SysMicroAppConfig?> GetActiveConfigAsync(string modelName)
-        {
-            if (string.IsNullOrWhiteSpace(modelName)) return null;
-
-            await _microTableService.EnsureMicroConfigSubTablesColumnAsync();
-
-            var cacheKey = MicroConfigCacheKeys.ActiveConfig(modelName);
-            var cachedJson = await _dtSoftCache.GetAsync<string>(cacheKey);
-            if (!string.IsNullOrWhiteSpace(cachedJson))
-            {
-                try
-                {
-                    var cached = JsonSerializer.Deserialize<SysMicroAppConfig>(cachedJson);
-                    if (cached is { Status: 1 } &&
-                        cached.ModelName.Equals(modelName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        return cached;
-                    }
-                }
-                catch
-                {
-                    // ignore
-                }
-            }
-
-            var config = await _context.Set<SysMicroAppConfig>()
-                .AsNoTracking()
-                .FirstOrDefaultAsync(c => c.ModelName == modelName && c.Status == 1);
-
-            if (config != null)
-            {
-                await _dtSoftCache.SetAsync(cacheKey, JsonSerializer.Serialize(config), TimeSpan.FromMinutes(1));
-            }
-
-            return config;
-        }
-
         /// <summary>
         /// 查询微应用数据列表
         /// </summary>
-        /// <param name="modelName">模型名称</param>
-        /// <param name="pageNum">页码</param>
-        /// <param name="pageSize">每页条数</param>
-        /// <param name="keyword">搜索关键词</param>
-        /// <param name="filters">字段级查询条件 JSON</param>
-        /// <param name="sortField">排序字段</param>
-        /// <param name="sortOrder">排序方向</param>
-        /// <returns>数据列表</returns>
         [HttpGet("/api/{modelName}")]
         public async Task<IActionResult> GetList(
             string modelName,
@@ -94,387 +26,72 @@ namespace DTSoftServerApp.Controllers.MicroApp
             [FromQuery] string sortField = "",
             [FromQuery] string sortOrder = "")
         {
-            try
-            {
-                // 获取模型配置
-                var config = await GetActiveConfigAsync(modelName);
+            var result = await microRuntimeApp.GetList(
+                modelName,
+                pageNum,
+                pageSize,
+                keyword,
+                filters,
+                sortField,
+                sortOrder,
+                GetLoginUserAccount());
 
-                if (config == null)
-                {
-                    return Ok(new
-                    {
-                        success = false,
-                        msg = L("micro.configNotFound")
-                    });
-                }
-
-                // 确保数据表存在
-                await _microTableService.EnsureTableExistsAsync(config);
-
-                // 构建动态查询
-                var result = await _microTableService.ExecuteMicroQueryAsync(
-                    config,
-                    pageNum,
-                    pageSize,
-                    keyword,
-                    ParseQueryFilters(filters),
-                    sortField,
-                    sortOrder,
-                    DtSoftHelper.GetLoginUserAccount(User));
-
-                return Ok(new
-                {
-                    success = true,
-                    msg = L("common.fetchSuccess"),
-                    data = result  // 确保返回的是包含list和total的对象
-                });
-            }
-            catch (Exception ex)
-            {
-                return Ok(new
-                {
-                    success = false,
-                    msg = $"{L("micro.queryFailed")}: {ex.Message}"
-                });
-            }
+            return ToJsonResult(result);
         }
 
         /// <summary>
         /// 查询微应用数据详情
         /// </summary>
-        /// <param name="modelName">模型名称</param>
-        /// <param name="id">数据ID</param>
-        /// <returns>数据详情</returns>
         [HttpGet("/api/{modelName}/{id:long}")]
         public async Task<IActionResult> GetDetail(string modelName, long id)
         {
-            try
-            {
-                // 获取模型配置
-                var config = await GetActiveConfigAsync(modelName);
-
-                if (config == null)
-                {
-                    return Ok(new
-                    {
-                        success = false,
-                        msg = L("micro.configNotFound")
-                    });
-                }
-
-                // 确保数据表存在
-                await _microTableService.EnsureTableExistsAsync(config);
-
-                // 构建动态查询详情
-                var result = await _microTableService.ExecuteMicroDetailWithSubTablesAsync(
-                    config,
-                    id,
-                    DtSoftHelper.GetLoginUserAccount(User));
-
-                return Ok(new
-                {
-                    success = true,
-                    msg = L("common.fetchSuccess"),
-                    data = (object)result
-                });
-            }
-            catch (Exception ex)
-            {
-                return Ok(new
-                {
-                    success = false,
-                    msg = $"{L("micro.detailFailed")}: {ex.Message}"
-                });
-            }
+            var result = await microRuntimeApp.GetDetail(modelName, id, GetLoginUserAccount());
+            return ToJsonResult(result);
         }
 
         /// <summary>
         /// 新增微应用数据
         /// </summary>
-        /// <param name="modelName">模型名称</param>
-        /// <param name="data">新增数据</param>
-        /// <returns>新增结果</returns>
         [HttpPost("/api/{modelName}")]
         public async Task<IActionResult> Create(string modelName, [FromBody] object data)
         {
-            try
-            {
-                // 获取模型配置
-                var config = await GetActiveConfigAsync(modelName);
-
-                if (config == null)
-                {
-                    return Ok(new
-                    {
-                        success = false,
-                        msg = L("micro.configNotFound")
-                    });
-                }
-
-                if (!config.SupportCreate)
-                {
-                    return Ok(new
-                    {
-                        success = false,
-                        msg = L("micro.createNotSupported")
-                    });
-                }
-
-                // 确保数据表存在
-                await _microTableService.EnsureTableExistsAsync(config);
-
-                // 将数据转换为字典，并处理JsonElement类型
-                var dataDict = ConvertObjectToDictionary(data);
-                var subTableData = ExtractSubTableData(dataDict);
-                var validationErrors = ValidateMicroData(config, dataDict);
-                validationErrors.AddRange(ValidateMicroSubTableData(config, subTableData));
-                if (validationErrors.Count > 0)
-                {
-                    return Ok(new { success = false, msg = string.Join("；", validationErrors) });
-                }
-
-                // 执行微应用数据插入
-                var result = await _microTableService.ExecuteMicroInsertWithSubTablesAsync(
-                    config,
-                    dataDict,
-                    subTableData,
-                    DtSoftHelper.GetLoginUserAccount(User));
-
-                return Ok(new
-                {
-                    success = true,
-                    msg = L("common.addSuccess"),
-                    data = result
-                });
-            }
-            catch (Exception ex)
-            {
-                return Ok(new
-                {
-                    success = false,
-                    msg = $"{L("micro.addFailed")}: {ex.Message}"
-                });
-            }
+            var result = await microRuntimeApp.Create(modelName, data, GetLoginUserAccount());
+            return ToJsonResult(result);
         }
 
         /// <summary>
         /// 更新微应用数据
         /// </summary>
-        /// <param name="modelName">模型名称</param>
-        /// <param name="id">数据ID</param>
-        /// <param name="data">更新数据</param>
-        /// <returns>更新结果</returns>
         [HttpPut("/api/{modelName}/{id:long}")]
         public async Task<IActionResult> Update(string modelName, long id, [FromBody] object data)
         {
-            try
-            {
-                // 获取模型配置
-                var config = await GetActiveConfigAsync(modelName);
-
-                if (config == null)
-                {
-                    return Ok(new
-                    {
-                        success = false,
-                        msg = L("micro.configNotFound")
-                    });
-                }
-
-                if (!config.SupportUpdate)
-                {
-                    return Ok(new
-                    {
-                        success = false,
-                        msg = L("micro.updateNotSupported")
-                    });
-                }
-
-                // 确保数据表存在
-                await _microTableService.EnsureTableExistsAsync(config);
-
-                // 将数据转换为字典，并处理JsonElement类型
-                var dataDict = ConvertObjectToDictionary(data);
-                var subTableData = ExtractSubTableData(dataDict);
-                var validationErrors = ValidateMicroData(config, dataDict);
-                validationErrors.AddRange(ValidateMicroSubTableData(config, subTableData));
-                if (validationErrors.Count > 0)
-                {
-                    return Ok(new { success = false, msg = string.Join("；", validationErrors) });
-                }
-
-                // 执行微应用数据更新
-                var result = await _microTableService.ExecuteMicroUpdateWithSubTablesAsync(
-                    config,
-                    id,
-                    dataDict,
-                    subTableData,
-                    DtSoftHelper.GetLoginUserAccount(User));
-
-                if (!result)
-                {
-                    return Ok(new
-                    {
-                        success = false,
-                        msg = L("micro.dataNotFound")
-                    });
-                }
-
-                return Ok(new
-                {
-                    success = true,
-                    msg = L("common.updateSuccess")
-                });
-            }
-            catch (Exception ex)
-            {
-                return Ok(new
-                {
-                    success = false,
-                    msg = $"{L("micro.updateFailed")}: {ex.Message}"
-                });
-            }
+            var result = await microRuntimeApp.Update(modelName, id, data, GetLoginUserAccount());
+            return ToJsonResult(result);
         }
 
         /// <summary>
         /// 删除微应用数据
         /// </summary>
-        /// <param name="modelName">模型名称</param>
-        /// <param name="id">数据ID</param>
-        /// <returns>删除结果</returns>
         [HttpDelete("/api/{modelName}/{id:long}")]
         public async Task<IActionResult> Delete(string modelName, long id)
         {
-            try
-            {
-                // 获取模型配置
-                var config = await GetActiveConfigAsync(modelName);
-
-                if (config == null)
-                {
-                    return Ok(new
-                    {
-                        success = false,
-                        msg = L("micro.configNotFound"),
-                    });
-                }
-
-                if (!config.SupportDelete)
-                {
-                    return Ok(new
-                    {
-                        success = false,
-                        msg = L("micro.deleteNotSupported")
-                    });
-                }
-
-                // 确保数据表存在
-                await _microTableService.EnsureTableExistsAsync(config);
-
-                // 执行微应用数据删除
-                var result = await _microTableService.ExecuteMicroDeleteWithSubTablesAsync(
-                    config,
-                    id,
-                    DtSoftHelper.GetLoginUserAccount(User));
-
-                if (!result)
-                {
-                    return Ok(new
-                    {
-                        success = false,
-                        msg = L("micro.dataNotFound")
-                    });
-                }
-
-                return Ok(new
-                {
-                    success = true,
-                    msg = L("common.deleteSuccess")
-                });
-            }
-            catch (Exception ex)
-            {
-                return Ok(new
-                {
-                    success = false,
-                    msg = $"{L("micro.deleteFailed")}: {ex.Message}"
-                });
-            }
+            var result = await microRuntimeApp.Delete(modelName, id, GetLoginUserAccount());
+            return ToJsonResult(result);
         }
 
         /// <summary>
         /// 批量删除微应用数据
         /// </summary>
-        /// <param name="modelName">模型名称</param>
-        /// <param name="parameter">批量删除参数</param>
-        /// <returns>删除结果</returns>
         [HttpPost("/api/{modelName}/batch-delete")]
         public async Task<IActionResult> BatchDelete(string modelName, [FromBody] MicroBatchDeleteParameter parameter)
         {
-            try
-            {
-                var config = await GetActiveConfigAsync(modelName);
-
-                if (config == null)
-                {
-                    return Ok(new
-                    {
-                        success = false,
-                        msg = L("micro.configNotFound")
-                    });
-                }
-
-                if (!config.SupportDelete || !config.SupportBatchDelete)
-                {
-                    return Ok(new
-                    {
-                        success = false,
-                        msg = L("micro.batchDeleteNotSupported")
-                    });
-                }
-
-                if (parameter.Ids.Count == 0)
-                {
-                    return Ok(new
-                    {
-                        success = false,
-                        msg = L("micro.selectDeleteData")
-                    });
-                }
-
-                await _microTableService.EnsureTableExistsAsync(config);
-
-                var rowsAffected = await _microTableService.ExecuteMicroBatchDeleteWithSubTablesAsync(
-                    config,
-                    parameter.Ids,
-                    DtSoftHelper.GetLoginUserAccount(User));
-
-                return Ok(new
-                {
-                    success = true,
-                    msg = L("micro.batchDeleteSuccess", rowsAffected),
-                    data = new { deleted = rowsAffected }
-                });
-            }
-            catch (Exception ex)
-            {
-                return Ok(new
-                {
-                    success = false,
-                    msg = $"{L("micro.deleteFailed")}: {ex.Message}"
-                });
-            }
+            var result = await microRuntimeApp.BatchDelete(modelName, parameter, GetLoginUserAccount());
+            return ToJsonResult(result);
         }
 
         /// <summary>
         /// 导出微应用数据 Excel
         /// </summary>
-        /// <param name="modelName">模型名称</param>
-        /// <param name="keyword">搜索关键词</param>
-        /// <param name="filters">字段级查询条件 JSON</param>
-        /// <param name="sortField">排序字段</param>
-        /// <param name="sortOrder">排序方向</param>
-        /// <returns>Excel 文件</returns>
         [HttpGet("/api/{modelName}/export")]
         public async Task<IActionResult> ExportExcel(
             string modelName,
@@ -483,435 +100,74 @@ namespace DTSoftServerApp.Controllers.MicroApp
             [FromQuery] string sortField = "",
             [FromQuery] string sortOrder = "")
         {
-            try
-            {
-                // 获取模型配置
-                var config = await GetActiveConfigAsync(modelName);
-        
-                if (config == null)
-                {
-                    return Ok(new
-                    {
-                        success = false,
-                        msg = L("micro.configNotFound")
-                    });
-                }
-        
-                // 检查是否支持导出
-                if (!config.SupportExport)
-                {
-                    return Ok(new
-                    {
-                        success = false,
-                        msg = L("micro.exportNotSupported")
-                    });
-                }
-        
-                // 确保数据表存在
-                await _microTableService.EnsureTableExistsAsync(config);
-        
-                // 获取字段配置
-                var fields = string.IsNullOrEmpty(config.Fields) ?
-                    new List<FieldConfig>() :
-                    JsonSerializer.Deserialize<List<FieldConfig>>(config.Fields);
-        
-                // 获取所有数据（不分页）
-                var result = await _microTableService.ExecuteMicroQueryAsync(
-                    config,
-                    1,
-                    int.MaxValue,
-                    keyword,
-                    ParseQueryFilters(filters),
-                    sortField,
-                    sortOrder,
-                    DtSoftHelper.GetLoginUserAccount(User));
-        
-                // 提取数据列表
-                var resultType = result.GetType();
-                var listProperty = resultType.GetProperty("list");
-                var dataList = listProperty?.GetValue(result) as List<Dictionary<string, object>>;
-        
-                if (dataList == null || !dataList.Any())
-                {
-                    return Ok(new
-                    {
-                        success = false,
-                        msg = L("micro.noDataToExport")
-                    });
-                }
-        
-                // 使用 ExcelExportHelper 导出数据（使用字段配置）
-                var fileName = $"{config.ConfigName}_export.xlsx";
-                var excelData = await ExcelExportHelper.ExportDictionaryToExcelWithFieldConfigAsync(dataList!, fields!, fileName);
-        
-                // 返回 Excel 文件
-                return File(excelData, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
-            }
-            catch (Exception ex)
+            var result = await microRuntimeApp.ExportExcel(
+                modelName,
+                keyword,
+                filters,
+                sortField,
+                sortOrder,
+                GetLoginUserAccount());
+
+            if (!result.Success)
             {
                 return Ok(new
                 {
                     success = false,
-                    msg = $"{L("micro.exportFailed")}：{ex.Message}"
+                    msg = result.Msg
                 });
             }
-        }
 
-        /// <summary>
-        /// 将对象转换为字典，并处理JsonElement类型
-        /// </summary>
-        private Dictionary<string, object> ConvertObjectToDictionary(object obj)
-        {
-            var jsonString = JsonSerializer.Serialize(obj);
-            var jsonDocument = JsonDocument.Parse(jsonString);
-            var jsonObject = jsonDocument.RootElement;
-
-            var result = new Dictionary<string, object>();
-
-            foreach (var property in jsonObject.EnumerateObject())
-            {
-                result[property.Name] = ConvertJsonValue(property.Value)!;
-            }
-
-            return result;
-        }
-
-        /// <summary>
-        /// 将JsonElement转换为基本类型
-        /// </summary>
-        private object? ConvertJsonValue(JsonElement jsonElement)
-        {
-            return jsonElement.ValueKind switch
-            {
-                JsonValueKind.String => jsonElement.GetString(),
-                JsonValueKind.Number => jsonElement.TryGetInt32(out int intVal) ? intVal : jsonElement.GetDouble(),
-                JsonValueKind.True => true,
-                JsonValueKind.False => false,
-                JsonValueKind.Null => null,
-                JsonValueKind.Object => ConvertObjectToDictionary(jsonElement),
-                JsonValueKind.Array => jsonElement.EnumerateArray().Select(ConvertJsonValue).ToArray(),
-                _ => jsonElement.ToString()
-            };
-        }
-
-        private Dictionary<string, List<Dictionary<string, object>>> ExtractSubTableData(Dictionary<string, object> dataDict)
-        {
-            var result = new Dictionary<string, List<Dictionary<string, object>>>(StringComparer.OrdinalIgnoreCase);
-            if (!dataDict.TryGetValue(RuntimeSubTablesKey, out var rawSubTables))
-            {
-                return result;
-            }
-
-            dataDict.Remove(RuntimeSubTablesKey);
-
-            if (rawSubTables is JsonElement jsonElement)
-            {
-                rawSubTables = ConvertJsonValue(jsonElement);
-            }
-
-            if (rawSubTables is not Dictionary<string, object> subTableObject)
-            {
-                return result;
-            }
-
-            foreach (var kvp in subTableObject)
-            {
-                var rows = new List<Dictionary<string, object>>();
-                if (kvp.Value is object[] rowArray)
-                {
-                    foreach (var rowItem in rowArray)
-                    {
-                        if (rowItem is Dictionary<string, object> row)
-                        {
-                            rows.Add(row);
-                        }
-                    }
-                }
-
-                result[kvp.Key] = rows;
-            }
-
-            return result;
-        }
-
-        /// <summary>
-        /// 解析字段级查询条件 JSON，解析失败时返回空集合。
-        /// </summary>
-        /// <param name="filters">字段级查询条件 JSON。</param>
-        /// <returns>字段级查询条件集合。</returns>
-        private static List<MicroQueryFilter> ParseQueryFilters(string filters)
-        {
-            if (string.IsNullOrWhiteSpace(filters))
-            {
-                return new List<MicroQueryFilter>();
-            }
-
-            try
-            {
-                return JsonSerializer.Deserialize<List<MicroQueryFilter>>(
-                           filters,
-                           new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ??
-                       new List<MicroQueryFilter>();
-            }
-            catch
-            {
-                return new List<MicroQueryFilter>();
-            }
-        }
-
-        /// <summary>
-        /// 根据微应用字段配置校验提交的数据。
-        /// </summary>
-        /// <param name="config">微应用配置。</param>
-        /// <param name="dataDict">待校验的数据字典。</param>
-        /// <returns>校验错误列表。</returns>
-        private List<string> ValidateMicroData(SysMicroAppConfig config, Dictionary<string, object> dataDict)
-        {
-            var errors = new List<string>();
-            var fields = string.IsNullOrWhiteSpace(config.Fields)
-                ? new List<FieldConfig>()
-                : JsonSerializer.Deserialize<List<FieldConfig>>(config.Fields) ?? new List<FieldConfig>();
-
-            errors.AddRange(ValidateFields(fields, dataDict, string.Empty));
-            return errors;
-        }
-
-        private List<string> ValidateMicroSubTableData(
-            SysMicroAppConfig config,
-            Dictionary<string, List<Dictionary<string, object>>> subTableData)
-        {
-            var errors = new List<string>();
-            var subTables = MicroConfigSchema.ParseSubTables(config.SubTables);
-            if (subTables.Count == 0)
-            {
-                return errors;
-            }
-
-            var configuredNames = subTables
-                .Where(subTable => !string.IsNullOrWhiteSpace(subTable.TableName))
-                .Select(subTable => subTable.TableName)
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-            foreach (var submittedName in subTableData.Keys)
-            {
-                if (!configuredNames.Contains(submittedName))
-                {
-                    errors.Add(L("micro.subTableNotConfigured", submittedName));
-                }
-            }
-
-            foreach (var subTable in subTables)
-            {
-                subTableData.TryGetValue(subTable.TableName, out var rows);
-                rows ??= new List<Dictionary<string, object>>();
-
-                if (subTable.MinRows.HasValue && rows.Count < subTable.MinRows.Value)
-                {
-                    errors.Add(L("micro.subTableMinRows", subTable.Label, subTable.MinRows.Value));
-                }
-
-                if (subTable.MaxRows.HasValue && subTable.MaxRows.Value > 0 && rows.Count > subTable.MaxRows.Value)
-                {
-                    errors.Add(L("micro.subTableMaxRows", subTable.Label, subTable.MaxRows.Value));
-                }
-
-                for (var rowIndex = 0; rowIndex < rows.Count; rowIndex++)
-                {
-                    errors.AddRange(ValidateFields(
-                        subTable.Fields,
-                        rows[rowIndex],
-                        L("micro.rowPrefix", subTable.Label, rowIndex + 1)));
-                }
-            }
-
-            return errors;
-        }
-
-        private List<string> ValidateFields(List<FieldConfig> fields, Dictionary<string, object> dataDict, string prefix)
-        {
-            var errors = new List<string>();
-            foreach (var field in fields)
-            {
-                if (string.IsNullOrWhiteSpace(field.FieldName))
-                {
-                    continue;
-                }
-
-                dataDict.TryGetValue(field.FieldName, out var rawValue);
-                var value = rawValue is JsonElement jsonElement ? ConvertJsonValue(jsonElement) : rawValue;
-                var textValue = value?.ToString();
-                var fieldLabel = string.IsNullOrWhiteSpace(prefix) ? field.Label : $"{prefix}{field.Label}";
-
-                if (field.Required && string.IsNullOrWhiteSpace(textValue))
-                {
-                    errors.Add(L("micro.fieldRequired", fieldLabel));
-                    continue;
-                }
-
-                if (string.IsNullOrWhiteSpace(textValue))
-                {
-                    continue;
-                }
-
-                if (field.MinLength.HasValue && textValue.Length < field.MinLength.Value)
-                {
-                    errors.Add(L("micro.fieldMinLength", fieldLabel, field.MinLength.Value));
-                }
-
-                if (field.MaxLength.HasValue && textValue.Length > field.MaxLength.Value)
-                {
-                    errors.Add(L("micro.fieldMaxLength", fieldLabel, field.MaxLength.Value));
-                }
-
-                if (field.FieldType == "number" && decimal.TryParse(textValue, out var numberValue))
-                {
-                    if (field.MinValue.HasValue && numberValue < field.MinValue.Value)
-                    {
-                        errors.Add(L("micro.fieldMinValue", fieldLabel, field.MinValue.Value));
-                    }
-
-                    if (field.MaxValue.HasValue && numberValue > field.MaxValue.Value)
-                    {
-                        errors.Add(L("micro.fieldMaxValue", fieldLabel, field.MaxValue.Value));
-                    }
-                }
-
-                if (!string.IsNullOrWhiteSpace(field.Pattern) && !IsRegexMatch(textValue, field.Pattern))
-                {
-                    errors.Add(L("micro.fieldFormatInvalid", fieldLabel));
-                }
-            }
-
-            return errors;
-        }
-
-        /// <summary>
-        /// 执行正则匹配，正则表达式非法时返回 false。
-        /// </summary>
-        /// <param name="value">待校验文本。</param>
-        /// <param name="pattern">正则表达式。</param>
-        /// <returns>是否匹配。</returns>
-        private static bool IsRegexMatch(string value, string pattern)
-        {
-            try
-            {
-                return Regex.IsMatch(value, pattern);
-            }
-            catch
-            {
-                return false;
-            }
+            return File(
+                result.FileContent!,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                result.FileName);
         }
 
         /// <summary>
         /// 导入微应用 Excel 数据
         /// </summary>
-        /// <param name="modelName">模型名称</param>
-        /// <param name="file">上传的Excel文件</param>
-        /// <returns>导入结果</returns>
         [HttpPost("/api/{modelName}/import")]
-        [RequestSizeLimit(100 * 1024 * 1024)] // 限制请求大小为100MB
+        [RequestSizeLimit(100 * 1024 * 1024)]
         public async Task<IActionResult> ImportExcel(string modelName, IFormFile? file)
         {
-            try
-            {
-                // 检查是否有上传的文件
-                if (file == null || file.Length == 0)
-                {
-                    return Ok(new
-                    {
-                        success = false,
-                        msg = L("micro.uploadExcel")
-                    });
-                }
-
-                // 检查文件类型
-                var allowedExtensions = new[] { ".xlsx", ".xls" };
-                var fileExtension = Path.GetExtension(file.FileName).ToLower();
-                if (!allowedExtensions.Contains(fileExtension))
-                {
-                    return Ok(new
-                    {
-                        success = false,
-                        msg = L("micro.excelFormatInvalid")
-                    });
-                }
-
-                // 获取模型配置
-                var config = await GetActiveConfigAsync(modelName);
-
-                if (config == null)
-                {
-                    return Ok(new
-                    {
-                        success = false,
-                        msg = L("micro.configNotFound")
-                    });
-                }
-
-                // 检查是否支持导入
-                if (!config.SupportImport)
-                {
-                    return Ok(new
-                    {
-                        success = false,
-                        msg = L("micro.importNotSupported")
-                    });
-                }
-
-                // 确保数据表存在
-                await _microTableService.EnsureTableExistsAsync(config);
-
-                // 获取字段配置
-                var fields = string.IsNullOrEmpty(config.Fields) ?
-                    new List<FieldConfig>() :
-                    JsonSerializer.Deserialize<List<FieldConfig>>(config.Fields);
-
-                // 读取并解析Excel文件
-                await using var fileStream = file.OpenReadStream();
-                var importedData = await ExcelImportHelper.ImportAndValidateDataAsync(fileStream, fields!, _localizer);
-
-                // 批量插入数据（优化性能）
-                var successCount = 0;
-                var errorCount = 0;
-                var errorMessages = new List<string>();
-
-                try
-                {
-                    // 使用批量插入方法，一次性插入所有数据
-                    successCount = await _microTableService.ExecuteMicroBatchInsertAsync(
-                        config,
-                        importedData,
-                        DtSoftHelper.GetLoginUserAccount(User));
-                }
-                catch (Exception ex)
-                {
-                    errorCount = importedData.Count;
-                    errorMessages.Add($"{L("micro.importFailed")}: {ex.Message}");
-                }
-
-                var total = importedData.Count;
-                var resultMsg = L("micro.importSuccess", successCount, errorCount);
-                if (errorCount > 0)
-                {
-                    resultMsg = L("micro.importSuccessWithError", successCount, errorCount, string.Join("; ", errorMessages.Take(5))); // 只显示前5个错误
-                }
-
-                return Ok(new
-                {
-                    success = true,
-                    msg = resultMsg,
-                    data = new { total, success = successCount, failed = errorCount }
-                });
-            }
-            catch (Exception ex)
+            if (file == null || file.Length == 0)
             {
                 return Ok(new
                 {
                     success = false,
-                    msg = $"{L("micro.importFailed")}: {ex.Message}"
+                    msg = localizer["micro.uploadExcel"]
                 });
             }
+
+            await using var fileStream = file.OpenReadStream();
+            var result = await microRuntimeApp.ImportExcel(
+                modelName,
+                file.FileName,
+                fileStream,
+                GetLoginUserAccount());
+
+            return ToJsonResult(result);
+        }
+
+        private string GetLoginUserAccount() => DtSoftHelper.GetLoginUserAccount(User);
+
+        private static IActionResult ToJsonResult(MicroRuntimeResult result)
+        {
+            if (result.Data == null)
+            {
+                return new OkObjectResult(new
+                {
+                    success = result.Success,
+                    msg = result.Msg
+                });
+            }
+
+            return new OkObjectResult(new
+            {
+                success = result.Success,
+                msg = result.Msg,
+                data = result.Data
+            });
         }
     }
 }

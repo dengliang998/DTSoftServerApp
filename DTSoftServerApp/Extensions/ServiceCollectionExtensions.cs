@@ -64,11 +64,14 @@ namespace DTSoftServerApp.Extensions
             services.AddScoped<UserApp>();
             services.AddScoped<SysConfigApp>();
             services.AddScoped<MicroConfigApp>();
+            services.AddScoped<MicroRuntimeApp>();
             services.AddScoped<MicroTableService>();
             services.AddScoped<OuApp>();
             services.AddScoped<IntegrationApp>();
             services.AddScoped<DictionaryApp>();
             services.AddScoped<EsbServiceConnectionApp>();
+            services.AddScoped<EsbSqlExecutor>();
+            services.AddScoped<EsbWebApiExecutor>();
             services.AddScoped<EsbDataSourceApp>();
             services.AddScoped<LanguageApp>();
             services.AddSingleton(_ => LocalizationConfigurationExtensions.CreateAppLocalizer(configuration));

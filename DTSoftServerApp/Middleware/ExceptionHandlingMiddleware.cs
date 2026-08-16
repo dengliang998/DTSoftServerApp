@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Mime;
 using DTSoft.AppService.Localization;
+using DTSoft.Core.Exceptions;
 
 namespace DTSoftServerApp.Middleware
 {
@@ -44,14 +45,14 @@ namespace DTSoftServerApp.Middleware
             
             // 根据异常类型返回对应的 HTTP 状态码和错误信息
             var localizer = context.RequestServices.GetRequiredService<IAppLocalizer>();
-            var (httpStatusCode, messageKey) = MapExceptionToResponse(exception);
-            var message = localizer[messageKey];
+            var (httpStatusCode, message, errorCode) = MapExceptionToResponse(exception, localizer);
             
             var response = new
             {
                 success = false,
                 statusCode = httpStatusCode,  // 保留 statusCode 字段（与 HTTP 状态码一致）
-                message = environment.IsDevelopment() ? exception.Message : message,
+                code = errorCode,
+                message = exception is DtSoftException || environment.IsDevelopment() ? exception.Message : message,
                 data = (object?)null,
                 
                 // 开发环境下返回详细错误信息（包括堆栈跟踪）
@@ -70,36 +71,39 @@ namespace DTSoftServerApp.Middleware
         /// <summary>
         /// 将异常类型映射到 HTTP 状态码和消息
         /// </summary>
-        private static (int statusCode, string messageKey) MapExceptionToResponse(Exception exception)
+        private static (int statusCode, string message, string errorCode) MapExceptionToResponse(Exception exception, IAppLocalizer localizer)
         {
             return exception switch
             {
+                DtSoftException businessException =>
+                    (businessException.StatusCode, businessException.Message, businessException.ErrorCode),
+
                 // 400 Bad Request - 客户端请求错误
-                ArgumentNullException => (StatusCodes.Status400BadRequest, "validation.argumentMissing"),
-                ArgumentException => (StatusCodes.Status400BadRequest, "validation.argumentInvalid"),
+                ArgumentNullException => (StatusCodes.Status400BadRequest, localizer["validation.argumentMissing"], "validation.argumentMissing"),
+                ArgumentException => (StatusCodes.Status400BadRequest, localizer["validation.argumentInvalid"], "validation.argumentInvalid"),
                 
                 // 401 Unauthorized - 认证失败
-                UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "auth.unauthorized"),
+                UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, localizer["auth.unauthorized"], "auth.unauthorized"),
                 
                 // 403 Forbidden - 权限不足
-                System.Security.SecurityException => (StatusCodes.Status403Forbidden, "auth.forbidden"),
+                System.Security.SecurityException => (StatusCodes.Status403Forbidden, localizer["auth.forbidden"], "auth.forbidden"),
                 
                 // 404 Not Found - 资源不存在
-                KeyNotFoundException => (StatusCodes.Status404NotFound, "resource.notFound"),
+                KeyNotFoundException => (StatusCodes.Status404NotFound, localizer["resource.notFound"], "resource.notFound"),
                 
                 // 409 Conflict - 资源冲突
                 InvalidOperationException when IsConflictException(exception) =>
-                    (StatusCodes.Status409Conflict, "resource.conflict"),
+                    (StatusCodes.Status409Conflict, localizer["resource.conflict"], "resource.conflict"),
                 
                 // 408 Request Timeout - 请求超时
-                TimeoutException => (StatusCodes.Status408RequestTimeout, "request.timeout"),
+                TimeoutException => (StatusCodes.Status408RequestTimeout, localizer["request.timeout"], "request.timeout"),
                 
                 // 423 Locked - 资源被锁定
                 InvalidOperationException when IsLockedException(exception) =>
-                    (StatusCodes.Status423Locked, "resource.locked"),
+                    (StatusCodes.Status423Locked, localizer["resource.locked"], "resource.locked"),
                 
                 // 500 Internal Server Error - 服务器内部错误
-                _ => (StatusCodes.Status500InternalServerError, "system.error")
+                _ => (StatusCodes.Status500InternalServerError, localizer["system.error"], "system.error")
             };
         }
 
