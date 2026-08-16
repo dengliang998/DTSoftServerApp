@@ -36,11 +36,11 @@ public class EsbController(EsbDataSourceApp esbDataSourceApp, EsbServiceConnecti
                 PageSize = pageSize
             });
 
-            return Ok(new { success = true, msg = localizer["common.fetchSuccess"], data = result.Data, total = result.Total });
+            return Success(localizer["common.fetchSuccess"], result.Data, result.Total);
         }
         catch (Exception ex)
         {
-            return Ok(new { success = false, msg = $"{localizer["common.fetchFailed"]}: {ex.Message}" });
+            return Failure(localizer["common.fetchFailed"], ex);
         }
     }
 
@@ -53,11 +53,11 @@ public class EsbController(EsbDataSourceApp esbDataSourceApp, EsbServiceConnecti
         try
         {
             var result = await esbServiceConnectionApp.GetConnectionOptions();
-            return Ok(new { success = true, msg = localizer["common.fetchSuccess"], data = result });
+            return Success(localizer["common.fetchSuccess"], result);
         }
         catch (Exception ex)
         {
-            return Ok(new { success = false, msg = $"{localizer["common.fetchFailed"]}: {ex.Message}" });
+            return Failure(localizer["common.fetchFailed"], ex);
         }
     }
 
@@ -67,7 +67,7 @@ public class EsbController(EsbDataSourceApp esbDataSourceApp, EsbServiceConnecti
     [HttpGet]
     public IActionResult GetSupportedDatabaseTypes()
     {
-        return Ok(new { success = true, msg = localizer["common.fetchSuccess"], data = EsbServiceConnectionApp.GetSupportedDatabaseTypes() });
+        return Success(localizer["common.fetchSuccess"], EsbServiceConnectionApp.GetSupportedDatabaseTypes());
     }
 
     /// <summary>
@@ -80,16 +80,15 @@ public class EsbController(EsbDataSourceApp esbDataSourceApp, EsbServiceConnecti
         {
             if (!ModelState.IsValid || parameter == null)
             {
-                var errors = ModelState.GetErrorMessages();
-                return Ok(new { success = false, msg = string.Join(";", errors.DefaultIfEmpty(localizer["common.argumentMissing"])) });
+                return InvalidArguments();
             }
 
             var result = await esbServiceConnectionApp.AddConnection(parameter);
-            return Ok(new { success = true, msg = localizer["common.addSuccess"], data = result });
+            return Success(localizer["common.addSuccess"], result);
         }
         catch (Exception ex)
         {
-            return Ok(new { success = false, msg = $"{localizer["common.addFailed"]}: {ex.Message}" });
+            return Failure(localizer["common.addFailed"], ex);
         }
     }
 
@@ -103,16 +102,15 @@ public class EsbController(EsbDataSourceApp esbDataSourceApp, EsbServiceConnecti
         {
             if (!ModelState.IsValid || parameter == null)
             {
-                var errors = ModelState.GetErrorMessages();
-                return Ok(new { success = false, msg = string.Join(";", errors.DefaultIfEmpty(localizer["common.argumentMissing"])) });
+                return InvalidArguments();
             }
 
             var result = await esbServiceConnectionApp.UpdateConnection(parameter);
-            return Ok(new { success = true, msg = localizer["common.updateSuccess"], data = result });
+            return Success(localizer["common.updateSuccess"], result);
         }
         catch (Exception ex)
         {
-            return Ok(new { success = false, msg = $"{localizer["common.updateFailed"]}: {ex.Message}" });
+            return Failure(localizer["common.updateFailed"], ex);
         }
     }
 
@@ -124,14 +122,14 @@ public class EsbController(EsbDataSourceApp esbDataSourceApp, EsbServiceConnecti
     {
         try
         {
-            if (parameter == null) return Ok(new { success = false, msg = localizer["common.argumentMissing"] });
+            if (parameter == null) return InvalidArguments();
 
             await esbServiceConnectionApp.DeleteConnection(parameter.ItemId);
-            return Ok(new { success = true, msg = localizer["common.deleteSuccess"] });
+            return Success(localizer["common.deleteSuccess"]);
         }
         catch (Exception ex)
         {
-            return Ok(new { success = false, msg = $"{localizer["common.deleteFailed"]}: {ex.Message}" });
+            return Failure(localizer["common.deleteFailed"], ex);
         }
     }
 
@@ -143,14 +141,14 @@ public class EsbController(EsbDataSourceApp esbDataSourceApp, EsbServiceConnecti
     {
         try
         {
-            if (parameter == null) return Ok(new { success = false, msg = localizer["common.argumentMissing"] });
+            if (parameter == null) return InvalidArguments();
 
             await esbServiceConnectionApp.TestConnection(parameter);
-            return Ok(new { success = true, msg = localizer["esb.connectionTestSuccess"] });
+            return Success(localizer["esb.connectionTestSuccess"]);
         }
         catch (Exception ex)
         {
-            return Ok(new { success = false, msg = $"{localizer["esb.connectionTestFailed"]}: {ex.Message}" });
+            return Failure(localizer["esb.connectionTestFailed"], ex);
         }
     }
 
@@ -178,11 +176,11 @@ public class EsbController(EsbDataSourceApp esbDataSourceApp, EsbServiceConnecti
                 PageSize = pageSize
             });
 
-            return Ok(new { success = true, msg = localizer["common.fetchSuccess"], data = result.Data, total = result.Total });
+            return Success(localizer["common.fetchSuccess"], result.Data, result.Total);
         }
         catch (Exception ex)
         {
-            return Ok(new { success = false, msg = $"{localizer["common.fetchFailed"]}: {ex.Message}" });
+            return Failure(localizer["common.fetchFailed"], ex);
         }
     }
 
@@ -195,11 +193,11 @@ public class EsbController(EsbDataSourceApp esbDataSourceApp, EsbServiceConnecti
         try
         {
             var result = await esbDataSourceApp.GetDataSourceById(id);
-            return Ok(new { success = true, msg = localizer["common.fetchSuccess"], data = result });
+            return Success(localizer["common.fetchSuccess"], result);
         }
         catch (Exception ex)
         {
-            return Ok(new { success = false, msg = $"{localizer["common.fetchFailed"]}: {ex.Message}" });
+            return Failure(localizer["common.fetchFailed"], ex);
         }
     }
 
@@ -213,16 +211,15 @@ public class EsbController(EsbDataSourceApp esbDataSourceApp, EsbServiceConnecti
         {
             if (!ModelState.IsValid || parameter == null)
             {
-                var errors = ModelState.GetErrorMessages();
-                return Ok(new { success = false, msg = string.Join(";", errors.DefaultIfEmpty(localizer["common.argumentMissing"])) });
+                return InvalidArguments();
             }
 
             var result = await esbDataSourceApp.AddDataSource(parameter);
-            return Ok(new { success = true, msg = localizer["common.addSuccess"], data = result });
+            return Success(localizer["common.addSuccess"], result);
         }
         catch (Exception ex)
         {
-            return Ok(new { success = false, msg = $"{localizer["common.addFailed"]}: {ex.Message}" });
+            return Failure(localizer["common.addFailed"], ex);
         }
     }
 
@@ -236,16 +233,15 @@ public class EsbController(EsbDataSourceApp esbDataSourceApp, EsbServiceConnecti
         {
             if (!ModelState.IsValid || parameter == null)
             {
-                var errors = ModelState.GetErrorMessages();
-                return Ok(new { success = false, msg = string.Join(";", errors.DefaultIfEmpty(localizer["common.argumentMissing"])) });
+                return InvalidArguments();
             }
 
             var result = await esbDataSourceApp.UpdateDataSource(parameter);
-            return Ok(new { success = true, msg = localizer["common.updateSuccess"], data = result });
+            return Success(localizer["common.updateSuccess"], result);
         }
         catch (Exception ex)
         {
-            return Ok(new { success = false, msg = $"{localizer["common.updateFailed"]}: {ex.Message}" });
+            return Failure(localizer["common.updateFailed"], ex);
         }
     }
 
@@ -257,14 +253,14 @@ public class EsbController(EsbDataSourceApp esbDataSourceApp, EsbServiceConnecti
     {
         try
         {
-            if (parameter == null) return Ok(new { success = false, msg = localizer["common.argumentMissing"] });
+            if (parameter == null) return InvalidArguments();
 
             await esbDataSourceApp.DeleteDataSource(parameter.ItemId);
-            return Ok(new { success = true, msg = localizer["common.deleteSuccess"] });
+            return Success(localizer["common.deleteSuccess"]);
         }
         catch (Exception ex)
         {
-            return Ok(new { success = false, msg = $"{localizer["common.deleteFailed"]}: {ex.Message}" });
+            return Failure(localizer["common.deleteFailed"], ex);
         }
     }
 
@@ -276,14 +272,40 @@ public class EsbController(EsbDataSourceApp esbDataSourceApp, EsbServiceConnecti
     {
         try
         {
-            if (request == null) return Ok(new { success = false, msg = localizer["common.argumentMissing"] });
+            if (request == null) return InvalidArguments();
 
             var result = await esbDataSourceApp.Execute(request, DtSoftHelper.GetLoginUserAccount(User));
-            return Ok(new { success = true, msg = localizer["common.executeSuccess"], data = result });
+            return Success(localizer["common.executeSuccess"], result);
         }
         catch (Exception ex)
         {
-            return Ok(new { success = false, msg = $"{localizer["common.executeFailed"]}: {ex.Message}" });
+            return Failure(localizer["common.executeFailed"], ex);
         }
+    }
+
+    private IActionResult Success(string message)
+    {
+        return Ok(new { success = true, msg = message });
+    }
+
+    private IActionResult Success(string message, object? data)
+    {
+        return Ok(new { success = true, msg = message, data });
+    }
+
+    private IActionResult Success(string message, object? data, int total)
+    {
+        return Ok(new { success = true, msg = message, data, total });
+    }
+
+    private IActionResult Failure(string message, Exception exception)
+    {
+        return Ok(new { success = false, msg = $"{message}: {exception.Message}" });
+    }
+
+    private IActionResult InvalidArguments()
+    {
+        var errors = ModelState.GetErrorMessages();
+        return Ok(new { success = false, msg = string.Join(";", errors.DefaultIfEmpty(localizer["common.argumentMissing"])) });
     }
 }
