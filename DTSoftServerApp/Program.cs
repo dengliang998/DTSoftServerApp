@@ -8,6 +8,7 @@ using DTSoftServerApp.Plugins;
 using DTSoftServerApp.Services;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.OpenApi;
 using Serilog;
 using Scalar.AspNetCore;
@@ -246,8 +247,14 @@ try
     app.UseHttpsRedirection();
     app.UseResponseCompression(); // 添加响应压缩
                                   // app.UseRateLimiter(); // 速率限制暂时不启用
+    var staticFileContentTypes = new FileExtensionContentTypeProvider();
+    staticFileContentTypes.Mappings[".vue"] = "text/plain";
+
     app.UseDefaultFiles();
-    app.UseStaticFiles();
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        ContentTypeProvider = staticFileContentTypes
+    });
 
     // 转发头配置（Nginx 代理）- 必须在认证和授权之前
     app.UseForwardedHeaders(new ForwardedHeadersOptions
